@@ -64,7 +64,7 @@ Related docs are [matching](docs/matching.md), [gate](docs/gate.md), [agent fall
 | `lint` | Validate a rule file. |
 | `sign` | Sign a rule file. Refuses drafts. |
 | `check` | Verify a rule file signature. |
-| `draft` | Draft rules from two OpenAPI 3.x specs in JSON. |
+| `draft` | Draft rules from two OpenAPI 3.x specs in JSON, or two SDK checkouts with `api.md`. |
 | `apply` | Apply a signed rule and write evidence. Supports `--dry-run`. |
 | `agent-apply` | Validate and apply agent output for unresolved sites, through the same gate. |
 | `verify` | Replay a migration on a base checkout and compare it with the evidence. |

@@ -32,6 +32,30 @@ Every rule carries `confidence` and `evidence`. The draft never says a rule is c
 
 `--naming underscore` maps `charges_create` to `charges.create`. `--naming identity` uses the `operationId` as the call.
 
+## From two SDK versions
+
+SDKs generated in the Stainless style ship `api.md` files that list every client method with the endpoint it calls, and every type with the file that defines it. Pass two checkouts of the SDK, for example at two release tags, and the draft is built from them instead of from OpenAPI.
+
+```sh
+git clone --depth 1 --branch v14.1.1 https://github.com/muxinc/mux-ts.git old
+git clone --depth 1 --branch v15.0.0 https://github.com/muxinc/mux-ts.git new
+node bin/apimigrate.js draft old new --provider mux --out draft-rules.json
+```
+
+The package name and versions come from each checkout's `package.json` unless `--package`, `--from` or `--to` are given.
+
+| Change | Result |
+| --- | --- |
+| A method keeps its endpoint but has a new call path | A `rename-method` rule, `likely`. |
+| Every method under a prefix moved the same way, such as `robotsPreview.*` to `robots.*` | One `rename-namespace` rule, `likely`. |
+| Types and methods defined under one directory are defined under another | A `rename-import` rule for that subpath, `likely`, placed before the package rename. |
+| The package name changed | A `rename-import` rule for the package, `likely`. |
+| An endpoint is gone | A `manual` rule, `needs-review`, naming the closest method with the same name as a likely replacement. |
+| A method's arguments changed | A `manual` rule, `needs-review`, with both argument lists. |
+| The name or version changed | A `rename-dependency` rule to the new name at `^` the new version, `likely`. |
+
+Added methods, changed return types and removed types are listed in the report. On Mux 14.1.1 to 15.0.0 this drafts 5 rules: the `resources/robots-preview` subpath move, the rename to `@mux/ts`, `robotsPreview` to `robots`, a manual rule for `data.filters.listValues` that suggests `data.dimensions.listValues`, and the dependency.
+
 ## Before signing
 
 `sign` refuses a file with `draft: true` or any `confidence` field. The publisher reads each rule, checks it against the real SDK, fixes it, and removes the marks. `lint` reports what still blocks signing.

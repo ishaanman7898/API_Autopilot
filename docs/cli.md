@@ -39,7 +39,9 @@ Verifies the signature and the sunset date. Exactly one key source is required. 
 
 ### draft
 
-`draft <old.json> <new.json> [--provider p] [--package name] [--from v] [--to v] [--naming underscore|identity] [--out file]`
+`draft <old> <new> [--provider p] [--package name] [--from v] [--to v] [--naming underscore|identity] [--out file]`
+
+`<old>` and `<new>` are two OpenAPI 3.x JSON specs, or two SDK checkouts that contain `api.md`.
 
 See [drafting rules](draft.md).
 
