@@ -23,11 +23,12 @@ Work in order of priority.
 
 The test suite runs with the Node test runner and covers each item above, including the end to end flows for apply, verify, drift, trust failures, usage errors, dry run, the gate and agent-apply. It passed on Windows with Node 25 when this was written, and now passes in CI on Linux, macOS and Windows with Node 20 and 22. One test is skipped on systems that cannot create symbolic links.
 
+The signed path of `watch` runs against a live domain in the `provider-selftest` workflow. `https://atomicayush.github.io`, a test provider on a team member's GitHub Pages site, serves a rule index built with `index`, its key set and a signed rule file for Mux 14 to 15. On a real runner, the Action's watch mode fetches all three over HTTPS, verifies the signature against that key set, and asks for one signed draft pull request whose branch passes `npm ci` and `npm test`. The key set fetch is the one `--well-known` uses.
+
 ## Not verified
 
 - The GitHub Action opening a real pull request. It runs on a real runner in the `action-selftest` workflow, in both modes, which records the pull request call instead of making it.
-- A provider's rule index on a live domain. No provider publishes one yet, so the signed path of `watch` is tested with injected fetch functions. The draft path runs against the real npm registry and GitHub in the selftest.
-- The well-known fetch against a live domain. It is tested with injected fetch functions.
+- A rule index on an SDK provider's own domain. No provider publishes one yet, so the live check uses a test domain whose rules were drafted from the Mux SDKs, not published by Mux.
 - Performance on very large repositories. On the Mux benchmark's largest monorepo a 114-rule run takes about 4 seconds.
 - Real third party SDK migrations beyond one. The [Mux 14 to 15 benchmark](../bench/mux-14-to-15/README.md) ran the tool on 32 public repositories with rules drafted from the two SDKs: it fixed every type error the upgrade causes, introduced none, updated every `package.json`, and proved 98% of Mux call sites and queued the rest. A second benchmark, [Cloudflare 6 to 7](../bench/cloudflare-6-to-7/README.md), ran 254 drafted rules on 12 repositories with the same result: nothing broken, every `package.json` updated. It type-checks only, and runs no tests.
 

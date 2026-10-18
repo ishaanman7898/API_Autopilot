@@ -13,7 +13,7 @@ This is the working checklist for Phase 1 of the [strategy](strategy.md). It lis
 ## Not done
 
 - No provider has been contacted.
-- No domain serves a rule index, so the live fetch from a provider domain is unverified.
+- No provider's domain serves a rule index. The live fetch works against a test domain in the `provider-selftest` workflow.
 - The rules are drafted from SDK diffs. No provider has reviewed them.
 - The Orb kit has not run on any repository.
 - The Cloudflare argument rewrites have not run on real code, because none of the 12 benchmark repositories calls an affected method.

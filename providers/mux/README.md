@@ -47,6 +47,6 @@ Put that in `.apimigrate.yml`. Each `sources` entry is the package and the domai
 
 ## Status
 
-The flow from `lint` to `index` was rehearsed with a throwaway key and works. No domain serves this index yet, so the live fetch against a provider domain is still unverified.
+The flow from `lint` to `index` was rehearsed with a throwaway key and works. Mux does not serve this index yet. The live fetch is checked in the `provider-selftest` workflow against a test domain, `atomicayush.github.io`, that serves the same upgrade under a test key.
 
 Related docs are [rule format](../../docs/rule-format.md), [CLI reference](../../docs/cli.md#index) and [strategy](../../docs/strategy.md).
