@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { generateKeys, signRuleSet, verifyRuleSet, validateRuleSet, hashRuleSet } from '../src/rule.js';
+import { validateRuleSet, hashRuleSet } from '../src/rule.js';
+import { generateKeys, signRuleSet, verifyRuleSet } from '../src/signing.js';
 import { applyRuleSet } from '../src/engine.js';
 import { runGate } from '../src/gate.js';
 import { buildEvidence, replay } from '../src/evidence.js';
