@@ -117,16 +117,8 @@ export function diffSurfaces(a, b) {
   const removed = [];
   const argsChanged = [];
   const returnsChanged = [];
-  const moves = new Map();
-  const move = (fromFile, toFile) => {
-    const x = modulePath(fromFile).split('/');
-    const y = modulePath(toFile).split('/');
-    const k = commonSuffix(x, y);
-    if (k === x.length && k === y.length) return;
-    const from = x.slice(0, x.length - k).join('/');
-    const to = y.slice(0, y.length - k).join('/');
-    if (from && to) moves.set(from, to);
-  };
+  const pairs = [];
+  const move = (fromFile, toFile) => pairs.push([modulePath(fromFile), modulePath(toFile)]);
   for (const [endpoint, olds] of a.methods) {
     const news = b.methods.get(endpoint);
     if (!news) { for (const o of olds) removed.push({ endpoint, call: o.call }); continue; }
@@ -149,7 +141,24 @@ export function diffSurfaces(a, b) {
     if (!next) { removedTypes.push(name); continue; }
     if (files.size === 1 && next.size === 1) move([...files][0], [...next][0]);
   }
-  return { renamed, removed, added, newCalls, argsChanged, returnsChanged, removedTypes, moves: [...moves].map(([from, to]) => ({ from, to })) };
+  // A module moved only when everything defined under it moved the same way. Rename-import rules also match
+  // subpaths, so one type moving into a new file must not move the whole module. Those are listed instead.
+  const moves = new Map();
+  const ambiguous = new Map();
+  const under = (path, dir) => path === dir || path.startsWith(dir + '/');
+  for (const [x0, y0] of pairs) {
+    const x = x0.split('/');
+    const y = y0.split('/');
+    const k = commonSuffix(x, y);
+    if (k === x.length && k === y.length) continue;
+    const from = x.slice(0, x.length - k).join('/');
+    const to = y.slice(0, y.length - k).join('/');
+    if (!from || !to || moves.has(from) || ambiguous.has(from)) continue;
+    const others = pairs.filter(([o, n]) => under(o, from) && n !== to + o.slice(from.length));
+    if (others.length) ambiguous.set(from, { from, to, unmoved: others.length, moved: pairs.filter(([o]) => under(o, from)).length - others.length });
+    else moves.set(from, to);
+  }
+  return { renamed, removed, added, newCalls, argsChanged, returnsChanged, removedTypes, moves: [...moves].map(([from, to]) => ({ from, to })), partialMoves: [...ambiguous.values()] };
 }
 
 // Turns the diff into a draft rule file. Every rule carries confidence and evidence, and the file is
@@ -223,6 +232,7 @@ export function draftFromSurfaces(diff, { provider, from, to, oldName, newName, 
       returnTypesChanged: diff.returnsChanged,
       typesRemoved: diff.removedTypes,
       moduleMoves: diff.moves,
+      partialModuleMoves: diff.partialMoves,
       likely: rules.filter((r) => r.confidence === 'likely').length,
       needsReview: rules.filter((r) => r.confidence === 'needs-review').length,
     },

@@ -48,7 +48,7 @@ The package name and versions come from each checkout's `package.json` unless `-
 | --- | --- |
 | A method keeps its endpoint but has a new call path | A `rename-method` rule, `likely`. |
 | Every method under a prefix moved the same way, such as `robotsPreview.*` to `robots.*` | One `rename-namespace` rule, `likely`. |
-| Types and methods defined under one directory are defined under another | A `rename-import` rule for that subpath, `likely`, placed before the package rename. |
+| Every type and method defined under one directory is defined under another | A `rename-import` rule for that subpath, `likely`, placed before the package rename. When only some of them moved, there is no rule, since a `rename-import` also matches every subpath. The report lists it under `partialModuleMoves`. |
 | The package name changed | A `rename-import` rule for the package, `likely`. |
 | An endpoint is gone | A `manual` rule, `needs-review`, naming the closest method with the same name as a likely replacement. |
 | Leading positional arguments moved into the params object, each matching a path parameter of the endpoint | A `positional-to-named` rule, `likely`. |
@@ -59,7 +59,7 @@ Added methods, changed return types and removed types are listed in the report. 
 
 ## From npm releases
 
-`apimigrate watch` makes the same draft without checkouts when it finds a new major version and the provider publishes no signed rules. It fetches each release's `api.md` files from GitHub, at the commit npm recorded when the release was published or at its release tag. On `@mux/mux-node` 14.1.1 to 15.5.0 it drafts the same 5 rules as above. On `cloudflare` 6.5.0 to 7.3.0 it drafts 280, 21 of them `needs-review`. These drafts are never signed. They reach a repository only as draft pull requests marked unsigned. See [CLI reference](cli.md#watch).
+`apimigrate watch` makes the same draft without checkouts when it finds a new major version and the provider publishes no signed rules. It fetches each release's `api.md` files from GitHub, at the commit npm recorded when the release was published or at its release tag. On `@mux/mux-node` 14.1.1 to 15.5.0 it drafts the same 5 rules as above. On `cloudflare` 6.5.0 to 7.3.0 it drafts 274, 21 of them `needs-review`, and lists 6 partial module moves, such as one type moving from `resources/dns` into `resources/dns/dnssec`, without drafting rules for them. These drafts are never signed. They reach a repository only as draft pull requests marked unsigned. See [CLI reference](cli.md#watch).
 
 ## Before signing
 

@@ -103,3 +103,19 @@ test('draft accepts two SDK folders on the command line and refuses a mix', asyn
   assert.equal(await main(['draft', old(), spec], io), 2);
   assert.equal(await main(['draft', old(), next(), '--naming', 'identity'], io), 2);
 });
+
+test('a module is only moved when everything defined under it moved the same way', () => {
+  const surface = (types) => ({ methods: new Map(), types: new Map(Object.entries(types).map(([k, v]) => [k, new Set([v])])) });
+  const partial = diffSurfaces(
+    surface({ Route: 'src/resources/radar/bgp.ts', Hijack: 'src/resources/radar/bgp.ts', Leak: 'src/resources/radar/bgp/leaks.ts' }),
+    surface({ Route: 'src/resources/radar/bgp/routes.ts', Hijack: 'src/resources/radar/bgp.ts', Leak: 'src/resources/radar/bgp/leaks.ts' }),
+  );
+  assert.deepEqual(partial.moves, []);
+  assert.deepEqual(partial.partialMoves, [{ from: 'resources/radar/bgp', to: 'resources/radar/bgp/routes', unmoved: 2, moved: 1 }]);
+  const whole = diffSurfaces(
+    surface({ A: 'src/resources/jobs-preview/a.ts', C: 'src/resources/jobs-preview/b/c.ts' }),
+    surface({ A: 'src/resources/jobs/a.ts', C: 'src/resources/jobs/b/c.ts' }),
+  );
+  assert.deepEqual(whole.moves, [{ from: 'resources/jobs-preview', to: 'resources/jobs' }]);
+  assert.deepEqual(whole.partialMoves, []);
+});
