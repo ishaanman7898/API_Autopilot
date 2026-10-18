@@ -27,6 +27,7 @@ The engine traces the receiver of a call back to an export of the package. These
 | Path alias to another scanned file | `import { client } from '@/lib/acme'`, with `"paths": { "@/*": ["./src/*"] }` in `tsconfig.json` |
 | Factory function | `function getClient() { return new Acme() }`, then `getClient().charges.create()`. Also arrow and async functions, and factories that call other factories. |
 | Lazily cached client | `let cached = null; function getClient() { if (!cached) cached = new Acme(); return cached }` |
+| Client cached on the global object | `export const client = globalThis.__client ?? makeClient()`, with `globalThis.__client = client` in development, or the same through `const g = globalThis as unknown as {...}` |
 | `??`, `\|\|` and `? :` | `cached ?? new Acme()`, when every side is the same value or `null` |
 | Parentheses, `as`, `!`, `await` around any of the above | `(await import('acme-sdk')).default` |
 
@@ -69,7 +70,7 @@ Files with syntax errors are skipped and listed. Files larger than 2 MB are not 
 
 - No type information. The engine does not know the type of a parameter or a field.
 - A call in a file that does not import the package, and does not reach it through a relative or aliased import of another scanned file, is not seen.
-- Object methods, class members and properties of `globalThis` are not followed, so `globalThis.__client ?? getClient()` is not proven.
+- Object methods and class members are not followed. A property of `globalThis` is followed only when every assignment to it in the scanned files gives the same package value, so code outside the scan that sets it is not seen.
 - Files outside `paths` are not part of the program, so imports of them are not followed.
 - `export * from` is not followed.
 - Computed property names and dynamic calls are not followed.

@@ -7,6 +7,7 @@ const keyName = (k) => (ts.isIdentifier(k) || ts.isStringLiteralLike(k) ? k.text
 
 // Markers used while working out every value a function or a variable can hold. They never leave the resolver.
 const NULLISH = Object.freeze({ nullish: true });
+const GLOBAL_NAMES = new Set(['globalThis', 'global', 'window', 'self']);
 const PENDING = Object.freeze({ pending: true });
 
 export function unwrap(n) {
@@ -36,9 +37,11 @@ function join(values) {
 // An origin says which export of a package a value came from: { module, root, name?, props, site? }.
 // root is namespace, default, named or instance. site is the binding that introduced the last path segment.
 // { fn } is a function whose call can be traced through its return statements.
-export function createResolver(checker, isPackage) {
+// sourceFiles are every scanned file, which a global cache such as globalThis.__client is checked across.
+export function createResolver(checker, isPackage, sourceFiles = []) {
   const pendingSymbols = new Set();
   const pendingFunctions = new Set();
+  const pendingGlobals = new Set();
 
   const isGlobalRequire = (callee) => {
     if (!ts.isIdentifier(callee) || callee.text !== 'require') return false;
@@ -198,6 +201,49 @@ export function createResolver(checker, isPackage) {
     }
   }
 
+  // globalThis, global, window and self, when nothing in the scanned files declares that name, and a const
+  // that holds one of them, such as `const globalForClient = globalThis as unknown as { client?: Acme }`.
+  function isGlobalObject(n, depth = 0) {
+    n = unwrap(n);
+    if (!ts.isIdentifier(n) || depth > 3) return false;
+    const sym = checker.getSymbolAtLocation(n);
+    if (GLOBAL_NAMES.has(n.text) && !sym?.declarations?.length) return true;
+    const decl = sym?.valueDeclaration;
+    return Boolean(decl && ts.isVariableDeclaration(decl) && isConst(decl) && decl.initializer && isGlobalObject(decl.initializer, depth + 1));
+  }
+
+  // A property of the global object used as a cache, such as `globalThis.__client ?? makeClient()`, is
+  // followed when every assignment to it in the scanned files gives the same package value, null or
+  // undefined. A write with a computed key or a compound operator, or no write at all, leaves it unknown.
+  function fromGlobalCache(name, depth) {
+    if (pendingGlobals.has(name)) return PENDING;
+    pendingGlobals.add(name);
+    try {
+      const values = [];
+      let unknownWrite = false;
+      for (const sf of sourceFiles) {
+        walk(sf, (n) => {
+          if (unknownWrite || !ts.isBinaryExpression(n)) return;
+          const op = n.operatorToken.kind;
+          if (op < ts.SyntaxKind.FirstAssignment || op > ts.SyntaxKind.LastAssignment) return;
+          const left = unwrap(n.left);
+          let key;
+          if (ts.isPropertyAccessExpression(left) && ts.isIdentifier(left.name)) key = left.name.text;
+          else if (ts.isElementAccessExpression(left)) key = ts.isStringLiteralLike(left.argumentExpression) ? left.argumentExpression.text : null;
+          else return;
+          if (!isGlobalObject(left.expression)) return;
+          if (key === null) unknownWrite = true;
+          else if (key !== name) return;
+          else if (op === ts.SyntaxKind.EqualsToken || op === ts.SyntaxKind.QuestionQuestionEqualsToken || op === ts.SyntaxKind.BarBarEqualsToken) values.push(valueOf(n.right, depth + 1));
+          else unknownWrite = true;
+        });
+      }
+      return unknownWrite || !values.length ? null : join(values);
+    } finally {
+      pendingGlobals.delete(name);
+    }
+  }
+
   // A call is followed when every return of the function gives the same package value, null or undefined.
   function fromFunction(fn, depth) {
     if (!fn.body || fn.asteriskToken) return null;
@@ -274,6 +320,7 @@ export function createResolver(checker, isPackage) {
     if (ts.isIdentifier(node)) return fromSymbol(checker.getSymbolAtLocation(node), depth + 1);
     if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) return { fn: node };
     if (ts.isPropertyAccessExpression(node)) {
+      if (ts.isIdentifier(node.name) && isGlobalObject(node.expression)) return fromGlobalCache(node.name.text, depth + 1);
       const base = originOf(node.expression, depth + 1);
       return base && ts.isIdentifier(node.name) ? extend(base, node.name.text, undefined, depth) : null;
     }

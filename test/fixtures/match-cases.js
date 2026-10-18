@@ -198,6 +198,7 @@ export const cases = [
   ...factoryCases(),
   ...commonJsCases(),
   ...namespaceCases(),
+  ...globalCacheCases(),
   {
     name: 'lookalikes in files that reach the package through local imports are queued, others are not',
     rules: mp,
@@ -225,6 +226,34 @@ export const cases = [
   },
   ...aliasCases(),
 ];
+
+// Clients cached on the global object so they survive hot reloads, as in Next.js and Prisma's guide.
+function globalCacheCases() {
+  const imp = "import Acme from 'acme-sdk';\n";
+  const nextStyle = `${imp}declare global {\n  var __acme: Acme | undefined;\n}\nfunction makeAcme() {\n  if (!process.env.KEY) throw new Error('no key');\n  return new Acme();\n}\nexport const acme = globalThis.__acme ?? makeAcme();\nif (process.env.NODE_ENV !== 'production') globalThis.__acme = acme;\n`;
+  const prismaStyle = `${imp}const globalForAcme = globalThis as unknown as { acme: Acme | undefined };\nexport const acme = globalForAcme.acme ?? new Acme();\nif (process.env.NODE_ENV !== 'production') globalForAcme.acme = acme;\n`;
+  const use = "import { acme } from './lib/acme';\nacme.charges.create({ amount_cents: 1 });\n";
+  const used = "import { acme } from './lib/acme';\nacme.payments.create({ amount: 1 });\n";
+  return [
+    { name: 'a client cached on globalThis is followed', rules: mp, files: { 'lib/acme.ts': nextStyle, 'route.ts': use }, expect: { 'route.ts': used }, unresolved: [] },
+    { name: 'a client cached through a const alias of globalThis is followed', rules: mp, files: { 'lib/acme.ts': prismaStyle, 'route.ts': use }, expect: { 'route.ts': used }, unresolved: [] },
+    {
+      name: 'a global cache that is given another value, or written with a computed key, is not trusted',
+      rules: mp,
+      files: {
+        'lib/acme.ts': nextStyle,
+        'test/setup.ts': 'globalThis.__acme = makeFake();\n',
+        'route.ts': use,
+        'lib2/acme.ts': prismaStyle,
+        'lib2/patch.ts': "const key = 'acme';\n(globalThis as any)[key] = makeFake();\n",
+        'route2.ts': use.replace('./lib/acme', './lib2/acme'),
+      },
+      expect: {},
+      untouched: ['route.ts', 'route2.ts'],
+      unresolved: [['route.ts', 2, 'cannot be traced'], ['route2.ts', 2, 'cannot be traced']],
+    },
+  ];
+}
 
 // rename-namespace moves a whole resource, such as client.robotsPreview to client.robots.
 function namespaceCases() {
