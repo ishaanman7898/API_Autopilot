@@ -1,112 +1,97 @@
-import { fence, scanUntrusted } from './sanitize.js';
+import { buildProgram } from './parse.js';
+import { createResolver } from './bindings.js';
+import { TRANSFORMS } from './transforms.js';
 
-const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const lineOf = (text, idx) => text.slice(0, idx).split('\n').length;
+const lineOf = (sf, pos) => sf.getLineAndCharacterOfPosition(pos).line + 1;
 
-function callRegex(call, tail = '') {
-  if (call.includes('.')) {
-    const body = call.split('.').map(esc).join('\\s*\\.\\s*');
-    return new RegExp('\\.' + body + tail, 'g');
+function packageNames(rs) {
+  const names = [rs.package, ...rs.rules.filter((r) => r.kind === 'rename-import').flatMap((r) => [r.match.module, r.transform.to])];
+  return [...new Set(names.filter(Boolean))];
+}
+
+function applyEdits(text, edits) {
+  const sorted = [...edits].sort((a, b) => b.start - a.start || b.end - a.end);
+  let out = text;
+  let floor = Infinity;
+  for (const e of sorted) {
+    if (e.end > floor) throw new Error('overlapping edits, refusing to guess');
+    out = out.slice(0, e.start) + e.text + out.slice(e.end);
+    floor = e.start;
   }
-  return new RegExp('(?<![\\w$.])' + esc(call) + tail, 'g');
+  return out;
 }
 
-// index of the ")" that closes the "(" at `open`, skipping string literals
-function closeParen(text, open) {
-  let depth = 0;
-  let quote = null;
-  for (let i = open; i < text.length; i++) {
-    const c = text[i];
-    if (quote) {
-      if (c === '\\') i++;
-      else if (c === quote) quote = null;
-    } else if (c === '"' || c === "'" || c === '`') quote = c;
-    else if (c === '(') depth++;
-    else if (c === ')' && --depth === 0) return i;
-  }
-  return -1;
+function snippet(sf, line) {
+  const lines = sf.text.split('\n');
+  return lines.slice(Math.max(0, line - 3), line + 2).join('\n');
 }
 
-function importsPackage(text, names) {
-  return names.some((n) =>
-    new RegExp('(?:from\\s+|require\\(\\s*|import\\s+)[\'"]' + esc(n) + '(?:/[^\'"]*)?[\'"]').test(text));
-}
-
-function unresolved(file, text, idx, rule, call) {
-  const lines = text.split('\n');
-  const line = lineOf(text, idx);
-  const context = lines.slice(Math.max(0, line - 3), line + 2).join('\n');
-  return {
-    file, line, ruleId: rule.id, call,
-    prompt: rule.fallback?.prompt ?? `Migrate this call site: ${rule.id}`,
-    context: fence(context),
-    injectionFindings: scanUntrusted(context),
+function runAstRule(rule, rs, files, names, report) {
+  const built = buildProgram(files);
+  const isPackage = (spec) => names.some((n) => spec === n || spec.startsWith(n + '/'));
+  const resolver = createResolver(built.checker, isPackage);
+  const ctx = { ...resolver, isPackage, packageName: rs.package ?? names[0] };
+  const edits = new Map();
+  const seen = new Set();
+  const out = {
+    edit(sf, start, end, text, node) {
+      const file = built.rel(sf);
+      const key = `${file}:${start}:${end}:${text}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      if (!edits.has(file)) edits.set(file, []);
+      edits.get(file).push({ start, end, text, line: lineOf(sf, node.getStart(sf)) });
+    },
+    fail(sf, node, reason) {
+      const line = lineOf(sf, node.getStart(sf));
+      report.unresolved.push({ file: built.rel(sf), line, ruleId: rule.id, call: rule.match.call ?? rule.match.module, reason, snippet: snippet(sf, line) });
+    },
   };
+  for (const sf of built.sourceFiles) {
+    const file = built.rel(sf);
+    if (built.syntaxErrors(sf)) {
+      if (names.some((n) => sf.text.includes(n)) && !report.skipped.some((s) => s.file === file)) report.skipped.push({ file, reason: 'syntax errors, file not touched' });
+      continue;
+    }
+    TRANSFORMS[rule.kind](ctx, sf, rule, out);
+  }
+  const next = { ...files };
+  for (const [file, list] of edits) {
+    if (report.skipped.some((s) => s.file === file)) continue;
+    next[file] = applyEdits(files[file], list);
+    for (const e of list) report.changes.push({ file, line: e.line, ruleId: rule.id, proven: true });
+  }
+  return next;
 }
 
-// Deterministic pass. Anything a transform cannot prove it handled is returned in `unresolved` for the agent.
-export function applyRuleSet(rs, files) {
-  const out = { ...files };
-  const changes = [];
-  const todo = [];
-  const names = [rs.package, ...rs.rules.filter((r) => r.kind === 'rename-import').map((r) => r.transform.to)];
-
-  for (const [file, original] of Object.entries(files)) {
-    if (rs.scope !== 'any' && !importsPackage(original, names)) continue;
-    let text = original;
-
-    for (const rule of rs.rules) {
-      if (rule.kind === 'rename-import') {
-        const re = new RegExp('([\'"])' + esc(rule.match.module) + '(/[^\'"]*)?\\1', 'g');
-        const snapshot = text;
-        text = snapshot.replace(re, (m, q, sub = '', off) => {
-          changes.push({ file, line: lineOf(snapshot, off), ruleId: rule.id });
-          return q + rule.transform.to + sub + q;
-        });
-      } else if (rule.kind === 'rename-method') {
-        const snapshot = text;
-        text = snapshot.replace(callRegex(rule.match.call, '(?=\\s*\\()'), (m, off) => {
-          changes.push({ file, line: lineOf(snapshot, off), ruleId: rule.id });
-          return (m.startsWith('.') ? '.' : '') + rule.transform.to;
-        });
-      } else if (rule.kind === 'rename-param') {
-        const { call, param } = rule.match;
-        const to = rule.transform.to;
-        const re = callRegex(call, '\\s*\\(');
-        const edits = [];
-        let m;
-        while ((m = re.exec(text))) {
-          const open = m.index + m[0].length - 1;
-          const close = closeParen(text, open);
-          if (close < 0) continue;
-          const args = text.slice(open + 1, close);
-          const keyed = new RegExp('([{,]\\s*)' + esc(param) + '(\\s*:)', 'g');
-          const short = new RegExp('([{,]\\s*)' + esc(param) + '(\\s*[,}])', 'g');
-          const next = args
-            .replace(keyed, (_, a, b) => a + to + b)
-            .replace(short, (_, a, b) => a + to + ': ' + param + b);
-          if (next !== args) edits.push({ from: open + 1, to: close, next, line: lineOf(text, m.index) });
-          else if (args.trim() && !args.trimStart().startsWith('{')) todo.push(unresolved(file, text, m.index, rule, call));
-        }
-        for (const e of edits.reverse()) {
-          text = text.slice(0, e.from) + e.next + text.slice(e.to);
-          changes.push({ file, line: e.line, ruleId: rule.id });
-        }
-      } else if (rule.kind === 'replace') {
-        if (rule.match.files && !rule.match.files.some((f) => file.endsWith(f))) continue;
-        const snapshot = text;
-        text = snapshot.replace(new RegExp(rule.match.pattern, rule.match.flags ?? 'g'), (m, ...rest) => {
-          const off = rest.find((x) => typeof x === 'number');
-          changes.push({ file, line: lineOf(snapshot, off), ruleId: rule.id });
-          return m.replace(new RegExp(rule.match.pattern, rule.match.flags?.replace('g', '') ?? ''), rule.transform.to);
-        });
-      } else if (rule.kind === 'manual') {
-        const re = callRegex(rule.match.call, '(?=\\s*\\()');
-        let m;
-        while ((m = re.exec(text))) todo.push(unresolved(file, text, m.index, rule, rule.match.call));
-      }
-    }
-    out[file] = text;
+// Regex rewrite for non-code files. These changes are not proven by a parse and are labelled as such.
+function runReplaceRule(rule, files, report) {
+  const next = { ...files };
+  const flags = rule.match.flags ?? 'g';
+  for (const [file, text] of Object.entries(files)) {
+    if (!rule.match.files.some((f) => file.endsWith(f))) continue;
+    const re = new RegExp(rule.match.pattern, flags);
+    next[file] = text.replace(re, (m, ...rest) => {
+      const offset = rest.find((x) => typeof x === 'number');
+      report.changes.push({ file, line: text.slice(0, offset).split('\n').length, ruleId: rule.id, proven: false });
+      return m.replace(new RegExp(rule.match.pattern, flags.replace('g', '')), rule.transform.to);
+    });
   }
-  return { files: out, changes, unresolved: todo };
+  return next;
+}
+
+// Deterministic pass. Rules run in order and each sees the output of the one before. Anything not proven goes to unresolved.
+export function applyRuleSet(rs, files) {
+  const report = { changes: [], unresolved: [], skipped: [] };
+  const names = packageNames(rs);
+  let current = { ...files };
+  for (const rule of rs.rules) {
+    current = rule.kind === 'replace' ? runReplaceRule(rule, current, report) : runAstRule(rule, rs, current, names, report);
+  }
+  const seen = new Set();
+  const unresolved = report.unresolved.filter((u) => {
+    const key = `${u.file}:${u.line}:${u.ruleId}:${u.reason}`;
+    return seen.has(key) ? false : (seen.add(key), true);
+  });
+  return { files: current, changes: report.changes, unresolved, skipped: report.skipped };
 }
