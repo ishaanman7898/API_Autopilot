@@ -1,9 +1,13 @@
 name: API Autopilot
-description: Apply a signed migration rule and open a draft pull request with an evidence bundle. Code stays on your runner. Never merges.
+description: Apply a signed migration rule, or watch npm for new major versions, and open draft pull requests with an evidence bundle. Code stays on your runner. Never merges.
 inputs:
+  mode:
+    description: apply runs the rule file in rules. watch looks for new major versions on npm and opens one draft pull request per upgrade, marking drafted rules as unsigned.
+    required: false
+    default: apply
   rules:
-    description: Path to the signed rule file
-    required: true
+    description: Path to the signed rule file. Required in apply mode.
+    required: false
   well-known:
     description: Provider domain that publishes /.well-known/apimigrate-keys.json. Use this or keys.
     required: false
@@ -28,15 +32,19 @@ runs:
 
     - name: Apply the rule
       id: apply
+      if: inputs.mode != 'watch'
       shell: bash
       env:
         ACTION_PATH: ${{ github.action_path }}
+        MODE: ${{ inputs.mode }}
         RULES: ${{ inputs.rules }}
         WELL_KNOWN: ${{ inputs.well-known }}
         KEYS: ${{ inputs.keys }}
         TEST_CMD: ${{ inputs.test-cmd }}
       run: |
         set -euo pipefail
+        if [ "$MODE" != "apply" ]; then echo "mode must be apply or watch" >&2; exit 2; fi
+        if [ -z "$RULES" ]; then echo "rules is required in apply mode" >&2; exit 2; fi
         args=(apply --rules "$RULES")
         if [ -n "$WELL_KNOWN" ] && [ -n "$KEYS" ]; then echo "pass only one of well-known and keys" >&2; exit 2; fi
         if [ -n "$WELL_KNOWN" ]; then args+=(--well-known "$WELL_KNOWN"); fi
@@ -45,7 +53,7 @@ runs:
         node "$ACTION_PATH/bin/apimigrate.js" "${args[@]}"
 
     - name: Upload the evidence bundle
-      if: always() && hashFiles('.apimigrate/evidence.json') != ''
+      if: always() && inputs.mode != 'watch' && hashFiles('.apimigrate/evidence.json') != ''
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
         name: apimigrate-evidence
@@ -55,6 +63,7 @@ runs:
           .apimigrate/audit.log
 
     - name: Open a draft pull request
+      if: inputs.mode != 'watch'
       shell: bash
       env:
         ACTION_PATH: ${{ github.action_path }}
@@ -74,3 +83,24 @@ runs:
         git -c user.name=apimigrate -c user.email=apimigrate@users.noreply.github.com commit -m "$title"
         git push origin "$branch"
         gh pr create --draft --title "$title" --body-file "$RUNNER_TEMP/apimigrate-pr-body.md"
+
+    - name: Watch for new major versions and open draft pull requests
+      if: inputs.mode == 'watch'
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        OUT: ${{ runner.temp }}/apimigrate-watch
+        TEST_CMD: ${{ inputs.test-cmd }}
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        set -euo pipefail
+        node "$ACTION_PATH/bin/apimigrate.js" watch --out "$OUT"
+        node "$ACTION_PATH/scripts/watch-prs.mjs" "$OUT/plan.json"
+
+    - name: Upload the watch plan, rules and evidence
+      if: always() && inputs.mode == 'watch'
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      with:
+        name: apimigrate-watch
+        path: ${{ runner.temp }}/apimigrate-watch
+        if-no-files-found: ignore

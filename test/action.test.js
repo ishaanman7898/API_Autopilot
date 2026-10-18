@@ -66,10 +66,13 @@ test('the action opens draft pull requests only and never merges', () => {
   assert.doesNotMatch(action, /git add -A|git add \./, 'only files named by the evidence are staged');
   const scripts = action.split(/\n\s+run: /).slice(1).map((s) => s.split(/\n\s+- name|\n\s+-\s+uses/)[0]).join('\n');
   assert.doesNotMatch(scripts, /\$\{\{/, 'no expression is interpolated into a shell script');
-  for (const f of ['examples/workflow.yml', '.github/workflows/ci.yml']) {
+  for (const f of ['examples/workflow.yml', 'examples/watch-workflow.yml', '.github/workflows/ci.yml']) {
     const text = readRepoFile(f);
     assert.doesNotMatch(text, /uses: [^@\n]+@v\d/, `${f} pins actions by commit`);
   }
-  const workflow = readRepoFile('examples/workflow.yml');
-  assert.match(workflow, /permissions:\n  contents: write\n  pull-requests: write/);
+  for (const f of ['examples/workflow.yml', 'examples/watch-workflow.yml']) assert.match(readRepoFile(f), /permissions:\n  contents: write\n  pull-requests: write/);
+  const watch = readRepoFile('src/watchpr.js');
+  assert.match(watch, /'pr', 'create', '--draft'/);
+  assert.doesNotMatch(watch, /'merge'|--auto|--admin|'add', '-A'|'add', '\.'/, 'watch mode opens drafts only and stages only changed files');
+  assert.doesNotMatch(watch, /shell:\s*true|execSync|exec\(/, 'git and gh get argument arrays');
 });

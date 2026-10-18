@@ -1,15 +1,16 @@
 # GitHub Action
 
-`action.yml` is a composite action. It runs `apply` on your runner, uploads the evidence, and opens a draft pull request. It does not merge, enable auto merge, or approve.
+`action.yml` is a composite action. In `apply` mode it runs one rule file on your runner, uploads the evidence, and opens a draft pull request. In `watch` mode it looks for new major versions on npm and opens one draft pull request per upgrade. It does not merge, enable auto merge, or approve.
 
 ## Inputs
 
 | Input | Meaning |
 | --- | --- |
-| `rules` | Path to the signed rule file. Required. |
+| `mode` | `apply`, the default, or `watch`. |
+| `rules` | Path to the signed rule file. Required in `apply` mode. |
 | `well-known` | Provider domain that serves the key set. Use this or `keys`. |
 | `keys` | Path to a key set file committed in your repository. Use this or `well-known`. |
-| `test-cmd` | Test command. A failure stops the run before any pull request is opened. |
+| `test-cmd` | Test command. A failure stops the run before any pull request is opened. In `watch` mode it runs after each upgrade. |
 | `token` | Token for pushing and opening the pull request. Defaults to the workflow token. |
 
 ## What it does
@@ -21,6 +22,24 @@
 5. The pull request body has a summary table, the unresolved sites, the verify command and the evidence bundle. Long evidence is truncated in the body and complete in the artifact.
 
 If nothing changed, no branch or pull request is created.
+
+## Watch mode
+
+`examples/watch-workflow.yml` runs the action with `mode: watch` every week.
+
+1. Runs `apimigrate watch` with the repository's `.apimigrate.yml`. It writes the plan and rule files to the runner's temp directory, not to the repository. See [CLI reference](cli.md#watch).
+2. For each upgrade that has rules, starts a branch from the checked out commit and runs `apply`. Signed rules are checked against the key set they were verified with. Drafted rules run with `--allow-unsigned`. When `.apimigrate.yml` sets `pins`, drafts are skipped, since `pins` forbids unsigned rules.
+3. If files changed, the gate and tests passed, and the branch does not already exist on the remote, it stages only the files named in the evidence, commits, pushes, and runs `gh pr create --draft`.
+4. Uploads the plan, rule files, reports, evidence and pull request bodies as the `apimigrate-watch` artifact.
+
+| Rules | Branch | Title |
+| --- | --- | --- |
+| Signed by the provider | `apimigrate/<package>-<from line>-to-<to line>` | `API migration: <package> <from> to <to>` |
+| Drafted from the two releases | `apimigrate/<package>-<from line>-to-<to line>-unsigned` | `[unsigned draft] API migration: <package> <from> to <to>` |
+
+An unsigned pull request starts with a warning saying the rules were drafted from `api.md` and nobody has reviewed or signed them, names the repository and ref of each release, and lists every drafted rule with its confidence and evidence. A signed one names the domain, key and URL its rules came from.
+
+Branch names hold only the version lines, so a scheduled run skips an upgrade whose branch already exists, and a newer release on the same line does not open a second pull request. Delete the branch to get a fresh one. Signed rules published after a draft was opened get their own pull request. If `gh` fails after the push, the branch is deleted again so the next run retries. One upgrade that fails does not stop the others, but the job fails at the end.
 
 ## Permissions
 

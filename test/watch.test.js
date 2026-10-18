@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -9,6 +10,8 @@ import { findUpgrades, lineOf, rangeLine } from '../src/registry.js';
 import { generateKeys, signRuleSet } from '../src/signing.js';
 import { parseSources, signedRulesFor } from '../src/sources.js';
 import { RAW, githubRepo, releaseRefs } from '../src/upstream.js';
+import { openWatchPullRequests } from '../src/watchpr.js';
+import { watchBranch, watchTitle } from '../src/prbody.js';
 import { fetchText } from '../src/net.js';
 
 // A fake fetch that serves a fixed map of URL to JSON or text, and 404 for anything else.
@@ -248,4 +251,93 @@ test('fetchText follows redirects only on the same https host and only when aske
   await assert.rejects(fetchText('https://raw.example/old', { fetchImpl: hop('https://evil.example/new'), sameHostRedirects: 1 }), /to another host/);
   await assert.rejects(fetchText('https://raw.example/old', { fetchImpl: hop('/old'), sameHostRedirects: 2 }), /redirects more than 2 times/);
   await assert.rejects(fetchText('https://raw.example/old', { fetchImpl: hop('/new') }), /HTTP 301/);
+});
+
+// A consumer repository with a bare remote, and a stand-in for gh that records what it was asked to do.
+const git = (cwd, ...args) => {
+  const r = spawnSync('git', args, { cwd, encoding: 'utf8' });
+  assert.equal(r.status, 0, `git ${args.join(' ')}: ${r.stderr}`);
+  return r.stdout.trim().replace(/\r\n/g, '\n');
+};
+function consumer(extra = '') {
+  const dir = repoWith({
+    'package.json': JSON.stringify({ dependencies: { 'acme-sdk': '^1.4.0' } }),
+    'src/app.ts': "import Acme from 'acme-sdk';\nconst client = new Acme();\nexport const jobs = () => client.jobsPreview.list();\nexport const pay = () => client.charges.create();\n",
+    '.apimigrate.yml': `sources:\n- "acme-sdk ${DOMAIN}"\n${extra}`,
+  });
+  const remote = mkdtempSync(join(tmpdir(), 'remote-'));
+  git(remote, 'init', '-q', '--bare');
+  git(dir, 'init', '-q');
+  git(dir, 'checkout', '-q', '-b', 'main');
+  git(dir, 'add', '-A');
+  git(dir, '-c', 'user.name=t', '-c', 'user.email=t@example.com', '-c', 'core.autocrlf=false', 'commit', '-q', '-m', 'base');
+  git(dir, 'remote', 'add', 'origin', remote);
+  git(dir, 'push', '-q', 'origin', 'main');
+  const calls = [];
+  const watchAndOpen = async (routes, gh = (args) => calls.push(args)) => {
+    const w = await cli(['watch', '--root', dir], fakeFetch(routes));
+    assert.equal(w.code, 0, w.err);
+    const log = [];
+    const code = await openWatchPullRequests({ root: dir, planPath: join(dir, '.apimigrate/watch/plan.json'), gh, out: (x) => log.push(x), err: (x) => log.push(x) });
+    return { code, log: log.join('\n') };
+  };
+  return { dir, remote, calls, watchAndOpen };
+}
+
+test('watch mode opens one draft pull request per upgrade, marks drafts unsigned, and skips branches that exist', async () => {
+  const { dir, remote, calls, watchAndOpen } = consumer();
+  const drafted = await watchAndOpen(upstreamRoutes());
+  assert.equal(drafted.code, 0, drafted.log);
+  assert.match(drafted.log, /acme-sdk 1\.4\.1 -> 2\.1\.0: opened a draft pull request from apimigrate\/acme-sdk-1-to-2-unsigned, marked unsigned/);
+  const signedRoutes = { ...upstreamRoutes(), ...providerRoutes().routes };
+  const signed = await watchAndOpen(signedRoutes);
+  assert.equal(signed.code, 0, signed.log);
+  assert.match(signed.log, /opened a draft pull request from apimigrate\/acme-sdk-1-to-2$/m);
+  const again = await watchAndOpen(signedRoutes);
+  assert.match(again.log, /skipped, apimigrate\/acme-sdk-1-to-2 already exists/);
+
+  assert.equal(calls.length, 2, 'a branch that exists is not opened again');
+  const [unsignedPr, signedPr] = calls;
+  assert.deepEqual(unsignedPr.slice(0, 9), ['pr', 'create', '--draft', '--base', 'main', '--head', 'apimigrate/acme-sdk-1-to-2-unsigned', '--title', '[unsigned draft] API migration: acme-sdk 1.4.1 to 2.1.0']);
+  assert.deepEqual(signedPr.slice(6, 9), ['apimigrate/acme-sdk-1-to-2', '--title', 'API migration: acme-sdk 1.4.1 to 2.1.0']);
+  const unsignedBody = readFileSync(unsignedPr[10], 'utf8');
+  assert.match(unsignedBody, /^> \[!WARNING\]\n> \*\*Unsigned\.\*\* No signed rules were found for `acme-sdk`/);
+  assert.match(unsignedBody, /api\.md files of the two releases, `github\.com\/acme\/acme-node@a{40}` and `github\.com\/acme\/acme-node@v2\.1\.0`/);
+  assert.match(unsignedBody, /> `no usable signed rules from acme\.example: could not fetch/);
+  assert.match(unsignedBody, /\| `namespace-jobsPreview` \| `rename-namespace` \| `likely` \|/);
+  assert.match(unsignedBody, /\| Signed \| no \|/);
+  assert.doesNotMatch(unsignedBody, /--well-known/);
+  const signedBody = readFileSync(signedPr[10], 'utf8');
+  assert.match(signedBody, /signed by `acme\.example` with key `k1`/);
+  assert.match(signedBody, /\| Signed \| yes, key `k1` \|/);
+
+  const show = (ref, file) => git(remote, 'show', `${ref}:${file}`);
+  assert.equal(show('apimigrate/acme-sdk-1-to-2-unsigned', 'src/app.ts'), "import Acme from '@acme/sdk';\nconst client = new Acme();\nexport const jobs = () => client.jobs.list();\nexport const pay = () => client.charges.create();");
+  assert.equal(show('apimigrate/acme-sdk-1-to-2', 'src/app.ts'), "import Acme from 'acme-sdk';\nconst client = new Acme();\nexport const jobs = () => client.jobsPreview.list();\nexport const pay = () => client.payments.create();");
+  assert.equal(git(remote, 'diff', '--name-only', 'main', 'apimigrate/acme-sdk-1-to-2-unsigned'), 'package.json\nsrc/app.ts', 'only the changed files are committed');
+  assert.equal(git(dir, 'rev-parse', '--abbrev-ref', 'HEAD'), 'main');
+  assert.equal(git(dir, 'status', '--porcelain', '--untracked-files=no'), '');
+});
+
+test('watch mode skips unsigned drafts when pins are set, and deletes the branch when gh fails', async () => {
+  const pinned = consumer(`pins:\n- ${'0'.repeat(64)}\n`);
+  const skipped = await pinned.watchAndOpen({ ...upstreamRoutes(), ...providerRoutes().routes });
+  assert.equal(skipped.code, 0, skipped.log);
+  assert.match(skipped.log, /skipped, the draft is unsigned and \.apimigrate\.yml sets pins/);
+  assert.equal(pinned.calls.length, 0);
+
+  const failing = consumer();
+  const r = await failing.watchAndOpen(upstreamRoutes(), () => { throw new Error('gh pr create failed with exit code 1'); });
+  assert.equal(r.code, 1);
+  assert.match(r.log, /gh pr create failed/);
+  assert.equal(spawnSync('git', ['ls-remote', '--exit-code', '--heads', 'origin', 'refs/heads/apimigrate/acme-sdk-1-to-2-unsigned'], { cwd: failing.dir }).status, 2);
+  assert.equal(git(failing.dir, 'rev-parse', '--abbrev-ref', 'HEAD'), 'main');
+});
+
+test('watch branches depend only on the package, the lines and whether the rules are signed', () => {
+  const e = { package: '@mux/mux-node', line: '14', from: '14.1.1', to: '15.5.0', source: 'draft' };
+  assert.equal(watchBranch(e), 'apimigrate/mux-mux-node-14-to-15-unsigned');
+  assert.equal(watchBranch({ ...e, to: '15.6.0', source: 'signed' }), 'apimigrate/mux-mux-node-14-to-15');
+  assert.equal(watchBranch({ ...e, line: '0.44', to: '0.45.1' }), 'apimigrate/mux-mux-node-0.44-to-0.45-unsigned');
+  assert.equal(watchTitle(e), '[unsigned draft] API migration: @mux/mux-node 14.1.1 to 15.5.0');
 });

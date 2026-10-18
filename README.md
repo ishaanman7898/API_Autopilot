@@ -56,6 +56,16 @@ Related docs are [rule format](docs/rule-format.md) and [evidence and replay](do
 
 Related docs are [matching](docs/matching.md), [gate](docs/gate.md), [agent fallback](docs/agent.md) and [security](docs/security.md).
 
+## Watching for new versions
+
+`watch` finds dependencies with a new major version on npm, so nobody has to notice a release first. For each one it uses the provider's signed rules when the provider lists them at `/.well-known/apimigrate-rules.json`. Otherwise it drafts rules from the `api.md` files of the two releases on GitHub. The Action's watch mode opens one draft pull request per upgrade. Drafted rules are titled `[unsigned draft]` and carry a warning that nobody has reviewed or signed them.
+
+```sh
+node bin/apimigrate.js watch --dry-run
+```
+
+Related docs are [CLI reference](docs/cli.md#watch), [drafting rules](docs/draft.md) and [GitHub Action](docs/github-action.md).
+
 ## Commands
 
 | Command | Purpose |
@@ -69,7 +79,7 @@ Related docs are [matching](docs/matching.md), [gate](docs/gate.md), [agent fall
 | `agent-apply` | Validate and apply agent output for unresolved sites, through the same gate. |
 | `verify` | Replay a migration on a base checkout and compare it with the evidence. |
 | `gate` | Run only the gate between two trees. |
-| `watch` | Find dependencies with a new major version on npm and write a migration plan. |
+| `watch` | Find dependencies with a new major version on npm, then fetch signed rules or draft unsigned ones. |
 
 Exit codes are 0 for success, 1 for a gate, test or verify failure, 2 for a usage or config error, and 3 for a trust failure.
 

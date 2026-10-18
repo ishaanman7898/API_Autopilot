@@ -1,0 +1,29 @@
+# Copy to .github/workflows/apimigrate-watch.yml in the repository you want to keep up to date.
+# Every week it looks for dependencies with a new major version on npm and opens one draft pull request per
+# upgrade: with the provider's signed rules when it publishes them, otherwise with rules drafted from the
+# two releases and marked unsigned.
+name: apimigrate-watch
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'
+
+# The job can push branches and open pull requests. It cannot merge, and it has no other access.
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - run: npm ci
+      # Pin this to a full commit SHA of a release you have reviewed.
+      - uses: ishaanman7898/API_Autopilot@main
+        with:
+          mode: watch
+          test-cmd: npm test
