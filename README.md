@@ -111,7 +111,7 @@ Related docs are [GitHub Action](docs/github-action.md).
 - Replay reproduces only the deterministic pass. Agent edits are checked by the head digests, the gate and your tests, not reproduced.
 - Regex `replace` rules are not parse-verified and are labelled that way in the evidence.
 - The test suite passes in CI on Linux, macOS and Windows with Node 20 and 22.
-- The GitHub Action has not been run on a real runner.
+- The GitHub Action runs on a real runner in CI (`action-selftest`), but that run records the pull request command instead of opening one.
 - Keys are fetched from a well-known URL on each run. There is no transparency log. Consumers who want stronger guarantees should pin rule hashes or commit the key set.
 - Secret detection is a list of patterns, not an entropy check. Prompt-injection stripping is a heuristic.
 - Performance on very large repositories has not been measured. A 114-rule run takes under a second on a 265-file app and about 4 seconds on a monorepo.

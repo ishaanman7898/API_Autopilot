@@ -17,7 +17,7 @@ This page lists what the tool does about each threat and where it stops. The thr
 | Secrets added by a migration | Patterns for common token formats on added lines. Values are never printed. | Not an entropy check. |
 | An opaque pull request | A deterministic evidence bundle, a replay command, and a head check. | Replay covers the deterministic pass only. |
 | Path escape and symlinks | Paths must stay in the repository root. Symlinks are not followed. Writes outside the root are refused. | Case folding and Unicode normalization differences between file systems are not handled. |
-| Untrusted action inputs | The action passes inputs through environment variables, stages only files named by the evidence, opens draft pull requests, and never merges. | The action has not been run on a real runner. |
+| Untrusted action inputs | The action passes inputs through environment variables, stages only files named by the evidence, opens draft pull requests, and never merges. | The action runs on a real runner in CI, with the pull request call recorded rather than made. |
 | Silent behavior | Each apply and agent-apply appends to `.apimigrate/audit.log`. | The log is local and not tamper evident. |
 
 ## What the tool trusts

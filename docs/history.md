@@ -24,7 +24,7 @@ The test suite runs with the Node test runner and covers each item above, includ
 
 ## Not verified
 
-- The GitHub Action on a real runner.
+- The GitHub Action opening a real pull request. It runs on a real runner in the `action-selftest` workflow, which records the pull request call instead of making it.
 - The well-known fetch against a live domain. It is tested with injected fetch functions.
 - Performance on very large repositories. On the Mux benchmark's largest monorepo a 114-rule run takes about 4 seconds.
 - Real third party SDK migrations beyond one. The [Mux 14 to 15 benchmark](../bench/mux-14-to-15/README.md) ran the tool on 32 public repositories with rules drafted from the two SDKs: it fixed every type error the upgrade causes, introduced none, updated every `package.json`, and proved 87% of Mux call sites and queued the rest. It type-checks only, and runs no tests.
