@@ -1,0 +1,11 @@
+﻿{
+  "name": "api-autopilot",
+  "version": "0.1.0",
+  "description": "Signed API migration rules plus an engine that applies them to customer code and ships verifiable PRs.",
+  "type": "module",
+  "bin": { "apimigrate": "bin/apimigrate.js" },
+  "scripts": { "test": "node --test \"test/*.test.js\"" },
+  "engines": { "node": ">=20" },
+  "license": "MIT"
+}
+
