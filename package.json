@@ -1,6 +1,6 @@
 {
   "name": "api-autopilot",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Signed API migration rules plus an engine that applies them to customer code and ships verifiable PRs.",
   "type": "module",
   "bin": {
@@ -15,5 +15,16 @@
   "license": "MIT",
   "dependencies": {
     "typescript": "5.9.3"
-  }
+  },
+  "files": [
+    "bin",
+    "src",
+    "scripts",
+    "action.yml",
+    "docs",
+    "examples",
+    "README.md",
+    "LICENSE",
+    "SECURITY.md"
+  ]
 }
