@@ -1,26 +1,30 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { gzipSync } from 'node:zlib';
 import { main } from '../src/cli.js';
 import { withDefaults } from '../src/config.js';
 import { findUpgrades, lineOf, rangeLine } from '../src/registry.js';
 import { generateKeys, signRuleSet } from '../src/signing.js';
 import { parseSources, signedRulesFor } from '../src/sources.js';
-import { RAW, githubRepo, releaseRefs } from '../src/upstream.js';
+import { RAW, draftedRulesFor, githubRepo, releaseRefs } from '../src/upstream.js';
+import { readTar } from '../src/dts.js';
 import { openWatchPullRequests } from '../src/watchpr.js';
-import { watchBranch, watchTitle } from '../src/prbody.js';
+import { watchBody, watchBranch, watchTitle } from '../src/prbody.js';
 import { fetchText } from '../src/net.js';
 import { versionLine } from '../src/commands/index.js';
 
-// A fake fetch that serves a fixed map of URL to JSON or text, and 404 for anything else.
+// A fake fetch that serves a fixed map of URL to JSON, text or bytes, and 404 for anything else.
 export function fakeFetch(routes, seen = []) {
   return async (url) => {
     seen.push(url);
     if (!(url in routes)) return { ok: false, status: 404, headers: { get: () => null }, text: async () => 'not found' };
     const body = routes[url];
+    if (Buffer.isBuffer(body)) return { ok: true, status: 200, headers: { get: () => null }, arrayBuffer: async () => body.buffer.slice(body.byteOffset, body.byteOffset + body.length) };
     return { ok: true, status: 200, headers: { get: () => null }, text: async () => (typeof body === 'string' ? body : JSON.stringify(body)) };
   };
 }
@@ -462,4 +466,198 @@ test('index names every refused rule file and its reason, and writes nothing', a
   await usage([dup, '--base-url', `https://${DOMAIN}/rules`, '--keys', join(dirname(keys), 'apimigrate-public.pem')], /--keys must be the key set JSON/);
   await usage([repoWith({ 'notes.txt': 'x' }), '--base-url', `https://${DOMAIN}/rules`, '--keys', keys], /has no \.json rule files/);
   await usage([join(dup, 'missing'), '--base-url', `https://${DOMAIN}/rules`, '--keys', keys], /cannot read .*missing/);
+});
+
+// npm tarballs for the tests: ustar entries under package/, gzipped, with the integrity npm would record.
+function tarEntry(name, body, type = '0') {
+  const data = Buffer.from(body);
+  const h = Buffer.alloc(512);
+  h.write(name.slice(0, 100), 0);
+  h.write('0000644\0', 100);
+  h.write('0000000\0', 108);
+  h.write('0000000\0', 116);
+  h.write(`${data.length.toString(8).padStart(11, '0')}\0`, 124);
+  h.write('00000000000\0', 136);
+  h.write('        ', 148);
+  h.write(type, 156);
+  h.write('ustar\0' + '00', 257);
+  h.write(`${[...h].reduce((a, b) => a + b, 0).toString(8).padStart(6, '0')}\0 `, 148);
+  return Buffer.concat([h, data, Buffer.alloc((512 - (data.length % 512)) % 512)]);
+}
+const paxEntry = (path) => {
+  const rest = ` path=${path}\n`;
+  let len = rest.length + 2;
+  while (String(len).length + rest.length !== len) len++;
+  return tarEntry('PaxHeader', `${len}${rest}`, 'x');
+};
+const tarOf = (entries) => Buffer.concat([...entries, Buffer.alloc(1024)]);
+const pack = (files, extra = []) => gzipSync(tarOf([...Object.entries(files).map(([p, t]) => tarEntry(`package/${p}`, typeof t === 'string' ? t : JSON.stringify(t))), ...extra]));
+const sri = (buf) => `sha512-${createHash('sha512').update(buf).digest('base64')}`;
+
+// Two releases of a package with no api.md. 1.2.0 deprecates circle and Shape.grow in favour of names that
+// 2.0.0 has, says something vaguer about triangle, and 2.0.0 drops legacy, the default export and the extra subpath.
+const SHAPES_1 = {
+  'package.json': { name: 'shapes', version: '1.2.0', exports: { '.': { types: './index.d.ts', default: './index.js' }, './extra': { types: './extra.d.ts', default: './extra.js' }, './package.json': './package.json' } },
+  'index.js': 'module.exports = {}',
+  'index.d.ts': [
+    "import { Point } from './point';",
+    'export { Point };',
+    'export declare class Shape {',
+    '  area(): number;',
+    '  /** @deprecated Use `scale` instead. */',
+    '  grow(factor: number): Shape;',
+    '  move(x: number, y?: number): Shape;',
+    '  toString(): string;',
+    '  private secret(): void;',
+    '  _internal(): void;',
+    '  static unit(): Shape;',
+    '}',
+    '/** @deprecated Use makeCircle instead */',
+    'export declare function circle(r: number): Shape;',
+    'export declare function square(side: number): Shape;',
+    '/** @deprecated Use `polygon` with three points */',
+    'export declare function triangle(a: number): Shape;',
+    'export declare function legacy(): void;',
+    'export declare function tween(a: Shape, b: Shape, t?: number): Shape;',
+    'export declare function blend(a: Shape, b?: Shape): Shape;',
+    'export declare const ORIGIN: Point;',
+    'export interface Options { size: number }',
+    'export type Old = string;',
+    'export default Shape;',
+    "export * from './util';",
+  ].join('\n'),
+  'point.d.ts': 'export interface Point { x: number; y: number }',
+  'util.d.ts': 'export declare function clamp(n: number, lo: number, hi: number): number;',
+  'extra.d.ts': 'export declare function extra(): void;',
+  'README.md': 'not read',
+};
+const SHAPES_2 = {
+  'package.json': { name: 'shapes', version: '2.0.0', exports: { '.': { types: './index.d.mts', default: './index.mjs' } } },
+  'index.d.mts': [
+    'export declare class Shape {',
+    '  area(): number;',
+    '  scale(factor: number): Shape;',
+    '  move(x: number, y: number): Shape;',
+    '  static unit(size?: number): Shape;',
+    '}',
+    'export declare function makeCircle(r: number): Shape;',
+    'export declare function square(side: number): Shape;',
+    'export declare function polygon(points: number[]): Shape;',
+    'export declare function tween(a: Shape, b: Shape, t: number): Shape;',
+    'export declare function blend(a: Shape): Shape;',
+    'export interface Options { size: number }',
+    "export * from './util.mjs';",
+  ].join('\n'),
+  'util.d.mts': 'export declare function clamp(n: number, lo: number, hi: number): number;',
+};
+const TGZ = (v) => `${R}/shapes/-/shapes-${v}.tgz`;
+function shapesRoutes({ v1 = pack(SHAPES_1), v2 = pack(SHAPES_2), integrity = {}, tarball = {} } = {}) {
+  return {
+    [`${R}/shapes`]: doc('2.0.0', ['1.2.0', '2.0.0']),
+    [`${R}/shapes/1.2.0`]: { name: 'shapes', version: '1.2.0', repository: 'github:geo/shapes-js', dist: { tarball: tarball.v1 ?? TGZ('1.2.0'), integrity: integrity.v1 ?? sri(v1) } },
+    [`${R}/shapes/2.0.0`]: { name: 'shapes', version: '2.0.0', dist: { tarball: TGZ('2.0.0'), integrity: integrity.v2 ?? sri(v2) } },
+    [TGZ('1.2.0')]: v1,
+    [TGZ('2.0.0')]: v2,
+  };
+}
+const usesShapes = () => repoWith({
+  'package.json': JSON.stringify({ dependencies: { shapes: '^1.2.0' } }),
+  'src/draw.ts': [
+    "import { circle, square, legacy, tween } from 'shapes';",
+    'const s = circle(1);',
+    'export const bigger = s.grow(2);',
+    'export const moved = s.move(1);',
+    'legacy();',
+    'export const t = tween(s, square(2));',
+    '',
+  ].join('\n'),
+});
+
+test('watch drafts rules from the type declarations of both npm releases when neither has an api.md', async () => {
+  const dir = usesShapes();
+  const seen = [];
+  const r = await cli(['watch', '--root', dir], fakeFetch(shapesRoutes(), seen));
+  assert.equal(r.code, 0, r.err);
+  assert.match(r.out, /shapes: 1\.2\.0 -> 2\.0\.0 in package\.json: 7 unsigned draft rules from the type declarations of shapes@1\.2\.0 and shapes@2\.0\.0 on npm, 4 need review/);
+  assert.ok(seen.includes(`${RAW}/geo/shapes-js/v1.2.0/api.md`), 'api.md is looked for first');
+  const [entry] = JSON.parse(readFileSync(join(dir, '.apimigrate/watch/plan.json'), 'utf8')).upgrades;
+  assert.deepEqual([entry.source, entry.draftedFrom, entry.signed, entry.ruleCount, entry.likely, entry.needsReview], ['draft', 'd.ts', false, 7, 3, 4]);
+  assert.deepEqual(entry.upstream.from, { package: 'shapes', version: '1.2.0', tarball: TGZ('1.2.0'), integrity: sri(pack(SHAPES_1)), files: 4 });
+  assert.equal(entry.upstream.to.files, 2);
+  assert.deepEqual(entry.uncovered, ['shapes no longer has a default export', 'shapes/extra is no longer exported', 'shapes/package.json is no longer exported', '1 classes, constants or namespaces are gone, such as ORIGIN', '2 exported types are gone']);
+
+  const drafted = JSON.parse(readFileSync(join(dir, entry.rules), 'utf8'));
+  assert.deepEqual([drafted.draft, drafted.provider, drafted.package, drafted.from, drafted.to], [true, 'geo', 'shapes', '1.2.0', '2.0.0']);
+  assert.deepEqual(drafted.rules.map((x) => [x.id, x.kind, x.confidence, x.match, x.transform ?? null]), [
+    ['rename-circle', 'rename-method', 'likely', { call: 'circle' }, { to: 'makeCircle' }],
+    ['rename-grow', 'rename-method', 'likely', { call: 'grow' }, { to: 'scale' }],
+    ['removed-legacy', 'manual', 'needs-review', { call: 'legacy' }, null],
+    ['removed-triangle', 'manual', 'needs-review', { call: 'triangle' }, null],
+    ['args-move', 'manual', 'needs-review', { call: 'move' }, null],
+    ['args-tween', 'manual', 'needs-review', { call: 'tween' }, null],
+    ['dependency', 'rename-dependency', 'likely', { dependency: 'shapes' }, { version: '^2.0.0' }],
+  ]);
+  assert.match(drafted.rules[0].evidence, /^The export circle is gone from shapes@2\.0\.0, and makeCircle takes the same arguments there\. shapes@1\.2\.0 marked it @deprecated: "Use makeCircle instead"\.$/);
+  assert.match(drafted.rules[3].evidence, /marked it @deprecated: "Use `polygon` with three points"/, 'a note that says more than the new name is not a rename');
+  assert.doesNotMatch(drafted.rules[3].fallback.prompt, /polygon/, 'package text never reaches a prompt');
+  assert.equal(drafted.rules[4].fallback.prompt, 'In shapes 2.0.0, the method move of Shape takes 2 arguments, where it took 1 to 2. Update each call.');
+  const report = JSON.parse(readFileSync(join(dir, entry.report), 'utf8'));
+  assert.deepEqual([report.source, report.typesRemoved, report.valuesRemoved, report.subpathsRemoved], ['d.ts', ['Old', 'Point'], ['ORIGIN'], ['./extra', './package.json']]);
+  assert.deepEqual(report.optionalArgumentsDropped, [{ path: 'blend', in: 'shapes', from: '1 to 2', to: '1' }]);
+  assert.deepEqual(report.exportsAdded, ['makeCircle', 'polygon']);
+
+  const applied = await cli(['apply', '--root', dir, '--rules', join(dir, entry.rules), '--allow-unsigned']);
+  assert.equal(applied.code, 0, applied.err);
+  const code = readFileSync(join(dir, 'src/draw.ts'), 'utf8');
+  assert.match(code, /^import \{ makeCircle as circle, square, legacy, tween \} from 'shapes';\nconst s = circle\(1\);\nexport const bigger = s\.scale\(2\);/);
+  assert.equal(JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).dependencies.shapes, '^2.0.0');
+  const evidence = JSON.parse(readFileSync(join(dir, '.apimigrate/evidence.json'), 'utf8'));
+  assert.deepEqual(evidence.unresolved.map((u) => [u.ruleId, u.line]), [['args-move', 4], ['removed-legacy', 5], ['args-tween', 6]]);
+
+  const body = watchBody(entry, evidence, drafted);
+  assert.match(body, /drafted them from the TypeScript declarations in the npm tarballs of the two releases, `shapes@1\.2\.0` and `shapes@2\.0\.0`, each checked against its sha512 integrity\./);
+  assert.match(body, /### Not covered by any rule\n\n.*\n\n- `shapes no longer has a default export`\n- `shapes\/extra is no longer exported`/);
+  assert.match(body, /\| `rename-grow` \| `rename-method` \| `likely` \|/);
+});
+
+test('a declaration draft refuses a tarball that fails its integrity, is too large, or escapes the package', async () => {
+  const upgrade = { name: 'shapes', package: 'shapes', line: '1', from: '1.2.0', to: '2.0.0' };
+  const reason = async (routes, limits) => {
+    const d = await draftedRulesFor(upgrade, { fetchImpl: fakeFetch(routes), limits });
+    assert.equal(d.ok, false);
+    return d.reason;
+  };
+  const other = pack({ ...SHAPES_1, 'index.d.ts': 'export declare function circle(): void;' });
+  assert.match(await reason(shapesRoutes({ v1: other, integrity: { v1: sri(pack(SHAPES_1)) } })), /^shapes@2\.0\.0 names no GitHub repository, and the tarball of shapes@1\.2\.0 does not match the sha512 integrity in the registry$/);
+  assert.match(await reason(shapesRoutes({ integrity: { v2: 'sha1-abc=' } })), /the tarball of shapes@2\.0\.0 has no sha512 integrity in the registry$/);
+  assert.match(await reason(shapesRoutes({ tarball: { v1: 'https://cdn.example/shapes-1.2.0.tgz' } })), /the tarball of shapes@1\.2\.0 is not on registry\.npmjs\.org$/);
+  assert.match(await reason(shapesRoutes(), { tarball: 200 }), /shapes-1\.2\.0\.tgz is larger than 200 bytes$/);
+  assert.match(await reason(shapesRoutes(), { unpacked: 4096 }), /tarball unpacks to more than 4096 bytes$/);
+  assert.match(await reason(shapesRoutes(), { files: 3 }), /tarball has more than 3 files to read$/);
+  assert.match(await reason(shapesRoutes(), { bytes: 600 }), /files to read in the tarball are larger than 600 bytes$/);
+  for (const name of ['package/../../evil.d.ts', '/etc/evil.d.ts', 'package/a/..\\..\\evil.d.ts']) {
+    const evil = gzipSync(tarOf([tarEntry('package/package.json', '{}'), tarEntry(name, 'export {}')]));
+    assert.match(await reason(shapesRoutes({ v1: evil })), /tarball entry ".*evil\.d\.ts" points outside the package$/, name);
+  }
+  const untyped = pack({ 'package.json': { name: 'shapes', version: '1.2.0' }, 'index.js': '' });
+  assert.match(await reason(shapesRoutes({ v1: untyped })), /shapes@1\.2\.0 ships no type declarations$/);
+});
+
+test('the tar reader takes pax and GNU long names, skips links and directories, and refuses broken archives', () => {
+  const long = `package/${'deep/'.repeat(30)}index.d.ts`;
+  const tar = tarOf([
+    tarEntry('package/', '', '5'),
+    paxEntry(long),
+    tarEntry('package/ignored-name', 'export declare const a: 1;'),
+    tarEntry('././@LongLink', `package/${'gnu/'.repeat(30)}x.d.ts\0`, 'L'),
+    tarEntry('package/short', 'export declare const b: 2;'),
+    tarEntry('package/link.d.ts', '', '2'),
+    tarEntry('package/skip.js', 'module.exports = 1'),
+  ]);
+  const files = readTar(tar, { keep: (p) => p.endsWith('.d.ts') });
+  assert.deepEqual([...files], [[long.slice('package/'.length), 'export declare const a: 1;'], [`${'gnu/'.repeat(30)}x.d.ts`, 'export declare const b: 2;']]);
+  const bad = Buffer.from(tar);
+  bad[600] ^= 1;
+  assert.throws(() => readTar(bad), /bad checksum/);
+  assert.throws(() => readTar(tarEntry('package/a.d.ts', 'x'.repeat(2000)).subarray(0, 1024)), /truncated/);
 });

@@ -82,11 +82,18 @@ export function watchBody(entry, evidence, ruleSet, { rulesPath = 'rules.json' }
   if (entry.source === 'signed') {
     lines.push(`Rules for ${code(entry.package)} ${code(entry.from)} to ${code(entry.to)}, signed by ${code(entry.domain)} with key ${code(entry.keyId)} and fetched from ${code(entry.url)}.`);
   } else {
+    const basis = entry.draftedFrom === 'd.ts'
+      ? `the TypeScript declarations in the npm tarballs of the two releases, ${cell(`${entry.upstream.from.package}@${entry.upstream.from.version}`)} and ${cell(`${entry.upstream.to.package}@${entry.upstream.to.version}`)}, each checked against its sha512 integrity. Removed functions and methods and changed required arguments are manual rules, and a rename is drafted only from an @deprecated note that names the replacement`
+      : `the api.md files of the two releases, ${cell(at(entry.upstream.from))} and ${cell(at(entry.upstream.to))}`;
     lines.push(
       '> [!WARNING]',
-      `> **Unsigned.** No signed rules were found for ${code(entry.package)} ${code(entry.from)} to ${code(entry.to)}, so apimigrate drafted them from the api.md files of the two releases, ${cell(at(entry.upstream.from))} and ${cell(at(entry.upstream.to))}. Nobody has reviewed these rules, and the provider has not signed them. ${entry.needsReview} of ${entry.ruleCount} are marked needs-review. Read every change before marking this ready.`,
+      `> **Unsigned.** No signed rules were found for ${code(entry.package)} ${code(entry.from)} to ${code(entry.to)}, so apimigrate drafted them from ${basis}. Nobody has reviewed these rules, and the provider has not signed them. ${entry.needsReview} of ${entry.ruleCount} are marked needs-review. Read every change before marking this ready.`,
     );
     for (const n of entry.notes ?? []) lines.push('>', `> ${cell(n, 400)}`);
+  }
+  if (entry.uncovered?.length) {
+    lines.push('', '### Not covered by any rule', '', 'These changes were found in the declarations, but no rule can find or rewrite them. The draft report lists them in full.', '');
+    for (const u of entry.uncovered.slice(0, 20)) lines.push(`- ${cell(u, 400)}`);
   }
   if (entry.deprecated) lines.push('', `The latest release is deprecated on npm: ${cell(entry.deprecated, 400)}`);
   const rules = ruleSet.rules ?? [];

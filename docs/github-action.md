@@ -38,7 +38,7 @@ If nothing changed, no branch or pull request is created.
 | Signed by the provider | `apimigrate/<package>-<from line>-to-<to line>` | `API migration: <package> <from> to <to>` |
 | Drafted from the two releases | `apimigrate/<package>-<from line>-to-<to line>-unsigned` | `[unsigned draft] API migration: <package> <from> to <to>` |
 
-An unsigned pull request starts with a warning saying the rules were drafted from `api.md` and nobody has reviewed or signed them, names the repository and ref of each release, and lists every drafted rule with its confidence and evidence. A signed one names the domain, key and URL its rules came from.
+An unsigned pull request starts with a warning saying the rules were drafted from `api.md`, or from the TypeScript declarations in the npm tarballs, and nobody has reviewed or signed them. It names the repository and ref of each release, or the version of each tarball, and lists every drafted rule with its confidence and evidence. A draft from declarations also lists the changes no rule can find, such as a removed default export. A signed one names the domain, key and URL its rules came from.
 
 Branch names hold only the version lines, so a scheduled run skips an upgrade whose branch already exists, and a newer release on the same line does not open a second pull request. Delete the branch to get a fresh one. Signed rules published after a draft was opened get their own pull request. If `gh` fails after the push, the branch is deleted again so the next run retries. One upgrade that fails does not stop the others, but the job fails at the end.
 

@@ -9,7 +9,7 @@ export class FetchError extends Error {
 }
 
 // sameHostRedirects allows that many redirects that stay on the same https host, such as GitHub's for a renamed repository.
-export async function fetchText(url, { fetchImpl = fetch, timeoutMs = 15000, maxBytes = 25 * 1024 * 1024, accept = '*/*', sameHostRedirects = 0 } = {}) {
+async function request(url, { fetchImpl = fetch, timeoutMs = 15000, maxBytes = 25 * 1024 * 1024, accept = '*/*', sameHostRedirects = 0 } = {}) {
   if (!/^https:\/\//.test(url)) throw new FetchError(`refusing to fetch ${url}: only https is allowed`);
   let res;
   for (let hops = 0; ; hops++) {
@@ -28,9 +28,36 @@ export async function fetchText(url, { fetchImpl = fetch, timeoutMs = 15000, max
   if (!res.ok) throw new FetchError(`could not fetch ${url}: HTTP ${res.status}`, res.status);
   const length = Number(res.headers?.get?.('content-length') ?? 0);
   if (length > maxBytes) throw new FetchError(`${url} is larger than ${maxBytes} bytes`);
+  return { res, url, maxBytes };
+}
+
+export async function fetchText(url, options = {}) {
+  const { res, url: at, maxBytes } = await request(url, options);
   const text = await res.text();
-  if (Buffer.byteLength(text) > maxBytes) throw new FetchError(`${url} is larger than ${maxBytes} bytes`);
+  if (Buffer.byteLength(text) > maxBytes) throw new FetchError(`${at} is larger than ${maxBytes} bytes`);
   return text;
+}
+
+// The body as a Buffer, read a chunk at a time so a body without a content-length stops at maxBytes.
+export async function fetchBytes(url, options = {}) {
+  const { res, url: at, maxBytes } = await request(url, options);
+  const tooLarge = () => new FetchError(`${at} is larger than ${maxBytes} bytes`);
+  if (!res.body?.getReader) {
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length > maxBytes) throw tooLarge();
+    return buf;
+  }
+  const reader = res.body.getReader();
+  const chunks = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.length;
+    if (size > maxBytes) { reader.cancel().catch(() => {}); throw tooLarge(); }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks);
 }
 
 export async function fetchJson(url, options = {}) {

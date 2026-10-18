@@ -57,15 +57,17 @@ export async function run({ flags }, io) {
       const drafted = await draftedRulesFor(u, { registry, fetchImpl: io.fetch });
       if (drafted.ok) {
         const counts = { ruleCount: drafted.ruleSet.rules.length, likely: drafted.report.likely, needsReview: drafted.report.needsReview };
-        Object.assign(entry, { source: 'draft', rules: write(`${slug(u)}.draft.json`, drafted.ruleSet), report: write(`${slug(u)}.draft.report.json`, drafted.report), upstream: { from: drafted.from, to: drafted.to }, ...counts });
+        Object.assign(entry, { source: 'draft', draftedFrom: drafted.basis, rules: write(`${slug(u)}.draft.json`, drafted.ruleSet), report: write(`${slug(u)}.draft.report.json`, drafted.report), upstream: { from: drafted.from, to: drafted.to }, ...counts });
+        if (drafted.report.uncovered?.length) entry.uncovered = drafted.report.uncovered;
       } else notes.push(`no draft: ${drafted.reason}`);
     }
     if (entry.source === 'none') entry.reason = notes.join('; ');
     else if (notes.length) entry.notes = notes;
     plan.upgrades.push(entry);
     const at = (s) => `${s.repo}@${s.ref.slice(0, 12)}`;
+    const basis = () => (entry.draftedFrom === 'd.ts' ? `the type declarations of ${u.package}@${u.from} and ${u.package}@${u.to} on npm` : `api.md at ${at(entry.upstream.from)} and ${at(entry.upstream.to)}`);
     const what = entry.source === 'signed' ? `signed rules from ${domain}`
-      : entry.source === 'draft' ? `${entry.ruleCount} unsigned draft rules from api.md at ${at(entry.upstream.from)} and ${at(entry.upstream.to)}, ${entry.needsReview} need review`
+      : entry.source === 'draft' ? `${entry.ruleCount} unsigned draft rules from ${basis()}, ${entry.needsReview} need review`
         : entry.reason;
     io.out(`${u.package}: ${u.from} -> ${u.to} in ${u.manifests.map((m) => m.file).join(', ')}: ${what}${u.deprecated ? ` (latest is deprecated: ${String(u.deprecated).replace(/[\r\n]+/g, ' ')})` : ''}`);
     if (entry.source !== 'none') for (const n of notes) io.err(`${u.package}: ${n}`);

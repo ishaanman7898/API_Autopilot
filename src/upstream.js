@@ -1,4 +1,5 @@
 import { diffSurfaces, draftFromSurfaces, fetchApiSurface } from './apimd.js';
+import { draftedFromDeclarations } from './dts.js';
 import { fetchText } from './net.js';
 import { NPM_REGISTRY, packageManifest, packageVersions } from './registry.js';
 
@@ -31,11 +32,12 @@ export function releaseRefs(manifest, name, version) {
 }
 
 // The api.md surface of one npm release, read from GitHub at the first ref that has an api.md.
+// missing is set, with the registry manifest, when the release names no GitHub repository or none of its refs has an api.md.
 export async function releaseSurface(name, version, { registry = NPM_REGISTRY, fetchImpl } = {}) {
   let manifest;
   try { manifest = await packageManifest(name, version, { registry, fetchImpl }); } catch (e) { return { ok: false, reason: e.message }; }
   const gh = githubRepo(manifest);
-  if (!gh) return { ok: false, reason: `${name}@${version} names no GitHub repository` };
+  if (!gh) return { ok: false, missing: true, manifest, reason: `${name}@${version} names no GitHub repository` };
   const repo = `github.com/${gh.owner}/${gh.repo}`;
   const refs = releaseRefs(manifest, name, version);
   for (const ref of refs) {
@@ -58,16 +60,23 @@ export async function releaseSurface(name, version, { registry = NPM_REGISTRY, f
       return { ok: false, reason: `${at('api.md')}: ${e.message}` };
     }
   }
-  return { ok: false, reason: `${repo} has no api.md for ${name}@${version} at ${refs.join(', ')}` };
+  return { ok: false, missing: true, manifest, reason: `${repo} has no api.md for ${name}@${version} at ${refs.join(', ')}` };
 }
 
 // Drafts rules for an upgrade from the api.md files of both releases. A new package name is only used when
 // the old release kept the npm name in its package.json and the new name is published at the new version.
-export async function draftedRulesFor(upgrade, { registry = NPM_REGISTRY, fetchImpl } = {}) {
+// When neither release has an api.md, the rules are drafted from the TypeScript declarations in both npm tarballs.
+export async function draftedRulesFor(upgrade, { registry = NPM_REGISTRY, fetchImpl, limits } = {}) {
   if (upgrade.name && upgrade.name !== upgrade.package) return { ok: false, reason: `${upgrade.name} is an npm alias for ${upgrade.package}, drafts are only made for dependencies under their own name` };
   const a = await releaseSurface(upgrade.package, upgrade.from, { registry, fetchImpl });
-  if (!a.ok) return a;
+  if (!a.ok && !a.missing) return a;
   const b = await releaseSurface(upgrade.package, upgrade.to, { registry, fetchImpl });
+  if (a.missing && b.missing) {
+    const provider = (githubRepo(b.manifest) ?? githubRepo(a.manifest))?.owner ?? upgrade.package.replace(/^@([^/]+)\/.*$/, '$1');
+    const drafted = await draftedFromDeclarations(upgrade, { from: a.manifest, to: b.manifest }, { registry, fetchImpl, provider, limits });
+    return drafted.ok ? drafted : { ok: false, reason: `${b.reason}, and ${drafted.reason}` };
+  }
+  if (!a.ok) return a;
   if (!b.ok) return b;
   const oldName = upgrade.package;
   let newName = oldName;
@@ -91,5 +100,5 @@ export async function draftedRulesFor(upgrade, { registry = NPM_REGISTRY, fetchI
     oldMethods: [...a.surface.methods.values()].flat().map((m) => m.call),
   });
   const where = (s) => ({ repo: s.repo, ref: s.ref, dir: s.dir, url: s.url, files: s.surface.files.length });
-  return { ok: true, ruleSet, report, from: where(a), to: where(b) };
+  return { ok: true, basis: 'api.md', ruleSet, report: { source: 'api.md', ...report }, from: where(a), to: where(b) };
 }

@@ -58,7 +58,7 @@ Related docs are [matching](docs/matching.md), [gate](docs/gate.md), [agent fall
 
 ## Watching for new versions
 
-`watch` finds dependencies with a new major version on npm, so nobody has to notice a release first. For each one it uses the provider's signed rules when the provider lists them at `/.well-known/apimigrate-rules.json`. Otherwise it drafts rules from the `api.md` files of the two releases on GitHub. The Action's watch mode opens one draft pull request per upgrade. Drafted rules are titled `[unsigned draft]` and carry a warning that nobody has reviewed or signed them.
+`watch` finds dependencies with a new major version on npm, so nobody has to notice a release first. For each one it uses the provider's signed rules when the provider lists them at `/.well-known/apimigrate-rules.json`. Otherwise it drafts rules from the `api.md` files of the two releases on GitHub, or, when neither has one, from the TypeScript declarations in their npm tarballs. The Action's watch mode opens one draft pull request per upgrade. Drafted rules are titled `[unsigned draft]` and carry a warning that nobody has reviewed or signed them.
 
 ```sh
 node bin/apimigrate.js watch --dry-run

@@ -59,7 +59,26 @@ Added methods, changed return types and removed types are listed in the report. 
 
 ## From npm releases
 
-`apimigrate watch` makes the same draft without checkouts when it finds a new major version and the provider publishes no signed rules. It fetches each release's `api.md` files from GitHub, at the commit npm recorded when the release was published or at its release tag. On `@mux/mux-node` 14.1.1 to 15.5.0 it drafts the same 5 rules as above. On `cloudflare` 6.5.0 to 7.3.0 it drafts 274, 21 of them `needs-review`, and lists 6 partial module moves, such as one type moving from `resources/dns` into `resources/dns/dnssec`, without drafting rules for them. These drafts are never signed. They reach a repository only as draft pull requests marked unsigned. See [CLI reference](cli.md#watch).
+`apimigrate watch` makes the same draft without checkouts when it finds a new major version and the provider publishes no signed rules. It fetches each release's `api.md` files from GitHub, at the commit npm recorded when the release was published or at its release tag. On `@mux/mux-node` 14.1.1 to 15.5.0 it drafts the same 5 rules as above. On `cloudflare` 6.5.0 to 7.3.0 it drafts 274, 21 of them `needs-review`, and lists 6 partial module moves, such as one type moving from `resources/dns` into `resources/dns/dnssec`, without drafting rules for them. When neither release has an `api.md`, it drafts from their TypeScript declarations instead, as described below. These drafts are never signed. They reach a repository only as draft pull requests marked unsigned. See [CLI reference](cli.md#watch).
+
+## From TypeScript declarations
+
+Packages without `api.md` files, such as zod, still publish TypeScript declarations. When neither release has an `api.md`, `watch` drafts from the declarations in both npm tarballs. It builds a program over the `.d.ts`, `.d.mts` and `.d.cts` files with the TypeScript compiler, resolves each subpath in the `package.json` `exports` as TypeScript would, and compares the two releases subpath by subpath. It reads each export, whether it is a value or only a type, the argument counts of functions and static members, the public methods of exported classes and interfaces with their argument counts, and `@deprecated` notes. Names that start with `_`, private and protected members, and members every object has, such as `toString`, are left out.
+
+| Change | Result |
+| --- | --- |
+| A function or method is gone, the old release's `@deprecated` note says only "Use X", "Renamed to X" or the same after "since <version>", X is in the new release where the old one was and takes every argument count the old one did, and nothing with the old name is left anywhere in the new release | A `rename-method` rule, `likely`. |
+| Any other function, method or static member that is gone | A `manual` rule, `needs-review`. |
+| A function or method needs more arguments, or takes fewer than the old one required | A `manual` rule, `needs-review`. |
+| An optional argument was dropped | Listed in the report under `optionalArgumentsDropped`. |
+| A class, constant, namespace or type is gone | Listed in the report. A manual rule matches calls, and these are used with `new`, `instanceof` or as types. |
+| The default export or a subpath is gone, or an exports map is added | Listed in the report, and in the pull request under "Not covered by any rule". |
+| A name is newly deprecated | Listed in the report under `deprecatedInNewVersion`. |
+| The version changed | A `rename-dependency` rule to `^` the new version, `likely`. |
+
+The engine matches a call by its path, such as `del` on an instance or `ZodString.create`, not by class or subpath. So a name left anywhere in the new release, even under a legacy subpath, blocks a rename. A change only in a subpath other than the root is dropped when the root still has the name. `@deprecated` notes are package text, so they appear in each rule's evidence for the reviewer and never in a prompt.
+
+On `lru-cache` 7.18.3 to 11.5.3 this drafts 4 rules: `del` to `delete`, `prune` to `purgeStale` and `reset` to `clear`, from the old release's deprecation notes, and the dependency. The report also says the default export is gone, which no rule can rewrite, so `import LRU from 'lru-cache'` still has to become `import { LRUCache } from 'lru-cache'` by hand. On `zod` 3.25.76 to 4.6.7 it drafts 85 rules, 84 of them `needs-review`: 13 removed methods such as `deepPartial`, `nonstrict`, `ip` and `augment`, 18 removed functions such as `ostring`, `z.record` now needing two arguments, `ZodError.addIssues` now needing one, and 51 removed static members, 41 of them factories such as `ZodString.create` that applications rarely call. It drafts no rename for zod. `augment` is marked "Use `.extend` instead", but zod 4 still ships the old API under `zod/v3`, where `augment` exists. Changes inside option objects, such as `message` becoming `error`, and changes in behavior do not show in the declarations and are not found.
 
 ## Before signing
 
