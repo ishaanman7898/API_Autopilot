@@ -5,6 +5,7 @@ Each folder holds one recorded breaking change: a rule file for it and the resul
 | Folder | Change | Repositories |
 | --- | --- | --- |
 | [mux-14-to-15](mux-14-to-15/README.md) | `@mux/mux-node` 14 to 15 (`@mux/ts`) | 32 |
+| [cloudflare-6-to-7](cloudflare-6-to-7/README.md) | `cloudflare` 6 to 7 (named path parameters) | 12 |
 
 ## How a benchmark runs
 
@@ -32,6 +33,6 @@ node bench/report.mjs ../bench-work/results.json
 node bench/coverage.mjs --calls calls.json --package @mux/mux-node --work ../bench-work
 ```
 
-`repos.json` is a list of `{ "repo": "owner/name" }`. `calls.json` is a list of method paths such as `"video.assets.create"`.
+`repos.json` is a list of `{ "repo": "owner/name", "commit": "..." }`; the commit is optional and pins the checkout. `--types` names packages, such as `@types/node@22`, that are installed and loaded with both SDK versions. `calls.json` is a list of method paths such as `"video.assets.create"`.
 
 Related docs are [architecture](../docs/architecture.md) and [build log](../docs/history.md).

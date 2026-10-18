@@ -1,0 +1,108 @@
+{
+ "totals": {
+  "text": 41,
+  "proven": 20,
+  "queued": 20,
+  "invisible": 1
+ },
+ "rows": [
+  {
+   "repo": "DTrombett/ms-bot",
+   "text": 3,
+   "proven": 0,
+   "queued": 3,
+   "invisible": 0,
+   "invisibleSites": []
+  },
+  {
+   "repo": "alessandroste/mercury",
+   "text": 3,
+   "proven": 2,
+   "queued": 1,
+   "invisible": 0,
+   "invisibleSites": []
+  },
+  {
+   "repo": "as-sites/boulder.best",
+   "text": 2,
+   "proven": 2,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": []
+  },
+  {
+   "repo": "axivo/website",
+   "text": 3,
+   "proven": 3,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": []
+  },
+  {
+   "repo": "discordjs/discord-api-types",
+   "text": 1,
+   "proven": 1,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": []
+  },
+  {
+   "repo": "fmunteanu/floren",
+   "text": 1,
+   "proven": 1,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": []
+  },
+  {
+   "repo": "itsneeku/Nookies-Pings",
+   "text": 2,
+   "proven": 2,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": []
+  },
+  {
+   "repo": "riddofftechnologies-hash/riddoff-launch",
+   "text": 5,
+   "proven": 3,
+   "queued": 1,
+   "invisible": 1,
+   "invisibleSites": [
+    "AI Course/scripts/gcp-setup.mjs:472 rulesets.create"
+   ]
+  },
+  {
+   "repo": "tarasovcad/tobira",
+   "text": 0,
+   "proven": 0,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": []
+  },
+  {
+   "repo": "tinkerindustries/mini-infra",
+   "text": 18,
+   "proven": 3,
+   "queued": 15,
+   "invisible": 0,
+   "invisibleSites": []
+  },
+  {
+   "repo": "ttoino/prism-gram",
+   "text": 1,
+   "proven": 1,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": []
+  },
+  {
+   "repo": "velolib/velolib.dev",
+   "text": 2,
+   "proven": 2,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": []
+  }
+ ]
+}

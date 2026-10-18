@@ -1,0 +1,62 @@
+[
+ {
+  "repo": "DTrombett/ms-bot",
+  "commit": "7021f884c7407089f924ff2c3cb01bd780fadc5d",
+  "version": "^6.5.0"
+ },
+ {
+  "repo": "alessandroste/mercury",
+  "commit": "a7a10ca6be6cb84f1ed49a1ab11c431481b80c5d",
+  "version": "^6.3.0"
+ },
+ {
+  "repo": "as-sites/boulder.best",
+  "commit": "f25ce28ef6e8281dda151194afa98b7a8ca4a88d",
+  "version": "6.3.0"
+ },
+ {
+  "repo": "axivo/website",
+  "commit": "243f2b9b6526395312be0edec6f3fbd74efa6b5d",
+  "version": "^6.5.0"
+ },
+ {
+  "repo": "discordjs/discord-api-types",
+  "commit": "f3ce2947a0a51a10a209e250e8cc37dbcf0b4e07",
+  "version": "^6.0.0"
+ },
+ {
+  "repo": "fmunteanu/floren",
+  "commit": "6d7d8c07764619d04318e5200d2482ec140b618d",
+  "version": "^6.0.0"
+ },
+ {
+  "repo": "itsneeku/Nookies-Pings",
+  "commit": "3d4e6207799a36c8f8e3520babb830cd9e129d1b",
+  "version": "^6.0.0-beta.1"
+ },
+ {
+  "repo": "riddofftechnologies-hash/riddoff-launch",
+  "commit": "a8c326b1a13280c493b86330638a3b725962403e",
+  "version": "^6.1.0"
+ },
+ {
+  "repo": "tarasovcad/tobira",
+  "commit": "a6c604d955ca0317631599c286ff823a0bce3115",
+  "version": "^6.5.0"
+ },
+ {
+  "repo": "tinkerindustries/mini-infra",
+  "commit": "9283e5c9f842e5da8357b81066ab8c99b9d412fc",
+  "version": "^6.5.0"
+ },
+ {
+  "repo": "ttoino/prism-gram",
+  "commit": "401f8e7e59404f5966ecdbc7f7283a0eed6bad3e",
+  "version": "^6.3.0"
+ },
+ {
+  "repo": "velolib/velolib.dev",
+  "commit": "3aeff6d8d0222828c6fbe376ec7f4774e7cc118f",
+  "version": "^6.5.0"
+ }
+]

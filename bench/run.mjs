@@ -2,7 +2,10 @@
 // Benchmark: apply a rule file to real public repositories and type-check them before and after.
 //
 //   node bench/run.mjs --rules bench/mux-14-to-15/rules.json --repos repos.json --work <scratch dir>
-//     [--old @mux/mux-node@14.1.1] [--new @mux/mux-node@15.5.0,@mux/ts@15.5.0] [--limit 20]
+//     [--old @mux/mux-node@14.1.1] [--new @mux/mux-node@15.5.0,@mux/ts@15.5.0] [--types @types/node@22] [--limit 20]
+//
+// --types are installed with both versions. An SDK whose old version depended on @types/node, and whose new
+// version has no dependencies, would otherwise look as if the upgrade removed Node's types.
 //
 // repos.json is a list of { repo: "owner/name", package?: "path/package.json" }.
 // The repositories are untrusted. They are cloned shallowly, parsed and type-checked, and nothing in
@@ -57,12 +60,12 @@ function installSdk(dir, specs) {
 }
 
 // Type-checks the given files of one tree and returns its diagnostics keyed by file, line and code.
-function typecheck(tree, files, label) {
+function typecheck(tree, files, label, typeNames = []) {
   const config = join(tree, '..', `tsconfig.${label}.json`);
   writeFileSync(config, JSON.stringify({
     compilerOptions: {
       noEmit: true, allowJs: true, checkJs: true, skipLibCheck: true, strict: false, jsx: 'preserve',
-      target: 'ESNext', module: 'ESNext', moduleResolution: 'bundler', lib: ['ESNext', 'DOM'], types: [],
+      target: 'ESNext', module: 'ESNext', moduleResolution: 'bundler', lib: ['ESNext', 'DOM'], types: typeNames,
       resolveJsonModule: true, allowImportingTsExtensions: true, noUnusedLocals: false,
     },
     files: files.map((f) => join(tree, f)),
@@ -106,10 +109,16 @@ function main() {
   const work = resolve(f.work);
   const reposDir = join(work, 'repos');
   mkdirSync(reposDir, { recursive: true });
+  const types = f.types ? f.types.split(',') : [];
+  // @types/node@22 is loaded as the global type package node, the same in every check.
+  const typeNames = types.filter((s) => s.startsWith('@types/')).map((s) => s.slice('@types/'.length).replace(/@[^@]*$/, ''));
   const oldSdk = (f.old ?? '@mux/mux-node@14.1.1').split(',');
   const newSdk = (f.new ?? '@mux/mux-node@15.5.0,@mux/ts@15.5.0').split(',');
   const list = JSON.parse(readFileSync(f.repos, 'utf8')).slice(0, Number(f.limit ?? 1000));
-  const pkgName = JSON.parse(readFileSync(f.rules, 'utf8')).package;
+  const ruleFile = JSON.parse(readFileSync(f.rules, 'utf8'));
+  const pkgName = ruleFile.package;
+  // Old names left behind only mean something when the rules rename the package.
+  const renamesPackage = ruleFile.rules.some((r) => r.kind === 'rename-import' && r.match.module === pkgName);
   const sdkNames = [...new Set([pkgName, ...newSdk.map((s) => s.replace(/(?!^)@[^@]*$/, ''))])];
 
   // Publisher side: a throwaway key signs the rule file, so apply runs the normal trust checks.
@@ -160,7 +169,7 @@ function main() {
     row.filesChanged = ev.files.length;
     const leftover = new RegExp(`['"]${escape(pkgName)}(/[^'"]*)?['"]`);
     const migratedFiles = codeFiles(migrated);
-    row.leftoverImports = migratedFiles.filter((p) => leftover.test(stripComments(readFileSync(join(migrated, p), 'utf8')))).length;
+    row.leftoverImports = renamesPackage ? migratedFiles.filter((p) => leftover.test(stripComments(readFileSync(join(migrated, p), 'utf8')))).length : null;
     row.undeclaredImports = undeclaredImports(migrated, migratedFiles, sdkNames);
     row.manifestsChanged = ev.files.filter((f) => /(^|\/)package\.json$/.test(f.path)).map((f) => f.path);
     row.typecheckFiles = row.muxFiles;
@@ -168,12 +177,12 @@ function main() {
 
   const checkable = results.filter((r) => !r.error);
   const treeOf = (r, which) => join(reposDir, r.repo.replace('/', '__'), which);
-  installSdk(reposDir, oldSdk);
-  for (const r of checkable) r.A = typecheck(treeOf(r, 'base'), r.typecheckFiles, 'A');
-  installSdk(reposDir, newSdk);
+  installSdk(reposDir, [...oldSdk, ...types]);
+  for (const r of checkable) r.A = typecheck(treeOf(r, 'base'), r.typecheckFiles, 'A', typeNames);
+  installSdk(reposDir, [...newSdk, ...types]);
   for (const r of checkable) {
-    r.B = typecheck(treeOf(r, 'base'), r.typecheckFiles, 'B');
-    r.C = typecheck(treeOf(r, 'migrated'), r.typecheckFiles, 'C');
+    r.B = typecheck(treeOf(r, 'base'), r.typecheckFiles, 'B', typeNames);
+    r.C = typecheck(treeOf(r, 'migrated'), r.typecheckFiles, 'C', typeNames);
     // The baseline must actually see the SDK, or a clean result means nothing.
     r.sdkResolvedInBaseline = ![...r.A.values()].some((d) => d.code === 'TS2307' && d.message.includes(`'${pkgName}'`));
     r.brokenByUpgrade = minus(r.B, r.A);
@@ -187,7 +196,7 @@ function main() {
   }
 
   const out = join(work, 'results.json');
-  writeFileSync(out, JSON.stringify({ rules: f.rules, oldSdk, newSdk, ranAt: new Date().toISOString(), results }, null, 1) + '\n');
+  writeFileSync(out, JSON.stringify({ rules: f.rules, oldSdk, newSdk, types, ranAt: new Date().toISOString(), results }, null, 1) + '\n');
   console.log(`wrote ${out}`);
   for (const r of results) {
     if (r.error) { console.log(`${r.repo}: ${r.error}`); continue; }

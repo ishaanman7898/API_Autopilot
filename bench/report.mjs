@@ -29,7 +29,7 @@ const added = ok.flatMap((r) => r.newFromMigration);
 const affected = ok.filter((r) => r.brokenByUpgrade.length);
 
 const lines = [
-  `Rule file \`${data.rules}\`, old SDK \`${data.oldSdk.join(', ')}\`, new SDK \`${data.newSdk.join(', ')}\`, run ${data.ranAt.slice(0, 10)}.`,
+  `Rule file \`${data.rules}\`, old SDK \`${data.oldSdk.join(', ')}\`, new SDK \`${data.newSdk.join(', ')}\`${data.types?.length ? `, also installed \`${data.types.join(', ')}\`` : ''}, run ${data.ranAt.slice(0, 10)}.`,
   '',
   '| | |',
   '| --- | --- |',
@@ -47,7 +47,7 @@ const lines = [
   `| package.json files updated | ${sum(ok, (r) => r.manifestsChanged?.length ?? 0)} in ${ok.filter((r) => r.manifestsChanged?.length).length} repos |`,
   `| Repos with an SDK import its package.json does not declare | ${ok.filter((r) => r.undeclaredImports?.length).length} of ${ok.length} (${sum(ok, (r) => r.undeclaredImports?.length ?? 0)} files) |`,
   `| Repos where the SDK resolved in the baseline type-check | ${ok.filter((r) => r.sdkResolvedInBaseline).length} of ${ok.length} |`,
-  `| Old package names left in code after migration | ${sum(ok, (r) => r.leftoverImports)} files |`,
+  ...(ok.some((r) => r.leftoverImports != null) ? [`| Old package names left in code after migration | ${sum(ok, (r) => r.leftoverImports ?? 0)} files |`] : []),
   `| Median apply time | ${median(ok.map((r) => r.applyMs))} ms |`,
   '',
   '### Per repository',

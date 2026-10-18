@@ -1,0 +1,532 @@
+{
+ "rules": "bench/cloudflare-6-to-7/rules.json",
+ "oldSdk": [
+  "cloudflare@6.5.0"
+ ],
+ "newSdk": [
+  "cloudflare@7.0.0"
+ ],
+ "types": [
+  "@types/node@22"
+ ],
+ "ranAt": "2026-10-18T17:38:46.425Z",
+ "results": [
+  {
+   "repo": "DTrombett/ms-bot",
+   "version": "^6.5.0",
+   "commit": "7021f884c7407089f924ff2c3cb01bd780fadc5d",
+   "muxFiles": [
+    "src/Channels.ts",
+    "src/DeleteChannels.ts",
+    "src/Notifications.ts",
+    "src/PredictionsReminders.ts",
+    "src/Reminder.ts",
+    "src/Shorten.ts",
+    "src/Tournament.ts",
+    "src/app/components/Tournament.tsx",
+    "src/build.ts",
+    "src/commands/brawl.ts",
+    "src/commands/clash.ts",
+    "src/commands/dev.ts",
+    "src/commands/predictions.ts",
+    "src/commands/remind.ts",
+    "src/commands/share.ts",
+    "src/commands/tournament.ts",
+    "src/commands/tournamentAdmin.ts",
+    "src/index.tsx",
+    "src/util/CommandHandler.ts",
+    "src/util/fetchCache.ts",
+    "src/util/getSeasonData.ts",
+    "src/util/globals.ts",
+    "src/util/loadMatches.ts",
+    "src/util/queueHandlers.ts",
+    "src/util/token.ts",
+    "src/util/tournaments/finishRound.ts",
+    "src/util/tournaments/patchMatch.ts",
+    "src/util/tournaments/register.ts",
+    "src/util/tournaments/unregister.ts",
+    "worker-configuration.d.ts"
+   ],
+   "applyMs": 1029,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "dependency": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": null,
+   "undeclaredImports": [],
+   "manifestsChanged": [
+    "package.json"
+   ],
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "baselineErrors": 703
+  },
+  {
+   "repo": "alessandroste/mercury",
+   "version": "^6.3.0",
+   "commit": "a7a10ca6be6cb84f1ed49a1ab11c431481b80c5d",
+   "muxFiles": [
+    "api/src/handlers/email.ts",
+    "api/src/handlers/jmap.ts",
+    "api/src/handlers/settings.ts",
+    "api/src/middleware/services.ts",
+    "api/src/service/cloudflare.ts",
+    "api/src/worker.ts",
+    "common/dao/src/MailStorageFactory.ts"
+   ],
+   "applyMs": 303,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "dependency": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": null,
+   "undeclaredImports": [],
+   "manifestsChanged": [
+    "api/package.json"
+   ],
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "baselineErrors": 54
+  },
+  {
+   "repo": "as-sites/boulder.best",
+   "version": "6.3.0",
+   "commit": "f25ce28ef6e8281dda151194afa98b7a8ca4a88d",
+   "muxFiles": [
+    "apps/api/src/index.ts",
+    "apps/api/src/uploads/r2-presign.ts",
+    "apps/api/src/worker-configuration.d.ts",
+    "apps/api/tests/r2-presign.test.ts",
+    "apps/api/tests/uploads.test.ts",
+    "apps/frontend/vite.config.ts",
+    "scripts/cloudflare-create-api-token.ts",
+    "scripts/lib/cloudflare-r2-token.ts",
+    "scripts/secrets-sync-cloudflare.ts",
+    "scripts/tests/cloudflare-create-api-token.test.ts"
+   ],
+   "applyMs": 827,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "dependency": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": null,
+   "undeclaredImports": [],
+   "manifestsChanged": [
+    "package.json"
+   ],
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "baselineErrors": 38
+  },
+  {
+   "repo": "axivo/website",
+   "version": "^6.5.0",
+   "commit": "243f2b9b6526395312be0edec6f3fbd74efa6b5d",
+   "muxFiles": [
+    "next.config.mjs",
+    "open-next.config.ts",
+    "packages/website/global.js",
+    "scripts/deploy.js",
+    "scripts/prebuild.js",
+    "scripts/preview.js",
+    "src/app/(home)/metadata/route.js",
+    "src/components/Blog.jsx",
+    "src/components/Page.jsx",
+    "src/components/Post.jsx",
+    "src/components/Reflection.jsx",
+    "src/components/mdx/utils.js",
+    "src/config/global.js"
+   ],
+   "applyMs": 401,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "dependency": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": null,
+   "undeclaredImports": [],
+   "manifestsChanged": [
+    "package.json"
+   ],
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "baselineErrors": 122
+  },
+  {
+   "repo": "discordjs/discord-api-types",
+   "version": "^6.0.0",
+   "commit": "f3ce2947a0a51a10a209e250e8cc37dbcf0b4e07",
+   "muxFiles": [
+    "scripts/actions/documentation/uploadDocumentation.ts"
+   ],
+   "applyMs": 663,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "dependency": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": null,
+   "undeclaredImports": [],
+   "manifestsChanged": [
+    "scripts/actions/documentation/package.json"
+   ],
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "baselineErrors": 3
+  },
+  {
+   "repo": "fmunteanu/floren",
+   "version": "^6.0.0",
+   "commit": "6d7d8c07764619d04318e5200d2482ec140b618d",
+   "muxFiles": [
+    "next.config.mjs",
+    "open-next.config.ts",
+    "packages/website/global.js",
+    "scripts/deploy.js",
+    "scripts/preview.js",
+    "src/config/global.js"
+   ],
+   "applyMs": 260,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "dependency": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": null,
+   "undeclaredImports": [],
+   "manifestsChanged": [
+    "package.json"
+   ],
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "baselineErrors": 5
+  },
+  {
+   "repo": "itsneeku/Nookies-Pings",
+   "version": "^6.0.0-beta.1",
+   "commit": "3d4e6207799a36c8f8e3520babb830cd9e129d1b",
+   "muxFiles": [
+    "lib/db.ts",
+    "server/index.ts",
+    "server/ws.ts",
+    "worker-configuration.d.ts"
+   ],
+   "applyMs": 322,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "dependency": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": null,
+   "undeclaredImports": [],
+   "manifestsChanged": [
+    "package.json"
+   ],
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "baselineErrors": 17
+  },
+  {
+   "repo": "riddofftechnologies-hash/riddoff-launch",
+   "version": "^6.1.0",
+   "commit": "a8c326b1a13280c493b86330638a3b725962403e",
+   "muxFiles": [
+    "scripts/setup-cf-dns.mjs"
+   ],
+   "applyMs": 799,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "dependency": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": null,
+   "undeclaredImports": [],
+   "manifestsChanged": [
+    "package.json"
+   ],
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "baselineErrors": 3
+  },
+  {
+   "repo": "tarasovcad/tobira",
+   "version": "^6.5.0",
+   "commit": "a6c604d955ca0317631599c286ff823a0bce3115",
+   "muxFiles": [
+    "app/src/lib/auth/auth.ts",
+    "app/src/lib/fetch/web/html.ts",
+    "app/src/lib/fetch/web/screenshot.ts",
+    "workers/image-resizer/worker-configuration.d.ts",
+    "workers/video-proxy/worker-configuration.d.ts"
+   ],
+   "applyMs": 2113,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "dependency": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": null,
+   "undeclaredImports": [],
+   "manifestsChanged": [
+    "app/package.json"
+   ],
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "baselineErrors": 11
+  },
+  {
+   "repo": "tinkerindustries/mini-infra",
+   "version": "^6.5.0",
+   "commit": "9283e5c9f842e5da8357b81066ab8c99b9d412fc",
+   "muxFiles": [
+    "client/src/__tests__/claude-shell-page.test.tsx",
+    "client/src/__tests__/connectivity-indicator.test.tsx",
+    "client/src/app/applications/components/routing-section.tsx",
+    "client/src/app/connectivity/cloudflare/page.tsx",
+    "client/src/app/dns/page.tsx",
+    "client/src/app/tunnels/page.tsx",
+    "client/src/components/agent/agent-chat-welcome.tsx",
+    "client/src/components/cloudflare/managed-tunnel-card.tsx",
+    "client/src/components/cloudflare/tunnel-status.tsx",
+    "client/src/components/connectivity-indicator.tsx",
+    "client/src/components/connectivity-status.tsx",
+    "client/src/components/site-header.tsx",
+    "client/src/hooks/use-all-services-status.ts",
+    "client/src/hooks/use-cloudflare-settings.ts",
+    "client/src/lib/errors.ts",
+    "client/src/lib/route-config.ts",
+    "client/src/lib/routes.tsx",
+    "deployment/development/lib/env-details.ts",
+    "deployment/development/lib/seeder.ts",
+    "lib/types/api-routes.generated.ts",
+    "lib/types/api-routes.ts",
+    "lib/types/cloudflare.ts",
+    "lib/types/dns.ts",
+    "lib/types/error-codes.ts",
+    "lib/types/index.ts",
+    "lib/types/query-keys.ts",
+    "lib/types/settings.ts",
+    "lib/types/stacks.ts",
+    "server/src/__tests__/cloudflare-tunnel-template-load.test.ts",
+    "server/src/__tests__/dynamic-env-source-schema.test.ts",
+    "server/src/__tests__/error-handler.test.ts",
+    "server/src/__tests__/service-error-mapper.test.ts",
+    "server/src/__tests__/stack-reconciler-plan.test.ts",
+    "server/src/app-factory.ts",
+    "server/src/lib/__tests__/connectivity-scheduler.test.ts",
+    "server/src/lib/http-client.ts",
+    "server/src/lib/service-error-mapper.ts",
+    "server/src/routes/__tests__/settings-validation.test.ts",
+    "server/src/routes/__tests__/settings.test.ts",
+    "server/src/routes/cloudflare/__tests__/require-credentials.test.ts",
+    "server/src/routes/cloudflare/managed-tunnels-routes.ts",
+    "server/src/routes/cloudflare/require-credentials.ts",
+    "server/src/routes/cloudflare/settings-routes.ts",
+    "server/src/routes/cloudflare/tunnels-routes.ts",
+    "server/src/routes/cloudflare-connectivity.ts",
+    "server/src/routes/cloudflare-settings.ts",
+    "server/src/routes/manual-haproxy-frontends.ts",
+    "server/src/routes/settings-connectivity.ts",
+    "server/src/routes/settings-validation.ts",
+    "server/src/routes/settings.ts",
+    "server/src/routes/tls-certificates.ts",
+    "server/src/server.ts",
+    "server/src/services/__tests__/cloudflare-config.test.ts",
+    "server/src/services/__tests__/configuration-factory.test.ts",
+    "server/src/services/cloudflare/__tests__/cloudflare-api-runner.test.ts",
+    "server/src/services/cloudflare/__tests__/cloudflare-tunnel-api.test.ts",
+    "server/src/services/cloudflare/__tests__/cloudflare-tunnel-token-injector.test.ts",
+    "server/src/services/cloudflare/__tests__/managed-tunnel-store.test.ts",
+    "server/src/services/cloudflare/cloudflare-api-runner.ts",
+    "server/src/services/cloudflare/cloudflare-dns.ts",
+    "server/src/services/cloudflare/cloudflare-managed-tunnel.ts",
+    "server/src/services/cloudflare/cloudflare-service.ts",
+    "server/src/services/cloudflare/cloudflare-tunnel-api.ts",
+    "server/src/services/cloudflare/cloudflare-tunnel-token-injector.ts",
+    "server/src/services/cloudflare/cloudflare-zone-api.ts",
+    "server/src/services/cloudflare/index.ts",
+    "server/src/services/configuration-factory.ts",
+    "server/src/services/connectivity-socket-emitter.ts",
+    "server/src/services/dns/dns-cache-service.ts",
+    "server/src/services/egress/__tests__/egress-policy-lifecycle.test.ts",
+    "server/src/services/haproxy/actions/configure-dns.ts",
+    "server/src/services/haproxy/actions/remove-dns.ts",
+    "server/src/services/stacks/resource-reconciler-factory.ts",
+    "server/src/services/stacks/schemas.ts",
+    "server/src/services/stacks/stack-config-requirements.ts",
+    "server/src/services/stacks/stack-reconciler.ts",
+    "server/src/services/stacks/stack-resource-reconciler.ts",
+    "server/src/services/stacks/stack-routing-manager.ts",
+    "server/src/services/stacks/stack-template-service.ts",
+    "server/src/services/tls/dns-challenge-provider.ts"
+   ],
+   "applyMs": 48418,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "dependency": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": null,
+   "undeclaredImports": [],
+   "manifestsChanged": [
+    "server/package.json"
+   ],
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [
+    {
+     "file": "server/src/services/haproxy/dataplane/mixin-ssl.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module 'form-data' or its corresponding type declarations."
+    }
+   ],
+   "stillBroken": [
+    {
+     "file": "server/src/services/haproxy/dataplane/mixin-ssl.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module 'form-data' or its corresponding type declarations."
+    }
+   ],
+   "fixed": 0,
+   "newFromMigration": [],
+   "baselineErrors": 2067
+  },
+  {
+   "repo": "ttoino/prism-gram",
+   "version": "^6.3.0",
+   "commit": "401f8e7e59404f5966ecdbc7f7283a0eed6bad3e",
+   "muxFiles": [
+    "src/constants.ts",
+    "src/email.ts",
+    "src/rules.ts",
+    "test/email.spec.ts",
+    "test/env.d.ts",
+    "test/index.spec.ts",
+    "test/rules.spec.ts",
+    "vitest.config.mts"
+   ],
+   "applyMs": 313,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "dependency": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": null,
+   "undeclaredImports": [],
+   "manifestsChanged": [
+    "package.json"
+   ],
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "baselineErrors": 23
+  },
+  {
+   "repo": "velolib/velolib.dev",
+   "version": "^6.5.0",
+   "commit": "3aeff6d8d0222828c6fbe376ec7f4774e7cc118f",
+   "muxFiles": [
+    "app/api/tools/grid/share/route.tsx",
+    "lib/grid.ts"
+   ],
+   "applyMs": 432,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "dependency": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": null,
+   "undeclaredImports": [],
+   "manifestsChanged": [
+    "package.json"
+   ],
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "baselineErrors": 4
+  }
+ ]
+}
