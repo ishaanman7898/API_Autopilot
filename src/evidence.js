@@ -20,7 +20,7 @@ export function fileDigests(before, after) {
 export const replayDigestOf = (ruleSet, files) => sha(canonical({ rule: hashRuleSet(ruleSet), files }));
 
 // Everything except meta is a pure function of the rule, the base tree and any agent edits.
-export function buildEvidence({ ruleSet, before, deterministic, final = deterministic.files, gate, tests = null, agent = null, tool, scan, now = new Date() }) {
+export function buildEvidence({ ruleSet, before, deterministic, final = deterministic.files, gate, tests = null, install = null, agent = null, tool, scan, now = new Date() }) {
   const detFiles = fileDigests(before, deterministic.files);
   return {
     schema: EVIDENCE_SCHEMA,
@@ -41,6 +41,7 @@ export function buildEvidence({ ruleSet, before, deterministic, final = determin
     agent,
     gate,
     tests,
+    install,
     meta: { createdAt: now.toISOString() },
   };
 }
@@ -63,9 +64,11 @@ export function replay(ruleSet, baseFiles, evidence, configs = {}) {
 }
 
 // Checks a head tree against the final digests recorded in the bundle, including any agent edits.
+// Lockfiles the install changed are checked too when they are among the scanned files.
 export function checkHead(baseFiles, headFiles, evidence) {
   const actual = fileDigests(baseFiles, headFiles);
-  const expected = evidence.files;
+  const lockfiles = (evidence.install?.lockfiles ?? []).filter((l) => l.path in baseFiles || l.path in headFiles);
+  const expected = [...evidence.files, ...lockfiles];
   const want = new Map(expected.map((f) => [f.path, f.after]));
   const got = new Map(actual.map((f) => [f.path, f.after]));
   const drift = [...new Set([...want.keys(), ...got.keys()])].filter((p) => want.get(p) !== got.get(p)).sort();

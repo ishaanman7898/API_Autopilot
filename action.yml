@@ -17,6 +17,9 @@ inputs:
   test-cmd:
     description: Command that runs your tests. A failure stops the run before any pull request is opened.
     required: false
+  install-cmd:
+    description: When a rule changes package.json, the new versions are installed before the tests and the lockfile is updated, with the package manager the lockfile names and no install scripts. Set a command to run instead, or none to skip it.
+    required: false
   token:
     description: Token used to push the branch and open the pull request
     required: false
@@ -41,6 +44,7 @@ runs:
         WELL_KNOWN: ${{ inputs.well-known }}
         KEYS: ${{ inputs.keys }}
         TEST_CMD: ${{ inputs.test-cmd }}
+        INSTALL_CMD: ${{ inputs.install-cmd }}
       run: |
         set -euo pipefail
         if [ "$MODE" != "apply" ]; then echo "mode must be apply or watch" >&2; exit 2; fi
@@ -49,6 +53,7 @@ runs:
         if [ -n "$WELL_KNOWN" ] && [ -n "$KEYS" ]; then echo "pass only one of well-known and keys" >&2; exit 2; fi
         if [ -n "$WELL_KNOWN" ]; then args+=(--well-known "$WELL_KNOWN"); fi
         if [ -n "$KEYS" ]; then args+=(--keys "$KEYS"); fi
+        if [ "$INSTALL_CMD" = "none" ]; then :; elif [ -n "$INSTALL_CMD" ]; then args+=(--install-cmd "$INSTALL_CMD"); else args+=(--install); fi
         if [ -n "$TEST_CMD" ]; then args+=(--test-cmd "$TEST_CMD"); fi
         node "$ACTION_PATH/bin/apimigrate.js" "${args[@]}"
 
@@ -91,6 +96,7 @@ runs:
         ACTION_PATH: ${{ github.action_path }}
         OUT: ${{ runner.temp }}/apimigrate-watch
         TEST_CMD: ${{ inputs.test-cmd }}
+        INSTALL_CMD: ${{ inputs.install-cmd }}
         GH_TOKEN: ${{ inputs.token }}
       run: |
         set -euo pipefail

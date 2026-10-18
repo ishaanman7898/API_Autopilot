@@ -279,7 +279,8 @@ function consumer(extra = '') {
     const w = await cli(['watch', '--root', dir], fakeFetch(routes));
     assert.equal(w.code, 0, w.err);
     const log = [];
-    const code = await openWatchPullRequests({ root: dir, planPath: join(dir, '.apimigrate/watch/plan.json'), gh, out: (x) => log.push(x), err: (x) => log.push(x) });
+    // The packages here are not on npm, so nothing is installed. test/install.test.js covers installs.
+    const code = await openWatchPullRequests({ root: dir, planPath: join(dir, '.apimigrate/watch/plan.json'), install: 'none', gh, out: (x) => log.push(x), err: (x) => log.push(x) });
     return { code, log: log.join('\n') };
   };
   return { dir, remote, calls, watchAndOpen };

@@ -4,6 +4,7 @@ import { buildQueue } from '../agent.js';
 import { UsageError } from '../errors.js';
 import { applyRuleSet } from '../engine.js';
 import { buildEvidence } from '../evidence.js';
+import { installDependencies } from '../install.js';
 import { runGate } from '../gate.js';
 import { hashRuleSet, isSunset } from '../rule.js';
 import { TrustError, verifyRuleSet } from '../signing.js';
@@ -16,14 +17,16 @@ export const spec = {
   name: 'apply',
   summary: 'apply a signed rule to a repository and write an evidence bundle',
   usage: 'apply --rules rules.json (--keys file | --pubkey file.pem | --well-known domain) [options]',
-  value: ['rules', 'root', 'test-cmd', 'cov-base', 'cov-head', 'keys', 'pubkey', 'well-known', 'key-id'],
-  bool: ['dry-run', 'diff', 'allow-unsigned', 'strict'],
+  value: ['rules', 'root', 'test-cmd', 'install-cmd', 'cov-base', 'cov-head', 'keys', 'pubkey', 'well-known', 'key-id'],
+  bool: ['dry-run', 'diff', 'allow-unsigned', 'strict', 'install'],
   positional: 0,
   options: [
     ['--rules file', 'rule file (required)'],
     ['--root dir', 'repository root, default current directory'],
     ['--dry-run', 'print what would change as diffs and write nothing'],
     ['--diff', 'print diffs of the changes made'],
+    ['--install', 'when package.json changed, install with the package manager its lockfile names, without install scripts, before tests'],
+    ['--install-cmd cmd', 'when package.json changed, run this command at the root instead of --install'],
     ['--test-cmd cmd', 'run this command after applying; a failure fails the run'],
     ['--cov-base file --cov-head file', 'istanbul coverage-summary.json before and after'],
     ['--strict', 'exit 1 when call sites remain unresolved'],
@@ -70,8 +73,13 @@ export async function run({ flags }, io) {
     writeChanged(root, before.scanFiles, result.files, before.styles);
   }
 
+  // New dependency versions are installed before the tests, so the tests run against them.
+  const manifests = changed.filter((f) => /(?:^|\/)package\.json$/.test(f));
+  const installed = !dry && manifests.length && (flags.install || flags['install-cmd']) ? installDependencies(root, manifests, { cmd: flags['install-cmd'] ?? null }) : null;
+  const install = installed && { runs: installed.runs, lockfiles: installed.lockfiles };
+
   // Gate again after the tests run, because the test command can change files too.
-  const tests = flags['test-cmd'] && !dry ? runTests(flags['test-cmd'], root) : null;
+  const tests = flags['test-cmd'] && !dry && installed?.ok !== false ? runTests(flags['test-cmd'], root) : null;
   const head = dry ? { files: preview } : loadTrees(root, cfg, scan);
   const gate = runGate({
     ...gateOptions,
@@ -79,7 +87,7 @@ export async function run({ flags }, io) {
     coverageBase: readCoverage(flags['cov-base']),
     coverageHead: readCoverage(flags['cov-head']),
   });
-  const evidence = buildEvidence({ ruleSet: rs, before: before.scanFiles, deterministic: result, gate, tests, tool: TOOL, scan });
+  const evidence = buildEvidence({ ruleSet: rs, before: before.scanFiles, deterministic: result, gate, tests, install, tool: TOOL, scan });
 
   if (!dry) {
     const dir = join(root, '.apimigrate');
@@ -87,7 +95,7 @@ export async function run({ flags }, io) {
     writeFileSync(join(dir, 'evidence.json'), JSON.stringify(evidence, null, 2) + '\n');
     writeFileSync(join(dir, 'base.json'), JSON.stringify({ files: before.files, scan: Object.keys(before.scanFiles) }) + '\n');
     writeFileSync(join(dir, 'unresolved.json'), JSON.stringify(buildQueue(result.unresolved, rs), null, 2) + '\n');
-    audit(root, { event: 'apply', rule: rs.id, hash: evidence.rule.contentHash, signed: evidence.rule.signed, changedFiles: changed.length, unresolved: result.unresolved.length, gate: gate.ok, tests: tests?.exitCode ?? null });
+    audit(root, { event: 'apply', rule: rs.id, hash: evidence.rule.contentHash, signed: evidence.rule.signed, changedFiles: changed.length, unresolved: result.unresolved.length, gate: gate.ok, tests: tests?.exitCode ?? null, install: install ? installed.ok : null });
   }
 
   const unproven = result.changes.filter((c) => !c.proven).length;
@@ -95,11 +103,17 @@ export async function run({ flags }, io) {
   for (const u of result.unresolved) io.out(`unresolved: ${u.file}:${u.line} ${u.ruleId}: ${u.reason}`);
   for (const s of [...result.skipped, ...before.skipped]) io.out(`skipped: ${s.file}: ${s.reason}`);
   if (unproven) io.out(`note: ${unproven} changes came from regex replace rules and are not parse-verified`);
-  if (changed.some((f) => /(?:^|\/)package\.json$/.test(f))) io.out('note: package.json dependencies changed, update the lockfile with your package manager before merging');
+  if (installed?.ok) io.out(`installed with ${installed.runs.map((r) => `${r.cmd} in ${r.dir}`).join(', ')}${install.lockfiles.length ? `, updated ${install.lockfiles.map((l) => l.path).join(', ')}` : ''}`);
+  else if (manifests.length && !installed) io.out('note: package.json dependencies changed, update the lockfile with your package manager before merging');
+  if (installed && !installed.ok) {
+    const r = installed.runs.at(-1);
+    io.err(`install failed: ${r.cmd} in ${r.dir} exited with ${r.exitCode}, tests were not run`);
+    if (installed.output) io.err(installed.output);
+  }
   if (result.unresolved.length && !dry) io.out('unresolved sites are queued in .apimigrate/unresolved.json for an agent, then run agent-apply');
   for (const f of gate.findings) io.err(`gate: ${f.message}`);
   if (tests && tests.exitCode !== 0) io.err(`tests failed with exit code ${tests.exitCode}`);
   if (flags.strict && result.unresolved.length) io.err('strict: unresolved call sites remain');
-  const failed = !gate.ok || (tests && tests.exitCode !== 0) || (flags.strict && result.unresolved.length > 0);
+  const failed = !gate.ok || installed?.ok === false || (tests && tests.exitCode !== 0) || (flags.strict && result.unresolved.length > 0);
   return failed ? 1 : 0;
 }

@@ -6,7 +6,8 @@ const MAX_EVIDENCE = 30000;
 // Values come from repo paths and rule text, so they are flattened before they reach markdown.
 const code = (s) => '`' + String(s).replace(/[`\r\n]/g, '') + '`';
 
-export const changedPaths = (evidence) => evidence.files.filter((f) => f.after !== null).map((f) => f.path);
+// Lockfiles that the install updated are committed with the rewritten files.
+export const changedPaths = (evidence) => [...new Set([...evidence.files, ...(evidence.install?.lockfiles ?? [])].filter((f) => f.after !== null).map((f) => f.path))].sort();
 
 export function branchName(evidence, runId) {
   const slug = evidence.rule.id.replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[-.]+|[-.]+$/g, '').slice(0, 60) || 'rule';
@@ -24,6 +25,7 @@ export function prBody(evidence, { rulesPath = 'rules.json', limit = MAX_BODY } 
     ['Call sites changed', `${evidence.callSites.length}${unproven ? `, ${unproven} from regex rules and not parse-verified` : ''}`],
     ['Unresolved call sites', String(evidence.unresolved.length)],
     ['Gate', g.ok ? 'passed' : `failed, ${g.findings.length} findings`],
+    ...(evidence.install ? [['Install', evidence.install.runs.map((r) => `${code(r.cmd)} in ${code(r.dir)}, exit code ${r.exitCode}`).join('<br>')]] : []),
     ['Tests', evidence.tests ? `exit code ${evidence.tests.exitCode}` : 'not run'],
     ['Replay digest', code(evidence.deterministic.replayDigest)],
   ];
@@ -36,7 +38,10 @@ export function prBody(evidence, { rulesPath = 'rules.json', limit = MAX_BODY } 
     '| --- | --- |',
     ...rows.map(([k, v]) => `| ${k} | ${v} |`),
   ];
-  if (changedPaths(evidence).some((p) => /(?:^|\/)package\.json$/.test(p))) {
+  const lockfiles = evidence.install?.lockfiles ?? [];
+  if (lockfiles.length) {
+    lines.push('', `The new dependency versions were installed without running install scripts, and ${lockfiles.map((l) => code(l.path)).join(', ')} ${lockfiles.length === 1 ? 'was' : 'were'} updated. Install scripts of the new versions run the first time your own CI installs them.`);
+  } else if (changedPaths(evidence).some((p) => /(?:^|\/)package\.json$/.test(p))) {
     lines.push('', '`package.json` dependencies changed. Regenerate the lockfile with your package manager, for example `npm install`, and commit it before marking this ready.');
   }
   if (evidence.unresolved.length) {
