@@ -171,13 +171,18 @@ export const cases = [
     skipped: ['a.ts'],
   },
   {
-    name: 'let bindings that can be reassigned are not trusted',
+    name: 'let bindings reassigned to something else are not trusted',
     rules: mp,
-    files: { 'a.ts': "import Acme from 'acme-sdk';\nlet c = new Acme();\nc.charges.create({ amount_cents: 1 });\n" },
+    files: {
+      'a.ts': "import Acme from 'acme-sdk';\nlet c = new Acme();\nif (process.env.MOCK) c = makeMock();\nc.charges.create({ amount_cents: 1 });\n",
+      'b.ts': "import Acme from 'acme-sdk';\nlet d = new Acme();\nfor (d of clients) {}\nd.charges.create({ amount_cents: 2 });\n",
+      'c.ts': "import Acme from 'acme-sdk';\nlet e = new Acme();\n[e] = list;\ne.charges.create({ amount_cents: 3 });\n",
+    },
     expect: {},
-    untouched: ['a.ts'],
-    unresolved: [['a.ts', 3, 'cannot be traced']],
+    untouched: ['a.ts', 'b.ts', 'c.ts'],
+    unresolved: [['a.ts', 4, 'cannot be traced'], ['b.ts', 4, 'cannot be traced'], ['c.ts', 4, 'cannot be traced']],
   },
+  ...factoryCases(),
   {
     name: 'a binding exported as the default is followed',
     rules: mp,
@@ -191,6 +196,91 @@ export const cases = [
   },
   ...aliasCases(),
 ];
+
+// Clients returned by factory functions and held in lazily assigned variables.
+function factoryCases() {
+  const before = (recv) => `${recv}.charges.create({ amount_cents: 1 });\n`;
+  const after = (recv) => `${recv}.payments.create({ amount: 1 });\n`;
+  const imp = "import Acme from 'acme-sdk';\n";
+  return [
+    {
+      name: 'a factory function that returns a new instance, after checks that throw',
+      rules: mp,
+      files: { 'a.ts': `${imp}function getClient() {\n  if (!process.env.KEY) throw new Error('no key');\n  return new Acme({ key: process.env.KEY });\n}\n${before('getClient()')}const c = getClient();\n${before('c')}` },
+      expect: { 'a.ts': `${imp}function getClient() {\n  if (!process.env.KEY) throw new Error('no key');\n  return new Acme({ key: process.env.KEY });\n}\n${after('getClient()')}const c = getClient();\n${after('c')}` },
+      unresolved: [],
+    },
+    {
+      name: 'arrow, async and chained factories imported from another file',
+      rules: mp,
+      files: {
+        'lib/client.ts': `${imp}const create = () => new Acme();\nexport const requireClient = () => {\n  if (!process.env.KEY) throw new Error('no key');\n  return create();\n};\nexport async function loadClient() {\n  return new Acme();\n}\n`,
+        'a.ts': `import { requireClient, loadClient } from './lib/client';\n${before('requireClient()')}const c = await loadClient();\n${before('c')}`,
+      },
+      expect: { 'a.ts': `import { requireClient, loadClient } from './lib/client';\n${after('requireClient()')}const c = await loadClient();\n${after('c')}` },
+      unresolved: [],
+    },
+    {
+      name: 'a factory that may return null or undefined',
+      rules: mp,
+      files: { 'a.ts': `${imp}export function getClient(): Acme | null {\n  if (!process.env.KEY) return null;\n  if (process.env.OFF) return;\n  return new Acme();\n}\nconst c = getClient();\n${before('c!')}` },
+      expect: { 'a.ts': `${imp}export function getClient(): Acme | null {\n  if (!process.env.KEY) return null;\n  if (process.env.OFF) return;\n  return new Acme();\n}\nconst c = getClient();\n${after('c!')}` },
+      unresolved: [],
+    },
+    {
+      name: 'lazily cached clients in a module variable',
+      rules: mp,
+      files: {
+        'lib/a.ts': `${imp}let cached: Acme | null = null;\nexport function getA(): Acme {\n  if (!cached) {\n    cached = new Acme();\n  }\n  return cached;\n}\n`,
+        'lib/b.ts': `${imp}let client: Acme | undefined;\nexport function getB() {\n  if (client) return client;\n  client = new Acme();\n  return client;\n}\n`,
+        'lib/c.ts': `${imp}let c: Acme | null = null;\nexport const getC = () => (c ??= new Acme());\nexport function reset() { c = null; }\n`,
+        'use.ts': `import { getA } from './lib/a';\nimport { getB } from './lib/b';\nimport { getC } from './lib/c';\n${before('getA()')}${before('getB()')}${before('getC()')}`,
+      },
+      expect: { 'use.ts': `import { getA } from './lib/a';\nimport { getB } from './lib/b';\nimport { getC } from './lib/c';\n${after('getA()')}${after('getB()')}${after('getC()')}` },
+      unresolved: [],
+    },
+    {
+      name: 'a factory that can return something other than the client is not trusted',
+      rules: mp,
+      files: { 'a.ts': `${imp}function getClient() {\n  if (process.env.MOCK) return makeMock();\n  return new Acme();\n}\n${before('getClient()')}` },
+      expect: {},
+      untouched: ['a.ts'],
+      unresolved: [['a.ts', 6, 'cannot be traced']],
+    },
+    {
+      name: 'a cache that is ever given another value is not trusted',
+      rules: mp,
+      files: { 'a.ts': `${imp}let cached = null;\nexport function setForTests(fake) { cached = fake; }\nfunction get() {\n  if (!cached) cached = new Acme();\n  return cached;\n}\n${before('get()')}` },
+      expect: {},
+      untouched: ['a.ts'],
+      unresolved: [['a.ts', 8, 'cannot be traced']],
+    },
+    {
+      name: 'functions returning only null, generators and factories of another package are not followed',
+      rules: mp,
+      files: {
+        'a.ts': `${imp}import Other from 'other-sdk';\nfunction none() { return null; }\nfunction* gen() { yield new Acme(); }\nconst other = () => new Other();\n${before('none()')}${before('gen()')}${before('other()')}`,
+      },
+      expect: {},
+      untouched: ['a.ts'],
+      unresolved: [['a.ts', 6, 'cannot be traced'], ['a.ts', 7, 'cannot be traced']],
+    },
+    {
+      name: 'a recursive factory does not loop',
+      rules: mp,
+      files: { 'a.ts': `${imp}function get(n: number): Acme {\n  return n > 0 ? get(n - 1) : new Acme();\n}\n${before('get(3)')}` },
+      expect: { 'a.ts': `${imp}function get(n: number): Acme {\n  return n > 0 ? get(n - 1) : new Acme();\n}\n${after('get(3)')}` },
+      unresolved: [],
+    },
+    {
+      name: 'a let that only ever holds the client is followed',
+      rules: mp,
+      files: { 'a.ts': `${imp}let c = new Acme();\n${before('c')}` },
+      expect: { 'a.ts': `${imp}let c = new Acme();\n${after('c')}` },
+      unresolved: [],
+    },
+  ];
+}
 
 // Path aliases from tsconfig.json and jsconfig.json. configs are passed to the engine beside the files.
 function aliasCases() {

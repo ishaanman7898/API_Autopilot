@@ -103,9 +103,9 @@ Related docs are [GitHub Action](docs/github-action.md).
 
 ## Limits of v0
 
-- Matching covers JavaScript and TypeScript only. It follows imports, requires, re-exports and local files. It has no type information, so a receiver that arrives as a function parameter, a class field or a `let` variable cannot be proven and goes to the queue.
+- Matching covers JavaScript and TypeScript only. It follows imports, requires, re-exports and local files. It has no type information, so a receiver that arrives as a function parameter, a class field or a `let` variable that is also given other values cannot be proven and goes to the queue.
 - A call in a file that neither imports the package nor reaches it through a relative import is not seen.
-- A client returned from a function, such as `getClient()`, cannot be traced, and calls on it are not seen unless the file imports the package itself. Path aliases from `tsconfig.json` and `jsconfig.json` are followed. The [Mux benchmark](bench/mux-14-to-15/README.md) measures how many call sites each of these reaches.
+- Clients from factory functions, lazily cached variables and `tsconfig.json` path aliases are followed. Object methods, class members and `globalThis` caches are not. The [Mux benchmark](bench/mux-14-to-15/README.md) measures how many call sites the tool can see.
 - `rename-import` does not update `package.json`, so the dependency must be renamed by hand in the same change.
 - The gate recognizes common JavaScript test styles. It counts per file, so it can flag legitimate test rewrites. The `allow` setting exists for that.
 - Replay reproduces only the deterministic pass. Agent edits are checked by the head digests, the gate and your tests, not reproduced.

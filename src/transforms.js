@@ -47,7 +47,7 @@ export function renameMethod(ctx, sf, rule, out) {
     const chain = propertyChain(c.callee);
     const first = chain ? chain.names.length - segs.length : -1;
     const base = first >= 0 ? ctx.originOf(chain.bases[first]) : null;
-    const rootOk = base && !base.local && base.root !== 'named' && base.props.length === 0;
+    const rootOk = base?.module && base.root !== 'named' && base.props.length === 0;
     if (rootOk) {
       const start = chain.names[first].getStart(sf);
       const end = chain.names.at(-1).getEnd();

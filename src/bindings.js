@@ -1,8 +1,13 @@
 import ts from 'typescript';
+import { walk } from './parse.js';
 
 const MAX_DEPTH = 16;
 const isRelative = (s) => s.startsWith('.') || s.startsWith('/');
 const keyName = (k) => (ts.isIdentifier(k) || ts.isStringLiteralLike(k) ? k.text : null);
+
+// Markers used while working out every value a function or a variable can hold. They never leave the resolver.
+const NULLISH = Object.freeze({ nullish: true });
+const PENDING = Object.freeze({ pending: true });
 
 export function unwrap(n) {
   while (
@@ -14,9 +19,27 @@ export function unwrap(n) {
 
 export const fullPath = (o) => (o.root === 'named' ? [o.name] : []).concat(o.props);
 
+const sameOrigin = (a, b) => a.module === b.module && a.root === b.root && a.name === b.name && a.props.join('.') === b.props.join('.');
+
+// The single package value behind several possible values, or null. null and undefined are allowed
+// alongside it, and so is a reference back to the value being worked out (PENDING).
+function join(values) {
+  let out = null;
+  for (const v of values) {
+    if (v === NULLISH || v === PENDING) continue;
+    if (!v?.module || (out && !sameOrigin(out, v))) return null;
+    out = out ?? v;
+  }
+  return out && { module: out.module, root: out.root, ...(out.name ? { name: out.name } : {}), props: out.props };
+}
+
 // An origin says which export of a package a value came from: { module, root, name?, props, site? }.
 // root is namespace, default, named or instance. site is the binding that introduced the last path segment.
+// { fn } is a function whose call can be traced through its return statements.
 export function createResolver(checker, isPackage) {
+  const pendingSymbols = new Set();
+  const pendingFunctions = new Set();
+
   const isGlobalRequire = (callee) => {
     if (!ts.isIdentifier(callee) || callee.text !== 'require') return false;
     const sym = checker.getSymbolAtLocation(callee);
@@ -31,6 +54,7 @@ export function createResolver(checker, isPackage) {
   }
 
   function extend(base, name, site, depth) {
+    if (base === PENDING || base.fn) return null;
     if (base.local) {
       const exported = checker.getExportsOfModule(base.local).find((s) => s.name === name);
       return exported ? fromSymbol(exported, depth + 1) : null;
@@ -78,10 +102,81 @@ export function createResolver(checker, isPackage) {
 
   const isConst = (decl) => (ts.getCombinedNodeFlags(decl) & ts.NodeFlags.Const) !== 0;
 
+  const isNullish = (n) => {
+    n = unwrap(n);
+    if (n.kind === ts.SyntaxKind.NullKeyword || ts.isVoidExpression(n)) return true;
+    return ts.isIdentifier(n) && n.text === 'undefined' && !checker.getSymbolAtLocation(n)?.declarations?.length;
+  };
+  const valueOf = (n, depth) => (isNullish(n) ? NULLISH : originOf(n, depth));
+
+  // How an identifier is used: read, assigned with =, ??= or ||= (each stores the right side), or written some other way.
+  function writeOf(id) {
+    const p = id.parent;
+    if (ts.isBinaryExpression(p) && p.left === id) {
+      const op = p.operatorToken.kind;
+      if (op === ts.SyntaxKind.EqualsToken) return { op: '=', value: p.right };
+      if (op === ts.SyntaxKind.QuestionQuestionEqualsToken || op === ts.SyntaxKind.BarBarEqualsToken) return { op: '??=', value: p.right };
+      if (op >= ts.SyntaxKind.FirstAssignment && op <= ts.SyntaxKind.LastAssignment) return 'other';
+    }
+    if ((ts.isPrefixUnaryExpression(p) || ts.isPostfixUnaryExpression(p)) && (p.operator === ts.SyntaxKind.PlusPlusToken || p.operator === ts.SyntaxKind.MinusMinusToken)) return 'other';
+    // A destructuring or loop target, such as [client] = list or for (client of list).
+    let node = id;
+    while (ts.isArrayLiteralExpression(node.parent) || ts.isObjectLiteralExpression(node.parent) || ts.isSpreadElement(node.parent) || ts.isSpreadAssignment(node.parent) ||
+      ts.isShorthandPropertyAssignment(node.parent) || (ts.isPropertyAssignment(node.parent) && node.parent.initializer === node) || ts.isParenthesizedExpression(node.parent)) node = node.parent;
+    const q = node.parent;
+    if (node !== id && ts.isBinaryExpression(q) && q.left === node && q.operatorToken.kind === ts.SyntaxKind.EqualsToken) return 'other';
+    if ((ts.isForOfStatement(q) || ts.isForInStatement(q)) && q.initializer === node) return 'other';
+    return 'read';
+  }
+
+  // A let or var is followed when every value it is ever given in its file is the same package value,
+  // null or undefined. That covers a lazily created client such as `let client = null; ... client = new Acme()`.
+  function fromMutable(decl, depth) {
+    const sym = checker.getSymbolAtLocation(decl.name);
+    if (!sym) return null;
+    if (pendingSymbols.has(sym)) return PENDING;
+    pendingSymbols.add(sym);
+    try {
+      const values = [decl.initializer ? valueOf(decl.initializer, depth + 1) : NULLISH];
+      let otherWrite = false;
+      walk(decl.getSourceFile(), (n) => {
+        if (otherWrite || !ts.isIdentifier(n) || n === decl.name || checker.getSymbolAtLocation(n) !== sym) return;
+        const w = writeOf(n);
+        if (w === 'other') otherWrite = true;
+        else if (w !== 'read') values.push(valueOf(w.value, depth + 1));
+      });
+      return otherWrite ? null : join(values);
+    } finally {
+      pendingSymbols.delete(sym);
+    }
+  }
+
+  // A call is followed when every return of the function gives the same package value, null or undefined.
+  function fromFunction(fn, depth) {
+    if (!fn.body || fn.asteriskToken) return null;
+    if (pendingFunctions.has(fn)) return PENDING;
+    pendingFunctions.add(fn);
+    try {
+      if (!ts.isBlock(fn.body)) return join([valueOf(fn.body, depth + 1)]);
+      const values = [];
+      const visit = (n) => {
+        if (n !== fn.body && (ts.isFunctionLike(n) || ts.isClassLike(n))) return;
+        if (ts.isReturnStatement(n)) values.push(n.expression ? valueOf(n.expression, depth + 1) : NULLISH);
+        ts.forEachChild(n, visit);
+      };
+      visit(fn.body);
+      return join(values);
+    } finally {
+      pendingFunctions.delete(fn);
+    }
+  }
+
   function fromDeclaration(decl, depth) {
+    if (ts.isFunctionDeclaration(decl)) return { fn: decl };
     if (ts.isVariableDeclaration(decl)) {
-      if (!ts.isIdentifier(decl.name) || !decl.initializer || !isConst(decl)) return null;
-      return originOf(decl.initializer, depth + 1);
+      if (!ts.isIdentifier(decl.name)) return null;
+      if (!isConst(decl)) return ts.isVariableDeclarationList(decl.parent) && !ts.isCatchClause(decl.parent.parent) ? fromMutable(decl, depth) : null;
+      return decl.initializer ? originOf(decl.initializer, depth + 1) : null;
     }
     if (ts.isBindingElement(decl)) {
       if (decl.dotDotDotToken || !ts.isObjectBindingPattern(decl.parent)) return null;
@@ -116,6 +211,7 @@ export function createResolver(checker, isPackage) {
     node = unwrap(node);
     if (depth > MAX_DEPTH) return null;
     if (ts.isIdentifier(node)) return fromSymbol(checker.getSymbolAtLocation(node), depth + 1);
+    if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) return { fn: node };
     if (ts.isPropertyAccessExpression(node)) {
       const base = originOf(node.expression, depth + 1);
       return base && ts.isIdentifier(node.name) ? extend(base, node.name.text, undefined, depth) : null;
@@ -132,10 +228,23 @@ export function createResolver(checker, isPackage) {
       const spec = moduleArg(node);
       if (spec !== null) return isPackage(spec) ? { module: spec, root: 'namespace', props: [] } : { module: spec, root: 'other', props: [] };
       const base = originOf(node.expression, depth + 1);
+      if (base?.fn) return fromFunction(base.fn, depth + 1);
       return base?.module ? { module: base.module, root: 'instance', props: [] } : null;
+    }
+    if (ts.isConditionalExpression(node)) return join([valueOf(node.whenTrue, depth + 1), valueOf(node.whenFalse, depth + 1)]);
+    if (ts.isBinaryExpression(node)) {
+      const op = node.operatorToken.kind;
+      if (op === ts.SyntaxKind.QuestionQuestionToken || op === ts.SyntaxKind.BarBarToken) return join([valueOf(node.left, depth + 1), valueOf(node.right, depth + 1)]);
+      if (op === ts.SyntaxKind.EqualsToken) return originOf(node.right, depth + 1);
+      if (op === ts.SyntaxKind.QuestionQuestionEqualsToken || op === ts.SyntaxKind.BarBarEqualsToken) return join([valueOf(node.left, depth + 1), valueOf(node.right, depth + 1)]);
     }
     return null;
   }
 
-  return { originOf: (n) => originOf(n, 0), moduleArg };
+  // Callers only ever see a package origin, a function, a local module or null, never the internal markers.
+  const publicOrigin = (n) => {
+    const o = originOf(n, 0);
+    return o === PENDING || o === NULLISH ? null : o;
+  };
+  return { originOf: publicOrigin, moduleArg };
 }
