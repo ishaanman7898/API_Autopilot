@@ -23,6 +23,7 @@ The engine traces the receiver of a call back to an export of the package. These
 | Value from a package call | `const client = createClient()` where `createClient` comes from the package |
 | Re-export | `export { default as Acme } from 'acme-sdk'`, then `import { Acme } from './barrel'` |
 | Value exported from another scanned file | `export const client = new Acme()`, used in another file |
+| CommonJS exports of another scanned file | `module.exports = { client }`, `exports.client = new Acme()` or `module.exports = new Acme()`, read with `require('./lib')` or `import` |
 | Path alias to another scanned file | `import { client } from '@/lib/acme'`, with `"paths": { "@/*": ["./src/*"] }` in `tsconfig.json` |
 | Factory function | `function getClient() { return new Acme() }`, then `getClient().charges.create()`. Also arrow and async functions, and factories that call other factories. |
 | Lazily cached client | `let cached = null; function getClient() { if (!cached) cached = new Acme(); return cached }` |

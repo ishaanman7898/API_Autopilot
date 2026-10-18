@@ -183,6 +183,7 @@ export const cases = [
     unresolved: [['a.ts', 4, 'cannot be traced'], ['b.ts', 4, 'cannot be traced'], ['c.ts', 4, 'cannot be traced']],
   },
   ...factoryCases(),
+  ...commonJsCases(),
   {
     name: 'lookalikes in files that reach the package through local imports are queued, others are not',
     rules: mp,
@@ -210,6 +211,43 @@ export const cases = [
   },
   ...aliasCases(),
 ];
+
+// Clients shared between files through CommonJS require and module.exports.
+function commonJsCases() {
+  const req = "const Acme = require('acme-sdk');\n";
+  const call = (recv) => `${recv}.charges.create({ amount_cents: 1 });\n`;
+  const done = (recv) => `${recv}.payments.create({ amount: 1 });\n`;
+  const shapes = [
+    ['module.exports object with a shorthand property, destructured', `${req}const client = new Acme();\nmodule.exports = { client };\n`, "const { client } = require('./lib');\n", 'client'],
+    ['module.exports object, read as a property', `${req}module.exports = { client: new Acme(), version: 2 };\n`, "const lib = require('./lib');\n", 'lib.client'],
+    ['exports.client assignment', `${req}exports.client = new Acme();\n`, "const { client } = require('./lib');\n", 'client'],
+    ['module.exports set to the client', `${req}module.exports = new Acme();\n`, "const client = require('./lib');\n", 'client'],
+    ['ESM named import of a CommonJS export', `${req}const client = new Acme();\nmodule.exports = { client };\n`, "import { client } from './lib.js';\n", 'client'],
+    ['ESM default import of module.exports', `${req}module.exports = new Acme();\n`, "import client from './lib.js';\n", 'client'],
+    ['CommonJS factory with a lazy cache', `${req}let c;\nfunction getClient() { if (!c) c = new Acme(); return c; }\nmodule.exports = { getClient };\n`, "const { getClient } = require('./lib');\n", 'getClient()'],
+  ];
+  return [
+    ...shapes.map(([name, lib, head, recv]) => ({
+      name: `CommonJS: ${name}`,
+      rules: mp,
+      files: { 'lib.js': lib, 'use.js': head + call(recv) },
+      expect: { 'use.js': head + done(recv) },
+      unresolved: [],
+    })),
+    {
+      name: 'CommonJS: an export assigned again is not trusted, and an unresolved relative require is queued',
+      rules: mp,
+      files: {
+        'lib.js': `${req}module.exports = { client: new Acme() };\nif (process.env.TEST) module.exports.client = makeFake();\n`,
+        'use.js': `const { client } = require('./lib');\n${call('client')}`,
+        'missing.js': `${req}const { other } = require('./not-there');\n${call('other')}`,
+      },
+      expect: {},
+      untouched: ['use.js', 'missing.js'],
+      unresolved: [['use.js', 2, 'cannot be traced'], ['missing.js', 3, 'cannot be traced']],
+    },
+  ];
+}
 
 // Clients returned by factory functions and held in lazily assigned variables.
 function factoryCases() {

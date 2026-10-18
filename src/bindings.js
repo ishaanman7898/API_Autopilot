@@ -59,6 +59,10 @@ export function createResolver(checker, isPackage) {
       const exported = checker.getExportsOfModule(base.local).find((s) => s.name === name);
       return exported ? fromSymbol(exported, depth + 1) : null;
     }
+    if (base.obj) {
+      const prop = base.obj.properties.find((p) => p.name && keyName(p.name) === name);
+      return prop ? fromObjectProperty(prop, depth) : null;
+    }
     if (base.root === 'namespace' && base.props.length === 0 && name === 'default') return { ...base, root: 'default', site };
     return { ...base, props: [...base.props, name], site };
   }
@@ -72,8 +76,51 @@ export function createResolver(checker, isPackage) {
     try { target = checker.getImmediateAliasedSymbol(sym); } catch { target = null; }
     // A bare specifier names another package, unless a tsconfig path alias resolved it to a scanned file.
     if (!target?.declarations?.length) return isRelative(spec) ? null : { module: spec, root: 'other', props: [] };
-    if (kind === 'namespace' && target.flags & ts.SymbolFlags.ValueModule) return { local: target };
+    if (kind === 'namespace' && target.flags & ts.SymbolFlags.ValueModule) return fromModuleSymbol(target, depth);
     return fromSymbol(target, depth + 1);
+  }
+
+  // A scanned module as a value: its export= value for CommonJS `module.exports = ...`, else its exports.
+  function fromModuleSymbol(mod, depth) {
+    const assigned = mod.exports?.get('export=');
+    if (!assigned) return { local: mod };
+    const decl = assigned.valueDeclaration ?? assigned.declarations?.[0];
+    if (decl && ts.isBinaryExpression(decl)) {
+      const value = unwrap(decl.right);
+      return ts.isObjectLiteralExpression(value) ? { obj: value } : originOf(value, depth + 1);
+    }
+    return decl ? fromDeclaration(decl, depth) : null;
+  }
+
+  // require('x') and import('x'). A scanned file is followed, a relative path that resolves to
+  // nothing is unknown, and anything else is another package.
+  function fromRequire(call, spec, depth) {
+    const mod = checker.getSymbolAtLocation(call.arguments[0]);
+    const file = mod?.declarations?.[0];
+    if (file && ts.isSourceFile(file)) return fromModuleSymbol(mod, depth);
+    return isRelative(spec) ? null : { module: spec, root: 'other', props: [] };
+  }
+
+  const isExportsObject = (n) => {
+    n = unwrap(n);
+    return (ts.isIdentifier(n) && n.text === 'exports') || (ts.isPropertyAccessExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === 'module' && n.name.text === 'exports');
+  };
+
+  // A property of an object assigned to module.exports, unless the file assigns that property again.
+  function fromObjectProperty(prop, depth) {
+    const obj = prop.parent;
+    if (obj.properties.some(ts.isSpreadAssignment)) return null;
+    const name = keyName(prop.name);
+    let reassigned = false;
+    walk(prop.getSourceFile(), (n) => {
+      if (reassigned || !ts.isBinaryExpression(n) || n.operatorToken.kind !== ts.SyntaxKind.EqualsToken) return;
+      const left = unwrap(n.left);
+      if (ts.isPropertyAccessExpression(left) && left.name.text === name && isExportsObject(left.expression)) reassigned = true;
+    });
+    if (reassigned) return null;
+    if (ts.isShorthandPropertyAssignment(prop)) return fromSymbol(checker.getShorthandAssignmentValueSymbol(prop), depth + 1);
+    if (ts.isPropertyAssignment(prop)) return originOf(prop.initializer, depth + 1);
+    return null;
   }
 
   function fromAlias(sym, decl, depth) {
@@ -191,6 +238,13 @@ export function createResolver(checker, isPackage) {
       return base && extend(base, name, decl, depth);
     }
     if (ts.isExportAssignment(decl)) return originOf(decl.expression, depth + 1);
+    // CommonJS: the property of a module.exports object, and `exports.client = ...` or `module.exports = ...`.
+    if ((ts.isShorthandPropertyAssignment(decl) || ts.isPropertyAssignment(decl)) && ts.isObjectLiteralExpression(decl.parent)) return fromObjectProperty(decl, depth);
+    if (ts.isPropertyAccessExpression(decl) && ts.isBinaryExpression(decl.parent) && decl.parent.left === decl && decl.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken) return originOf(decl.parent.right, depth + 1);
+    if (ts.isBinaryExpression(decl) && decl.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+      const value = unwrap(decl.right);
+      return ts.isObjectLiteralExpression(value) ? { obj: value } : originOf(value, depth + 1);
+    }
     return null;
   }
 
@@ -199,11 +253,18 @@ export function createResolver(checker, isPackage) {
     if (sym.flags & ts.SymbolFlags.Alias) {
       const decl = sym.declarations?.[0];
       if (!decl) return null;
-      // `export default client` makes the default export an alias of the local binding.
-      const local = ts.isVariableDeclaration(decl) || ts.isBindingElement(decl) || ts.isExportAssignment(decl);
+      // `export default client` makes the default export an alias of the local binding, and CommonJS
+      // `module.exports = { client }` makes each property an alias of its value.
+      const local = ts.isVariableDeclaration(decl) || ts.isBindingElement(decl) || ts.isExportAssignment(decl) ||
+        ts.isShorthandPropertyAssignment(decl) || ts.isPropertyAssignment(decl) || ts.isBinaryExpression(decl) || ts.isPropertyAccessExpression(decl);
       return local ? fromDeclaration(decl, depth) : fromAlias(sym, decl, depth);
     }
-    const decl = sym.valueDeclaration ?? sym.declarations?.[0];
+    // `exports.client = a` in two places gives one symbol with two declarations, so every one must agree.
+    const decls = sym.declarations ?? [];
+    if (decls.length > 1 && decls.every((d) => ts.isPropertyAccessExpression(d) && ts.isBinaryExpression(d.parent))) {
+      return join(decls.map((d) => (d.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken ? valueOf(d.parent.right, depth + 1) : null)));
+    }
+    const decl = sym.valueDeclaration ?? decls[0];
     return decl ? fromDeclaration(decl, depth) : null;
   }
 
@@ -226,7 +287,7 @@ export function createResolver(checker, isPackage) {
     }
     if (ts.isCallExpression(node)) {
       const spec = moduleArg(node);
-      if (spec !== null) return isPackage(spec) ? { module: spec, root: 'namespace', props: [] } : { module: spec, root: 'other', props: [] };
+      if (spec !== null) return isPackage(spec) ? { module: spec, root: 'namespace', props: [] } : fromRequire(node, spec, depth);
       const base = originOf(node.expression, depth + 1);
       if (base?.fn) return fromFunction(base.fn, depth + 1);
       return base?.module ? { module: base.module, root: 'instance', props: [] } : null;
