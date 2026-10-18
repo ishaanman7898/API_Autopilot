@@ -178,6 +178,17 @@ export const cases = [
     untouched: ['a.ts'],
     unresolved: [['a.ts', 3, 'cannot be traced']],
   },
+  {
+    name: 'a binding exported as the default is followed',
+    rules: mp,
+    files: {
+      'lib/c.ts': "import Acme from 'acme-sdk';\nconst c = new Acme();\nexport default c;\n",
+      'lib/d.ts': "import Acme from 'acme-sdk';\nconst d = new Acme();\nexport { d as default };\n",
+      'a.ts': "import c from './lib/c';\nimport d from './lib/d';\nc.charges.create({ amount_cents: 1 });\nd.charges.create({ amount_cents: 2 });\n",
+    },
+    expect: { 'a.ts': "import c from './lib/c';\nimport d from './lib/d';\nc.payments.create({ amount: 1 });\nd.payments.create({ amount: 2 });\n" },
+    unresolved: [],
+  },
   ...aliasCases(),
 ];
 

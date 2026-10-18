@@ -104,7 +104,9 @@ export function createResolver(checker, isPackage) {
     if (sym.flags & ts.SymbolFlags.Alias) {
       const decl = sym.declarations?.[0];
       if (!decl) return null;
-      return ts.isVariableDeclaration(decl) || ts.isBindingElement(decl) ? fromDeclaration(decl, depth) : fromAlias(sym, decl, depth);
+      // `export default client` makes the default export an alias of the local binding.
+      const local = ts.isVariableDeclaration(decl) || ts.isBindingElement(decl) || ts.isExportAssignment(decl);
+      return local ? fromDeclaration(decl, depth) : fromAlias(sym, decl, depth);
     }
     const decl = sym.valueDeclaration ?? sym.declarations?.[0];
     return decl ? fromDeclaration(decl, depth) : null;
