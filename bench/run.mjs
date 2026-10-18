@@ -9,12 +9,13 @@
 // them is ever installed or run. Only the SDK packages named in --old and --new are installed, once,
 // into <work>/repos/node_modules, which every clone resolves through.
 //
-// Four type-checks per repository, compared by file, line and error code:
+// Three type-checks per repository, compared by file, line and error code:
 //   A  original code with the old SDK   (baseline, its errors are ignored)
 //   B  original code with the new SDK   (what upgrading without migrating breaks)
-//   C  migrated code with every package in --new installed  (what is still broken after apimigrate)
-//   D  migrated code with only the first package in --new, i.e. the repository's own dependency
-//      list bumped to the new version  (what the migration breaks if package.json is left alone)
+//   C  migrated code with the new SDK   (what is still broken after apimigrate)
+// The new SDK is every package in --new, so a renamed package resolves under both names. Whether the
+// migrated package.json actually declares each SDK package the migrated code imports is checked
+// separately, file by file, because the shared node_modules cannot show it.
 import { spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
@@ -79,6 +80,24 @@ function typecheck(tree, files, label) {
 }
 
 const minus = (a, b) => [...a].filter(([k]) => !b.has(k)).map(([, v]) => v);
+const IMPORT = /(?:\bfrom\s+|\brequire\(\s*|\bimport\(\s*)['"]((?:@[^'"/]+\/)?[^'"/]+)(?:\/[^'"]*)?['"]/g;
+const DEP_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'];
+const escape = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+
+// Files that import one of the SDK packages without the nearest package.json declaring it.
+function undeclaredImports(tree, files, names) {
+  const declared = (file, name) => {
+    for (let dir = dirname(join(tree, file)); dir.startsWith(tree); dir = dirname(dir)) {
+      if (!existsSync(join(dir, 'package.json'))) continue;
+      try {
+        const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+        return DEP_FIELDS.some((f) => pkg[f]?.[name] !== undefined);
+      } catch { return false; }
+    }
+    return false;
+  };
+  return files.filter((f) => [...readFileSync(join(tree, f), 'utf8').matchAll(IMPORT)].some((m) => names.includes(m[1]) && !declared(f, m[1])));
+}
 
 function main() {
   const f = flags(process.argv.slice(2));
@@ -89,6 +108,7 @@ function main() {
   const newSdk = (f.new ?? '@mux/mux-node@15.5.0,@mux/ts@15.5.0').split(',');
   const list = JSON.parse(readFileSync(f.repos, 'utf8')).slice(0, Number(f.limit ?? 1000));
   const pkgName = JSON.parse(readFileSync(f.rules, 'utf8')).package;
+  const sdkNames = [...new Set([pkgName, ...newSdk.map((s) => s.replace(/(?!^)@[^@]*$/, ''))])];
 
   // Publisher side: a throwaway key signs the rule file, so apply runs the normal trust checks.
   const keys = join(work, 'keys');
@@ -136,7 +156,11 @@ function main() {
     row.skipped = ev.skipped;
     row.gate = ev.gate.ok;
     row.filesChanged = ev.files.length;
-    row.leftoverImports = codeFiles(migrated).filter((p) => /['"]@mux\/mux-node(\/[^'"]*)?['"]/.test(readFileSync(join(migrated, p), 'utf8'))).length;
+    const leftover = new RegExp(`['"]${escape(pkgName)}(/[^'"]*)?['"]`);
+    const migratedFiles = codeFiles(migrated);
+    row.leftoverImports = migratedFiles.filter((p) => leftover.test(readFileSync(join(migrated, p), 'utf8'))).length;
+    row.undeclaredImports = undeclaredImports(migrated, migratedFiles, sdkNames);
+    row.manifestsChanged = ev.files.filter((f) => /(^|\/)package\.json$/.test(f.path)).map((f) => f.path);
     row.typecheckFiles = row.muxFiles;
   }
 
@@ -144,13 +168,9 @@ function main() {
   const treeOf = (r, which) => join(reposDir, r.repo.replace('/', '__'), which);
   installSdk(reposDir, oldSdk);
   for (const r of checkable) r.A = typecheck(treeOf(r, 'base'), r.typecheckFiles, 'A');
-  installSdk(reposDir, newSdk.slice(0, 1));
-  for (const r of checkable) {
-    r.B = typecheck(treeOf(r, 'base'), r.typecheckFiles, 'B');
-    r.D = typecheck(treeOf(r, 'migrated'), r.typecheckFiles, 'D');
-  }
   installSdk(reposDir, newSdk);
   for (const r of checkable) {
+    r.B = typecheck(treeOf(r, 'base'), r.typecheckFiles, 'B');
     r.C = typecheck(treeOf(r, 'migrated'), r.typecheckFiles, 'C');
     // The baseline must actually see the SDK, or a clean result means nothing.
     r.sdkResolvedInBaseline = ![...r.A.values()].some((d) => d.code === 'TS2307' && d.message.includes(`'${pkgName}'`));
@@ -158,9 +178,8 @@ function main() {
     r.stillBroken = minus(r.C, r.A);
     r.fixed = r.brokenByUpgrade.filter((d) => !r.C.has(`${d.file}:${d.line}:${d.code}`)).length;
     r.newFromMigration = minus(r.C, r.B);
-    r.brokenWithoutManifest = minus(r.D, r.A);
     r.baselineErrors = r.A.size;
-    delete r.A; delete r.B; delete r.C; delete r.D; delete r.typecheckFiles;
+    delete r.A; delete r.B; delete r.C; delete r.typecheckFiles;
   }
 
   const out = join(work, 'results.json');

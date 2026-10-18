@@ -8,6 +8,16 @@
   "sunset": "2027-12-31",
   "rules": [
     {
+      "id": "move-resources-robots-preview",
+      "kind": "rename-import",
+      "match": {
+        "module": "@mux/mux-node/resources/robots-preview"
+      },
+      "transform": {
+        "to": "@mux/ts/resources/robots"
+      }
+    },
+    {
       "id": "package-rename",
       "kind": "rename-import",
       "match": {
@@ -18,153 +28,34 @@
       }
     },
     {
-      "id": "robots-jobs-list",
-      "kind": "rename-method",
+      "id": "namespace-robotsPreview",
+      "kind": "rename-namespace",
       "match": {
-        "call": "robotsPreview.jobs.list"
+        "path": "robotsPreview"
       },
       "transform": {
-        "to": "robots.jobs.list"
+        "to": "robots"
       }
     },
     {
-      "id": "robots-jobs-cancel",
-      "kind": "rename-method",
-      "match": {
-        "call": "robotsPreview.jobs.cancel"
-      },
-      "transform": {
-        "to": "robots.jobs.cancel"
-      }
-    },
-    {
-      "id": "robots-jobs-askQuestions-create",
-      "kind": "rename-method",
-      "match": {
-        "call": "robotsPreview.jobs.askQuestions.create"
-      },
-      "transform": {
-        "to": "robots.jobs.askQuestions.create"
-      }
-    },
-    {
-      "id": "robots-jobs-askQuestions-retrieve",
-      "kind": "rename-method",
-      "match": {
-        "call": "robotsPreview.jobs.askQuestions.retrieve"
-      },
-      "transform": {
-        "to": "robots.jobs.askQuestions.retrieve"
-      }
-    },
-    {
-      "id": "robots-jobs-generateChapters-create",
-      "kind": "rename-method",
-      "match": {
-        "call": "robotsPreview.jobs.generateChapters.create"
-      },
-      "transform": {
-        "to": "robots.jobs.generateChapters.create"
-      }
-    },
-    {
-      "id": "robots-jobs-generateChapters-retrieve",
-      "kind": "rename-method",
-      "match": {
-        "call": "robotsPreview.jobs.generateChapters.retrieve"
-      },
-      "transform": {
-        "to": "robots.jobs.generateChapters.retrieve"
-      }
-    },
-    {
-      "id": "robots-jobs-findKeyMoments-create",
-      "kind": "rename-method",
-      "match": {
-        "call": "robotsPreview.jobs.findKeyMoments.create"
-      },
-      "transform": {
-        "to": "robots.jobs.findKeyMoments.create"
-      }
-    },
-    {
-      "id": "robots-jobs-findKeyMoments-retrieve",
-      "kind": "rename-method",
-      "match": {
-        "call": "robotsPreview.jobs.findKeyMoments.retrieve"
-      },
-      "transform": {
-        "to": "robots.jobs.findKeyMoments.retrieve"
-      }
-    },
-    {
-      "id": "robots-jobs-moderate-create",
-      "kind": "rename-method",
-      "match": {
-        "call": "robotsPreview.jobs.moderate.create"
-      },
-      "transform": {
-        "to": "robots.jobs.moderate.create"
-      }
-    },
-    {
-      "id": "robots-jobs-moderate-retrieve",
-      "kind": "rename-method",
-      "match": {
-        "call": "robotsPreview.jobs.moderate.retrieve"
-      },
-      "transform": {
-        "to": "robots.jobs.moderate.retrieve"
-      }
-    },
-    {
-      "id": "robots-jobs-summarize-create",
-      "kind": "rename-method",
-      "match": {
-        "call": "robotsPreview.jobs.summarize.create"
-      },
-      "transform": {
-        "to": "robots.jobs.summarize.create"
-      }
-    },
-    {
-      "id": "robots-jobs-summarize-retrieve",
-      "kind": "rename-method",
-      "match": {
-        "call": "robotsPreview.jobs.summarize.retrieve"
-      },
-      "transform": {
-        "to": "robots.jobs.summarize.retrieve"
-      }
-    },
-    {
-      "id": "robots-jobs-translateCaptions-create",
-      "kind": "rename-method",
-      "match": {
-        "call": "robotsPreview.jobs.translateCaptions.create"
-      },
-      "transform": {
-        "to": "robots.jobs.translateCaptions.create"
-      }
-    },
-    {
-      "id": "robots-jobs-translateCaptions-retrieve",
-      "kind": "rename-method",
-      "match": {
-        "call": "robotsPreview.jobs.translateCaptions.retrieve"
-      },
-      "transform": {
-        "to": "robots.jobs.translateCaptions.retrieve"
-      }
-    },
-    {
-      "id": "filters-removed",
+      "id": "removed-data.filters.listValues",
       "kind": "manual",
       "match": {
         "call": "data.filters.listValues"
       },
       "fallback": {
-        "prompt": "client.data.filters was removed in Mux v15. Use client.data.dimensions.listValues(dimensionID, params) instead. Dimension IDs match the old filter IDs for the same field; check the response shape (DimensionValue) where the result is read."
+        "prompt": "client.data.filters.listValues was removed in @mux/ts 15.0.0. A likely replacement is client.data.dimensions.listValues. Keep the behaviour identical."
+      }
+    },
+    {
+      "id": "dependency",
+      "kind": "rename-dependency",
+      "match": {
+        "dependency": "@mux/mux-node"
+      },
+      "transform": {
+        "to": "@mux/ts",
+        "version": "^15.0.0"
       }
     }
   ]
