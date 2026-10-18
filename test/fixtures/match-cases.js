@@ -197,6 +197,7 @@ export const cases = [
   },
   ...factoryCases(),
   ...commonJsCases(),
+  ...namespaceCases(),
   {
     name: 'lookalikes in files that reach the package through local imports are queued, others are not',
     rules: mp,
@@ -224,6 +225,35 @@ export const cases = [
   },
   ...aliasCases(),
 ];
+
+// rename-namespace moves a whole resource, such as client.robotsPreview to client.robots.
+function namespaceCases() {
+  const ns = [{ id: 'ns', kind: 'rename-namespace', match: { path: 'robotsPreview' }, transform: { to: 'robots' } }];
+  const imp = "import Acme from 'acme-sdk';\n";
+  return [
+    {
+      name: 'rename-namespace renames calls, reads, factory results and destructuring',
+      rules: ns,
+      files: {
+        'lib.ts': `${imp}export const client = new Acme();\nexport const getClient = () => client;\n`,
+        'a.ts': "import { client, getClient } from './lib';\nawait client.robotsPreview.jobs.list();\nconst jobs = client.robotsPreview.jobs;\ngetClient().robotsPreview.jobs.moderate.create({});\nconst { robotsPreview } = client;\nconst { robotsPreview: rp } = getClient();\nclient.video.robotsPreview.x();\n",
+      },
+      expect: { 'a.ts': "import { client, getClient } from './lib';\nawait client.robots.jobs.list();\nconst jobs = client.robots.jobs;\ngetClient().robots.jobs.moderate.create({});\nconst { robots: robotsPreview } = client;\nconst { robots: rp } = getClient();\nclient.video.robotsPreview.x();\n" },
+      unresolved: [],
+    },
+    {
+      name: 'rename-namespace with a dotted path, and what it leaves alone or queues',
+      rules: [{ id: 'ns', kind: 'rename-namespace', match: { path: 'data.filters' }, transform: { to: 'data.dimensions' } }],
+      files: {
+        'a.ts': `${imp}import Other from 'other-sdk';\nconst c = new Acme();\nc.data.filters.listValues('id');\nnew Other().data.filters.listValues('id');\nfunction f(x) { return x.data.filters.listValues('id'); }\nc.data?.filters.listValues('id');\nconst { data } = c;\n`,
+        'unrelated.ts': "export const v = thing.data.filters;\n",
+      },
+      expect: { 'a.ts': `${imp}import Other from 'other-sdk';\nconst c = new Acme();\nc.data.dimensions.listValues('id');\nnew Other().data.filters.listValues('id');\nfunction f(x) { return x.data.filters.listValues('id'); }\nc.data?.filters.listValues('id');\nconst { data } = c;\n` },
+      untouched: ['unrelated.ts'],
+      unresolved: [['a.ts', 6, 'cannot be traced'], ['a.ts', 7, 'optional chaining']],
+    },
+  ];
+}
 
 // Clients shared between files through CommonJS require and module.exports.
 function commonJsCases() {

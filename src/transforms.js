@@ -83,6 +83,48 @@ export function renameParam(ctx, sf, rule, out) {
   }
 }
 
+// Renames a property path such as robotsPreview to robots wherever it follows a proven package value,
+// in calls and in plain reads, so one rule moves a whole resource. A one-segment path in destructuring is
+// renamed with the local name kept. The same path on something that cannot be proven is queued in files
+// that reach the package, and the same path on another package is left alone.
+export function renameNamespace(ctx, sf, rule, out) {
+  const { path } = rule.match;
+  const segs = path.split('.');
+  const to = rule.transform.to;
+  const reaches = ctx.reaches ? ctx.reaches.has(sf.fileName) : moduleRefs(sf, ctx).some((r) => ctx.isPackage(r.spec));
+  const rooted = (o) => o?.module && ctx.isPackage(o.module) && o.root !== 'named' && o.props.length === 0;
+  const unknown = (o) => !o?.module;
+  walk(sf, (n) => {
+    if (ts.isPropertyAccessExpression(n) && ts.isIdentifier(n.name) && n.name.text === segs.at(-1)) {
+      let node = n;
+      const names = [];
+      for (let i = segs.length - 1; i >= 0; i--) {
+        if (!ts.isPropertyAccessExpression(node) || !ts.isIdentifier(node.name) || node.name.text !== segs[i]) return;
+        names.unshift(node.name);
+        node = node.expression;
+      }
+      const origin = ctx.originOf(node);
+      if (rooted(origin)) {
+        const start = names[0].getStart(sf);
+        const end = names.at(-1).getEnd();
+        if (!/^[\w$\s.]+$/.test(sf.text.slice(start, end))) out.fail(sf, n, `comments or optional chaining inside ${path}`);
+        else out.edit(sf, start, end, to, n);
+      } else if (unknown(origin) && reaches) out.fail(sf, n, `receiver of ${path} cannot be traced to ${ctx.packageName}`);
+      return;
+    }
+    if (segs.length === 1 && ts.isBindingElement(n) && ts.isObjectBindingPattern(n.parent) && !n.dotDotDotToken && keyText(n.propertyName ?? n.name) === path) {
+      const holder = n.parent.parent;
+      const origin = ts.isVariableDeclaration(holder) && holder.initializer ? ctx.originOf(holder.initializer) : null;
+      if (rooted(origin) && IDENT.test(to)) {
+        if (n.propertyName && ts.isIdentifier(n.propertyName)) out.edit(sf, n.propertyName.getStart(sf), n.propertyName.getEnd(), to, n);
+        else if (!n.propertyName && ts.isIdentifier(n.name)) out.edit(sf, n.name.getStart(sf), n.name.getEnd(), `${to}: ${n.name.text}`, n);
+        else out.fail(sf, n, `${path} is destructured with a quoted or computed key`);
+      } else if (rooted(origin)) out.fail(sf, n, `${path} cannot be renamed to ${to} in destructuring`);
+      else if (unknown(origin) && reaches) out.fail(sf, n, `receiver of ${path} cannot be traced to ${ctx.packageName}`);
+    }
+  });
+}
+
 export function flagManual(ctx, sf, rule, out) {
   for (const c of findCalls(ctx, sf, rule.match.call)) out.fail(sf, c.node, c.proven ? 'manual rule: call site needs a migration' : c.reason);
 }
@@ -91,5 +133,6 @@ export const TRANSFORMS = {
   'rename-import': renameImport,
   'rename-method': renameMethod,
   'rename-param': renameParam,
+  'rename-namespace': renameNamespace,
   manual: flagManual,
 };
