@@ -23,6 +23,7 @@
     "action.yml",
     "docs",
     "examples",
+    "providers",
     "README.md",
     "LICENSE",
     "SECURITY.md"
