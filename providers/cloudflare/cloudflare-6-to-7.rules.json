@@ -1,0 +1,3296 @@
+{
+ "schema": "apimigrate/1",
+ "provider": "cloudflare",
+ "package": "cloudflare",
+ "id": "cloudflare-6-to-7",
+ "from": "6.x",
+ "to": "7.x",
+ "sunset": "2027-12-31",
+ "rules": [
+  {
+   "id": "rename-vectorize.indexes.deleteByIds",
+   "kind": "rename-method",
+   "match": {
+    "call": "vectorize.indexes.deleteByIds"
+   },
+   "transform": {
+    "to": "vectorize.indexes.deleteByIDs"
+   }
+  },
+  {
+   "id": "rename-vectorize.indexes.getByIds",
+   "kind": "rename-method",
+   "match": {
+    "call": "vectorize.indexes.getByIds"
+   },
+   "transform": {
+    "to": "vectorize.indexes.getByIDs"
+   }
+  },
+  {
+   "id": "rename-realtimeKit.meetings.getMeetingById",
+   "kind": "rename-method",
+   "match": {
+    "call": "realtimeKit.meetings.getMeetingById"
+   },
+   "transform": {
+    "to": "realtimeKit.meetings.getMeetingByID"
+   }
+  },
+  {
+   "id": "rename-realtimeKit.meetings.replaceMeetingById",
+   "kind": "rename-method",
+   "match": {
+    "call": "realtimeKit.meetings.replaceMeetingById"
+   },
+   "transform": {
+    "to": "realtimeKit.meetings.replaceMeetingByID"
+   }
+  },
+  {
+   "id": "rename-realtimeKit.meetings.updateMeetingById",
+   "kind": "rename-method",
+   "match": {
+    "call": "realtimeKit.meetings.updateMeetingById"
+   },
+   "transform": {
+    "to": "realtimeKit.meetings.updateMeetingByID"
+   }
+  },
+  {
+   "id": "rename-realtimeKit.presets.getPresetById",
+   "kind": "rename-method",
+   "match": {
+    "call": "realtimeKit.presets.getPresetById"
+   },
+   "transform": {
+    "to": "realtimeKit.presets.getPresetByID"
+   }
+  },
+  {
+   "id": "rename-realtimeKit.sessions.getParticipantDataFromPeerId",
+   "kind": "rename-method",
+   "match": {
+    "call": "realtimeKit.sessions.getParticipantDataFromPeerId"
+   },
+   "transform": {
+    "to": "realtimeKit.sessions.getParticipantDataFromPeerID"
+   }
+  },
+  {
+   "id": "rename-realtimeKit.webhooks.getWebhookById",
+   "kind": "rename-method",
+   "match": {
+    "call": "realtimeKit.webhooks.getWebhookById"
+   },
+   "transform": {
+    "to": "realtimeKit.webhooks.getWebhookByID"
+   }
+  },
+  {
+   "id": "rename-realtimeKit.livestreams.getActiveLivestreamsForLivestreamId",
+   "kind": "rename-method",
+   "match": {
+    "call": "realtimeKit.livestreams.getActiveLivestreamsForLivestreamId"
+   },
+   "transform": {
+    "to": "realtimeKit.livestreams.getActiveLivestreamsForLivestreamID"
+   }
+  },
+  {
+   "id": "rename-realtimeKit.livestreams.getLivestreamSessionDetailsForSessionId",
+   "kind": "rename-method",
+   "match": {
+    "call": "realtimeKit.livestreams.getLivestreamSessionDetailsForSessionId"
+   },
+   "transform": {
+    "to": "realtimeKit.livestreams.getLivestreamSessionDetailsForSessionID"
+   }
+  },
+  {
+   "id": "rename-realtimeKit.livestreams.getLivestreamSessionForLivestreamId",
+   "kind": "rename-method",
+   "match": {
+    "call": "realtimeKit.livestreams.getLivestreamSessionForLivestreamId"
+   },
+   "transform": {
+    "to": "realtimeKit.livestreams.getLivestreamSessionForLivestreamID"
+   }
+  },
+  {
+   "id": "named-customHostnames.certificatePack.certificates.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "customHostnames.certificatePack.certificates.update",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "custom_hostname_id",
+     "certificate_pack_id"
+    ]
+   }
+  },
+  {
+   "id": "named-customHostnames.certificatePack.certificates.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "customHostnames.certificatePack.certificates.delete",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "custom_hostname_id",
+     "certificate_pack_id"
+    ]
+   }
+  },
+  {
+   "id": "named-tenantCustomNameservers.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "tenantCustomNameservers.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "tenant_tag"
+    ]
+   }
+  },
+  {
+   "id": "named-firewall.waf.packages.groups.edit",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "firewall.waf.packages.groups.edit",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "package_id"
+    ]
+   }
+  },
+  {
+   "id": "named-firewall.waf.packages.groups.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "firewall.waf.packages.groups.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "package_id"
+    ]
+   }
+  },
+  {
+   "id": "named-firewall.waf.packages.rules.edit",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "firewall.waf.packages.rules.edit",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "package_id"
+    ]
+   }
+  },
+  {
+   "id": "named-firewall.waf.packages.rules.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "firewall.waf.packages.rules.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "package_id"
+    ]
+   }
+  },
+  {
+   "id": "named-waitingRooms.events.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "waitingRooms.events.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "waiting_room_id"
+    ]
+   }
+  },
+  {
+   "id": "named-waitingRooms.events.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "waitingRooms.events.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "waiting_room_id"
+    ]
+   }
+  },
+  {
+   "id": "named-waitingRooms.events.edit",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "waitingRooms.events.edit",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "waiting_room_id"
+    ]
+   }
+  },
+  {
+   "id": "named-waitingRooms.events.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "waitingRooms.events.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "waiting_room_id"
+    ]
+   }
+  },
+  {
+   "id": "named-waitingRooms.events.details.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "waitingRooms.events.details.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "waiting_room_id"
+    ]
+   }
+  },
+  {
+   "id": "named-waitingRooms.rules.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "waitingRooms.rules.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "waiting_room_id"
+    ]
+   }
+  },
+  {
+   "id": "named-waitingRooms.rules.edit",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "waitingRooms.rules.edit",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "waiting_room_id"
+    ]
+   }
+  },
+  {
+   "id": "named-web3.hostnames.ipfsUniversalPaths.contentLists.entries.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "web3.hostnames.ipfsUniversalPaths.contentLists.entries.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "identifier"
+    ]
+   }
+  },
+  {
+   "id": "named-web3.hostnames.ipfsUniversalPaths.contentLists.entries.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "web3.hostnames.ipfsUniversalPaths.contentLists.entries.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "identifier"
+    ]
+   }
+  },
+  {
+   "id": "named-web3.hostnames.ipfsUniversalPaths.contentLists.entries.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "web3.hostnames.ipfsUniversalPaths.contentLists.entries.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "identifier"
+    ]
+   }
+  },
+  {
+   "id": "named-workers.beta.workers.versions.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workers.beta.workers.versions.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "worker_id"
+    ]
+   }
+  },
+  {
+   "id": "named-workers.beta.workers.versions.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workers.beta.workers.versions.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "worker_id"
+    ]
+   }
+  },
+  {
+   "id": "named-workers.scripts.tail.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workers.scripts.tail.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "script_name"
+    ]
+   }
+  },
+  {
+   "id": "named-workers.scripts.deployments.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workers.scripts.deployments.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "script_name"
+    ]
+   }
+  },
+  {
+   "id": "named-workers.scripts.deployments.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workers.scripts.deployments.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "script_name"
+    ]
+   }
+  },
+  {
+   "id": "named-workers.scripts.versions.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workers.scripts.versions.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "script_name"
+    ]
+   }
+  },
+  {
+   "id": "named-workers.scripts.secrets.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workers.scripts.secrets.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "script_name"
+    ]
+   }
+  },
+  {
+   "id": "named-workers.scripts.secrets.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workers.scripts.secrets.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "script_name"
+    ]
+   }
+  },
+  {
+   "id": "named-kv.namespaces.metadata.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "kv.namespaces.metadata.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "namespace_id"
+    ]
+   }
+  },
+  {
+   "id": "named-kv.namespaces.values.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "kv.namespaces.values.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "namespace_id"
+    ]
+   }
+  },
+  {
+   "id": "named-kv.namespaces.values.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "kv.namespaces.values.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "namespace_id"
+    ]
+   }
+  },
+  {
+   "id": "named-kv.namespaces.values.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "kv.namespaces.values.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "namespace_id"
+    ]
+   }
+  },
+  {
+   "id": "named-queues.consumers.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "queues.consumers.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "queue_id"
+    ]
+   }
+  },
+  {
+   "id": "named-queues.consumers.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "queues.consumers.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "queue_id"
+    ]
+   }
+  },
+  {
+   "id": "named-queues.consumers.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "queues.consumers.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "queue_id"
+    ]
+   }
+  },
+  {
+   "id": "named-rulesets.phases.versions.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "rulesets.phases.versions.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "ruleset_phase"
+    ]
+   }
+  },
+  {
+   "id": "named-rulesets.rules.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "rulesets.rules.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "ruleset_id"
+    ]
+   }
+  },
+  {
+   "id": "named-rulesets.rules.edit",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "rulesets.rules.edit",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "ruleset_id"
+    ]
+   }
+  },
+  {
+   "id": "named-rulesets.versions.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "rulesets.versions.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "ruleset_id"
+    ]
+   }
+  },
+  {
+   "id": "named-rulesets.versions.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "rulesets.versions.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "ruleset_id"
+    ]
+   }
+  },
+  {
+   "id": "named-addressing.addressMaps.ips.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "addressing.addressMaps.ips.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "address_map_id"
+    ]
+   }
+  },
+  {
+   "id": "named-addressing.addressMaps.ips.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "addressing.addressMaps.ips.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "address_map_id"
+    ]
+   }
+  },
+  {
+   "id": "named-addressing.prefixes.serviceBindings.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "addressing.prefixes.serviceBindings.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "prefix_id"
+    ]
+   }
+  },
+  {
+   "id": "named-addressing.prefixes.serviceBindings.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "addressing.prefixes.serviceBindings.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "prefix_id"
+    ]
+   }
+  },
+  {
+   "id": "named-addressing.prefixes.bgpPrefixes.edit",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "addressing.prefixes.bgpPrefixes.edit",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "prefix_id"
+    ]
+   }
+  },
+  {
+   "id": "named-addressing.prefixes.bgpPrefixes.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "addressing.prefixes.bgpPrefixes.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "prefix_id"
+    ]
+   }
+  },
+  {
+   "id": "named-addressing.prefixes.delegations.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "addressing.prefixes.delegations.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "prefix_id"
+    ]
+   }
+  },
+  {
+   "id": "named-magicTransit.sites.acls.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "magicTransit.sites.acls.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "site_id"
+    ]
+   }
+  },
+  {
+   "id": "named-magicTransit.sites.acls.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "magicTransit.sites.acls.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "site_id"
+    ]
+   }
+  },
+  {
+   "id": "named-magicTransit.sites.acls.edit",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "magicTransit.sites.acls.edit",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "site_id"
+    ]
+   }
+  },
+  {
+   "id": "named-magicTransit.sites.acls.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "magicTransit.sites.acls.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "site_id"
+    ]
+   }
+  },
+  {
+   "id": "named-magicTransit.sites.lans.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "magicTransit.sites.lans.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "site_id"
+    ]
+   }
+  },
+  {
+   "id": "named-magicTransit.sites.lans.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "magicTransit.sites.lans.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "site_id"
+    ]
+   }
+  },
+  {
+   "id": "named-magicTransit.sites.lans.edit",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "magicTransit.sites.lans.edit",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "site_id"
+    ]
+   }
+  },
+  {
+   "id": "named-magicTransit.sites.lans.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "magicTransit.sites.lans.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "site_id"
+    ]
+   }
+  },
+  {
+   "id": "named-magicTransit.sites.wans.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "magicTransit.sites.wans.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "site_id"
+    ]
+   }
+  },
+  {
+   "id": "named-magicTransit.sites.wans.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "magicTransit.sites.wans.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "site_id"
+    ]
+   }
+  },
+  {
+   "id": "named-magicTransit.sites.wans.edit",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "magicTransit.sites.wans.edit",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "site_id"
+    ]
+   }
+  },
+  {
+   "id": "named-magicTransit.sites.wans.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "magicTransit.sites.wans.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "site_id"
+    ]
+   }
+  },
+  {
+   "id": "named-magicTransit.connectors.events.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "magicTransit.connectors.events.get",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "connector_id",
+     "event_t"
+    ]
+   }
+  },
+  {
+   "id": "named-magicTransit.connectors.snapshots.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "magicTransit.connectors.snapshots.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "connector_id"
+    ]
+   }
+  },
+  {
+   "id": "named-magicTransit.cf1Sites.ramps.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "magicTransit.cf1Sites.ramps.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "cf1_site_id"
+    ]
+   }
+  },
+  {
+   "id": "named-magicTransit.cf1Sites.ramps.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "magicTransit.cf1Sites.ramps.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "cf1_site_id"
+    ]
+   }
+  },
+  {
+   "id": "named-pages.projects.deployments.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "pages.projects.deployments.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "project_name"
+    ]
+   }
+  },
+  {
+   "id": "named-pages.projects.deployments.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "pages.projects.deployments.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "project_name"
+    ]
+   }
+  },
+  {
+   "id": "named-pages.projects.deployments.retry",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "pages.projects.deployments.retry",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "project_name"
+    ]
+   }
+  },
+  {
+   "id": "named-pages.projects.deployments.rollback",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "pages.projects.deployments.rollback",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "project_name"
+    ]
+   }
+  },
+  {
+   "id": "named-pages.projects.deployments.history.logs.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "pages.projects.deployments.history.logs.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "project_name"
+    ]
+   }
+  },
+  {
+   "id": "named-pages.projects.domains.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "pages.projects.domains.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "project_name"
+    ]
+   }
+  },
+  {
+   "id": "named-pages.projects.domains.edit",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "pages.projects.domains.edit",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "project_name"
+    ]
+   }
+  },
+  {
+   "id": "named-pages.projects.domains.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "pages.projects.domains.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "project_name"
+    ]
+   }
+  },
+  {
+   "id": "named-rules.lists.items.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "rules.lists.items.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "list_id"
+    ]
+   }
+  },
+  {
+   "id": "named-stream.audioTracks.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "stream.audioTracks.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "identifier"
+    ]
+   }
+  },
+  {
+   "id": "named-stream.audioTracks.edit",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "stream.audioTracks.edit",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "identifier"
+    ]
+   }
+  },
+  {
+   "id": "named-stream.liveInputs.outputs.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "stream.liveInputs.outputs.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "live_input_identifier"
+    ]
+   }
+  },
+  {
+   "id": "named-stream.liveInputs.outputs.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "stream.liveInputs.outputs.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "live_input_identifier"
+    ]
+   }
+  },
+  {
+   "id": "named-stream.captions.language.create",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "stream.captions.language.create",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "identifier"
+    ]
+   }
+  },
+  {
+   "id": "named-stream.captions.language.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "stream.captions.language.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "identifier"
+    ]
+   }
+  },
+  {
+   "id": "named-stream.captions.language.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "stream.captions.language.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "identifier"
+    ]
+   }
+  },
+  {
+   "id": "named-stream.captions.language.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "stream.captions.language.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "identifier"
+    ]
+   }
+  },
+  {
+   "id": "named-stream.captions.language.vtt.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "stream.captions.language.vtt.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "identifier"
+    ]
+   }
+  },
+  {
+   "id": "named-r2.buckets.domains.custom.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "r2.buckets.domains.custom.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "bucket_name"
+    ]
+   }
+  },
+  {
+   "id": "named-r2.buckets.domains.custom.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "r2.buckets.domains.custom.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "bucket_name"
+    ]
+   }
+  },
+  {
+   "id": "named-r2.buckets.domains.custom.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "r2.buckets.domains.custom.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "bucket_name"
+    ]
+   }
+  },
+  {
+   "id": "named-r2.buckets.eventNotifications.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "r2.buckets.eventNotifications.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "bucket_name"
+    ]
+   }
+  },
+  {
+   "id": "named-r2.buckets.eventNotifications.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "r2.buckets.eventNotifications.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "bucket_name"
+    ]
+   }
+  },
+  {
+   "id": "named-r2.buckets.eventNotifications.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "r2.buckets.eventNotifications.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "bucket_name"
+    ]
+   }
+  },
+  {
+   "id": "named-r2.buckets.objects.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "r2.buckets.objects.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "bucket_name"
+    ]
+   }
+  },
+  {
+   "id": "named-r2.buckets.objects.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "r2.buckets.objects.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "bucket_name"
+    ]
+   }
+  },
+  {
+   "id": "named-r2.buckets.objects.upload",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "r2.buckets.objects.upload",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "bucket_name"
+    ]
+   }
+  },
+  {
+   "id": "named-r2DataCatalog.namespaces.tables.list",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "r2DataCatalog.namespaces.tables.list",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "bucket_name"
+    ]
+   }
+  },
+  {
+   "id": "named-r2DataCatalog.namespaces.tables.maintenanceConfigs.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "r2DataCatalog.namespaces.tables.maintenanceConfigs.update",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "bucket_name",
+     "namespace"
+    ]
+   }
+  },
+  {
+   "id": "named-r2DataCatalog.namespaces.tables.maintenanceConfigs.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "r2DataCatalog.namespaces.tables.maintenanceConfigs.get",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "bucket_name",
+     "namespace"
+    ]
+   }
+  },
+  {
+   "id": "named-workersForPlatforms.dispatch.namespaces.scripts.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workersForPlatforms.dispatch.namespaces.scripts.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "dispatch_namespace"
+    ]
+   }
+  },
+  {
+   "id": "named-workersForPlatforms.dispatch.namespaces.scripts.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workersForPlatforms.dispatch.namespaces.scripts.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "dispatch_namespace"
+    ]
+   }
+  },
+  {
+   "id": "named-workersForPlatforms.dispatch.namespaces.scripts.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workersForPlatforms.dispatch.namespaces.scripts.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "dispatch_namespace"
+    ]
+   }
+  },
+  {
+   "id": "named-workersForPlatforms.dispatch.namespaces.scripts.assetUpload.create",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workersForPlatforms.dispatch.namespaces.scripts.assetUpload.create",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "dispatch_namespace"
+    ]
+   }
+  },
+  {
+   "id": "named-workersForPlatforms.dispatch.namespaces.scripts.content.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workersForPlatforms.dispatch.namespaces.scripts.content.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "dispatch_namespace"
+    ]
+   }
+  },
+  {
+   "id": "named-workersForPlatforms.dispatch.namespaces.scripts.content.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workersForPlatforms.dispatch.namespaces.scripts.content.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "dispatch_namespace"
+    ]
+   }
+  },
+  {
+   "id": "named-workersForPlatforms.dispatch.namespaces.scripts.settings.edit",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workersForPlatforms.dispatch.namespaces.scripts.settings.edit",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "dispatch_namespace"
+    ]
+   }
+  },
+  {
+   "id": "named-workersForPlatforms.dispatch.namespaces.scripts.settings.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workersForPlatforms.dispatch.namespaces.scripts.settings.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "dispatch_namespace"
+    ]
+   }
+  },
+  {
+   "id": "named-workersForPlatforms.dispatch.namespaces.scripts.bindings.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workersForPlatforms.dispatch.namespaces.scripts.bindings.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "dispatch_namespace"
+    ]
+   }
+  },
+  {
+   "id": "named-workersForPlatforms.dispatch.namespaces.scripts.secrets.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workersForPlatforms.dispatch.namespaces.scripts.secrets.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "dispatch_namespace"
+    ]
+   }
+  },
+  {
+   "id": "named-workersForPlatforms.dispatch.namespaces.scripts.secrets.list",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workersForPlatforms.dispatch.namespaces.scripts.secrets.list",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "dispatch_namespace"
+    ]
+   }
+  },
+  {
+   "id": "named-workersForPlatforms.dispatch.namespaces.scripts.secrets.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workersForPlatforms.dispatch.namespaces.scripts.secrets.delete",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "dispatch_namespace",
+     "script_name"
+    ]
+   }
+  },
+  {
+   "id": "named-workersForPlatforms.dispatch.namespaces.scripts.secrets.bulkUpdate",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workersForPlatforms.dispatch.namespaces.scripts.secrets.bulkUpdate",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "dispatch_namespace"
+    ]
+   }
+  },
+  {
+   "id": "named-workersForPlatforms.dispatch.namespaces.scripts.secrets.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workersForPlatforms.dispatch.namespaces.scripts.secrets.get",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "dispatch_namespace",
+     "script_name"
+    ]
+   }
+  },
+  {
+   "id": "args-workersForPlatforms.dispatch.namespaces.scripts.tags.update",
+   "kind": "manual",
+   "match": {
+    "call": "workersForPlatforms.dispatch.namespaces.scripts.tags.update"
+   },
+   "fallback": {
+    "prompt": "The arguments of client.workersForPlatforms.dispatch.namespaces.scripts.tags.update changed from (dispatchNamespace, scriptName, [ ...body ]) to (scriptName, [ ...body ]). Update each call."
+   }
+  },
+  {
+   "id": "named-workersForPlatforms.dispatch.namespaces.scripts.tags.list",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workersForPlatforms.dispatch.namespaces.scripts.tags.list",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "dispatch_namespace"
+    ]
+   }
+  },
+  {
+   "id": "named-workersForPlatforms.dispatch.namespaces.scripts.tags.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workersForPlatforms.dispatch.namespaces.scripts.tags.delete",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "dispatch_namespace",
+     "script_name"
+    ]
+   }
+  },
+  {
+   "id": "named-zeroTrust.access.applications.policies.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "zeroTrust.access.applications.policies.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-zeroTrust.access.applications.policies.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "zeroTrust.access.applications.policies.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-zeroTrust.access.applications.policies.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "zeroTrust.access.applications.policies.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-zeroTrust.access.users.activeSessions.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "zeroTrust.access.users.activeSessions.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "user_id"
+    ]
+   }
+  },
+  {
+   "id": "named-zeroTrust.dex.commands.downloads.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "zeroTrust.dex.commands.downloads.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "command_id"
+    ]
+   }
+  },
+  {
+   "id": "named-zeroTrust.tunnels.cloudflared.connectors.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "zeroTrust.tunnels.cloudflared.connectors.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "tunnel_id"
+    ]
+   }
+  },
+  {
+   "id": "named-zeroTrust.tunnels.warpConnector.connectors.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "zeroTrust.tunnels.warpConnector.connectors.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "tunnel_id"
+    ]
+   }
+  },
+  {
+   "id": "named-zeroTrust.dlp.datasets.upload.edit",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "zeroTrust.dlp.datasets.upload.edit",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "dataset_id"
+    ]
+   }
+  },
+  {
+   "id": "args-zeroTrust.dlp.datasets.versions.create",
+   "kind": "manual",
+   "match": {
+    "call": "zeroTrust.dlp.datasets.versions.create"
+   },
+   "fallback": {
+    "prompt": "The arguments of client.zeroTrust.dlp.datasets.versions.create changed from (datasetId, version, [ ...body ]) to (version, [ ...body ]). Update each call."
+   }
+  },
+  {
+   "id": "named-zeroTrust.dlp.datasets.versions.entries.create",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "zeroTrust.dlp.datasets.versions.entries.create",
+    "positional": 4
+   },
+   "transform": {
+    "names": [
+     "dataset_id",
+     "version"
+    ]
+   }
+  },
+  {
+   "id": "named-zeroTrust.dlp.sensitivityGroups.levels.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "zeroTrust.dlp.sensitivityGroups.levels.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "sensitivity_group_id"
+    ]
+   }
+  },
+  {
+   "id": "named-zeroTrust.dlp.sensitivityGroups.levels.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "zeroTrust.dlp.sensitivityGroups.levels.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "sensitivity_group_id"
+    ]
+   }
+  },
+  {
+   "id": "named-zeroTrust.dlp.sensitivityGroups.levels.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "zeroTrust.dlp.sensitivityGroups.levels.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "sensitivity_group_id"
+    ]
+   }
+  },
+  {
+   "id": "named-zeroTrust.dlp.dataTagCategories.dataTags.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "zeroTrust.dlp.dataTagCategories.dataTags.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "category_id"
+    ]
+   }
+  },
+  {
+   "id": "named-zeroTrust.dlp.dataTagCategories.dataTags.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "zeroTrust.dlp.dataTagCategories.dataTags.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "category_id"
+    ]
+   }
+  },
+  {
+   "id": "named-zeroTrust.dlp.dataTagCategories.dataTags.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "zeroTrust.dlp.dataTagCategories.dataTags.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "category_id"
+    ]
+   }
+  },
+  {
+   "id": "named-rum.rules.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "rum.rules.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "ruleset_id"
+    ]
+   }
+  },
+  {
+   "id": "named-rum.rules.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "rum.rules.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "ruleset_id"
+    ]
+   }
+  },
+  {
+   "id": "named-vulnerabilityScanner.credentialSets.credentials.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "vulnerabilityScanner.credentialSets.credentials.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "credential_set_id"
+    ]
+   }
+  },
+  {
+   "id": "named-vulnerabilityScanner.credentialSets.credentials.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "vulnerabilityScanner.credentialSets.credentials.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "credential_set_id"
+    ]
+   }
+  },
+  {
+   "id": "named-vulnerabilityScanner.credentialSets.credentials.edit",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "vulnerabilityScanner.credentialSets.credentials.edit",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "credential_set_id"
+    ]
+   }
+  },
+  {
+   "id": "named-vulnerabilityScanner.credentialSets.credentials.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "vulnerabilityScanner.credentialSets.credentials.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "credential_set_id"
+    ]
+   }
+  },
+  {
+   "id": "named-speed.pages.tests.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "speed.pages.tests.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "url"
+    ]
+   }
+  },
+  {
+   "id": "named-hostnames.settings.tls.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "hostnames.settings.tls.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "setting_id"
+    ]
+   }
+  },
+  {
+   "id": "named-hostnames.settings.tls.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "hostnames.settings.tls.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "setting_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.meetings.addParticipant",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.meetings.addParticipant",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.meetings.deleteMeetingParticipant",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.meetings.deleteMeetingParticipant",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "app_id",
+     "meeting_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.meetings.editParticipant",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.meetings.editParticipant",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "app_id",
+     "meeting_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.meetings.getMeetingByID",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.meetings.getMeetingByID",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.meetings.getMeetingParticipant",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.meetings.getMeetingParticipant",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "app_id",
+     "meeting_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.meetings.getMeetingParticipants",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.meetings.getMeetingParticipants",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.meetings.refreshParticipantToken",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.meetings.refreshParticipantToken",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "app_id",
+     "meeting_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.meetings.replaceMeetingByID",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.meetings.replaceMeetingByID",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.meetings.updateMeetingByID",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.meetings.updateMeetingByID",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.presets.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.presets.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.presets.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.presets.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.presets.getPresetByID",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.presets.getPresetByID",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.sessions.generateSummaryOfTranscripts",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.sessions.generateSummaryOfTranscripts",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.sessions.getParticipantDataFromPeerID",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.sessions.getParticipantDataFromPeerID",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.sessions.getSessionChat",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.sessions.getSessionChat",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.sessions.getSessionDetails",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.sessions.getSessionDetails",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.sessions.getSessionParticipantDetails",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.sessions.getSessionParticipantDetails",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "app_id",
+     "session_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.sessions.getSessionParticipants",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.sessions.getSessionParticipants",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.sessions.getSessionSummary",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.sessions.getSessionSummary",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.sessions.getSessionTranscripts",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.sessions.getSessionTranscripts",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.recordings.getActiveRecordings",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.recordings.getActiveRecordings",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.recordings.getOneRecording",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.recordings.getOneRecording",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.recordings.pauseResumeStopRecording",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.recordings.pauseResumeStopRecording",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.webhooks.deleteWebhook",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.webhooks.deleteWebhook",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.webhooks.editWebhook",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.webhooks.editWebhook",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.webhooks.getWebhookByID",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.webhooks.getWebhookByID",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.webhooks.replaceWebhook",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.webhooks.replaceWebhook",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.activeSession.createPoll",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.activeSession.createPoll",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.activeSession.getActiveSession",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.activeSession.getActiveSession",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.activeSession.kickAllParticipants",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.activeSession.kickAllParticipants",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.activeSession.kickParticipants",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.activeSession.kickParticipants",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.livestreams.getActiveLivestreamsForLivestreamID",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.livestreams.getActiveLivestreamsForLivestreamID",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.livestreams.getLivestreamSessionDetailsForSessionID",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.livestreams.getLivestreamSessionDetailsForSessionID",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.livestreams.getLivestreamSessionForLivestreamID",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.livestreams.getLivestreamSessionForLivestreamID",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.livestreams.getMeetingActiveLivestreams",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.livestreams.getMeetingActiveLivestreams",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.livestreams.startLivestreamingAMeeting",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.livestreams.startLivestreamingAMeeting",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-realtimeKit.livestreams.stopLivestreamingAMeeting",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "realtimeKit.livestreams.stopLivestreamingAMeeting",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-cloudforceOne.requests.message.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "cloudforceOne.requests.message.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "request_id"
+    ]
+   }
+  },
+  {
+   "id": "named-cloudforceOne.requests.message.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "cloudforceOne.requests.message.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "request_id"
+    ]
+   }
+  },
+  {
+   "id": "named-cloudforceOne.requests.assets.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "cloudforceOne.requests.assets.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "request_id"
+    ]
+   }
+  },
+  {
+   "id": "named-cloudforceOne.requests.assets.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "cloudforceOne.requests.assets.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "request_id"
+    ]
+   }
+  },
+  {
+   "id": "named-cloudforceOne.requests.assets.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "cloudforceOne.requests.assets.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "request_id"
+    ]
+   }
+  },
+  {
+   "id": "named-cloudforceOne.threatEvents.datasets.raw",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "cloudforceOne.threatEvents.datasets.raw",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "dataset_id"
+    ]
+   }
+  },
+  {
+   "id": "named-cloudforceOne.threatEvents.raw.edit",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "cloudforceOne.threatEvents.raw.edit",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "event_id"
+    ]
+   }
+  },
+  {
+   "id": "named-cloudforceOne.threatEvents.raw.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "cloudforceOne.threatEvents.raw.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "event_id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiGateway.logs.edit",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiGateway.logs.edit",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "gateway_id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiGateway.logs.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiGateway.logs.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "gateway_id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiGateway.logs.request",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiGateway.logs.request",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "gateway_id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiGateway.logs.response",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiGateway.logs.response",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "gateway_id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiGateway.datasets.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiGateway.datasets.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "gateway_id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiGateway.datasets.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiGateway.datasets.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "gateway_id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiGateway.datasets.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiGateway.datasets.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "gateway_id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiGateway.evaluations.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiGateway.evaluations.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "gateway_id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiGateway.evaluations.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiGateway.evaluations.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "gateway_id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiGateway.dynamicRouting.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiGateway.dynamicRouting.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "gateway_id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiGateway.dynamicRouting.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiGateway.dynamicRouting.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "gateway_id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiGateway.dynamicRouting.createDeployment",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiGateway.dynamicRouting.createDeployment",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "gateway_id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiGateway.dynamicRouting.createVersion",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiGateway.dynamicRouting.createVersion",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "gateway_id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiGateway.dynamicRouting.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiGateway.dynamicRouting.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "gateway_id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiGateway.dynamicRouting.getVersion",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiGateway.dynamicRouting.getVersion",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "gateway_id",
+     "id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiGateway.dynamicRouting.listDeployments",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiGateway.dynamicRouting.listDeployments",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "gateway_id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiGateway.dynamicRouting.listVersions",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiGateway.dynamicRouting.listVersions",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "gateway_id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiGateway.urls.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiGateway.urls.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "gateway_id"
+    ]
+   }
+  },
+  {
+   "id": "named-flagship.apps.flags.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "flagship.apps.flags.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-flagship.apps.flags.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "flagship.apps.flags.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-flagship.apps.flags.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "flagship.apps.flags.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-flagship.apps.flags.changelog.list",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "flagship.apps.flags.changelog.list",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "app_id"
+    ]
+   }
+  },
+  {
+   "id": "named-iam.userGroups.members.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "iam.userGroups.members.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "user_group_id"
+    ]
+   }
+  },
+  {
+   "id": "named-iam.userGroups.members.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "iam.userGroups.members.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "user_group_id"
+    ]
+   }
+  },
+  {
+   "id": "named-workflows.instances.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workflows.instances.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "workflow_name"
+    ]
+   }
+  },
+  {
+   "id": "named-workflows.instances.step",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workflows.instances.step",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "workflow_name"
+    ]
+   }
+  },
+  {
+   "id": "named-workflows.instances.status.edit",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workflows.instances.status.edit",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "workflow_name"
+    ]
+   }
+  },
+  {
+   "id": "named-workflows.instances.events.create",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workflows.instances.events.create",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "workflow_name",
+     "instance_id"
+    ]
+   }
+  },
+  {
+   "id": "named-workflows.versions.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workflows.versions.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "workflow_name"
+    ]
+   }
+  },
+  {
+   "id": "named-workflows.versions.graph",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "workflows.versions.graph",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "workflow_name"
+    ]
+   }
+  },
+  {
+   "id": "named-resourceSharing.recipients.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "resourceSharing.recipients.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "share_id"
+    ]
+   }
+  },
+  {
+   "id": "named-resourceSharing.recipients.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "resourceSharing.recipients.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "share_id"
+    ]
+   }
+  },
+  {
+   "id": "named-resourceSharing.resources.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "resourceSharing.resources.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "share_id"
+    ]
+   }
+  },
+  {
+   "id": "named-resourceSharing.resources.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "resourceSharing.resources.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "share_id"
+    ]
+   }
+  },
+  {
+   "id": "named-resourceSharing.resources.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "resourceSharing.resources.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "share_id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiSearch.namespaces.instances.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiSearch.namespaces.instances.update",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "name"
+    ]
+   }
+  },
+  {
+   "id": "named-aiSearch.namespaces.instances.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiSearch.namespaces.instances.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "name"
+    ]
+   }
+  },
+  {
+   "id": "named-aiSearch.namespaces.instances.chatCompletions",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiSearch.namespaces.instances.chatCompletions",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "name"
+    ]
+   }
+  },
+  {
+   "id": "named-aiSearch.namespaces.instances.read",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiSearch.namespaces.instances.read",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "name"
+    ]
+   }
+  },
+  {
+   "id": "named-aiSearch.namespaces.instances.search",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiSearch.namespaces.instances.search",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "name"
+    ]
+   }
+  },
+  {
+   "id": "named-aiSearch.namespaces.instances.stats",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiSearch.namespaces.instances.stats",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "name"
+    ]
+   }
+  },
+  {
+   "id": "named-aiSearch.namespaces.instances.jobs.create",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiSearch.namespaces.instances.jobs.create",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "name"
+    ]
+   }
+  },
+  {
+   "id": "named-aiSearch.namespaces.instances.jobs.update",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiSearch.namespaces.instances.jobs.update",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "name",
+     "id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiSearch.namespaces.instances.jobs.list",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiSearch.namespaces.instances.jobs.list",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "name"
+    ]
+   }
+  },
+  {
+   "id": "named-aiSearch.namespaces.instances.jobs.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiSearch.namespaces.instances.jobs.get",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "name",
+     "id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiSearch.namespaces.instances.jobs.logs",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiSearch.namespaces.instances.jobs.logs",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "name",
+     "id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiSearch.namespaces.instances.items.list",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiSearch.namespaces.instances.items.list",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "name"
+    ]
+   }
+  },
+  {
+   "id": "named-aiSearch.namespaces.instances.items.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiSearch.namespaces.instances.items.delete",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "name",
+     "id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiSearch.namespaces.instances.items.chunks",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiSearch.namespaces.instances.items.chunks",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "name",
+     "id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiSearch.namespaces.instances.items.createOrUpdate",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiSearch.namespaces.instances.items.createOrUpdate",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "name"
+    ]
+   }
+  },
+  {
+   "id": "named-aiSearch.namespaces.instances.items.download",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiSearch.namespaces.instances.items.download",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "name",
+     "id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiSearch.namespaces.instances.items.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiSearch.namespaces.instances.items.get",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "name",
+     "id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiSearch.namespaces.instances.items.logs",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiSearch.namespaces.instances.items.logs",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "name",
+     "id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiSearch.namespaces.instances.items.sync",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiSearch.namespaces.instances.items.sync",
+    "positional": 3
+   },
+   "transform": {
+    "names": [
+     "name",
+     "id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiSearch.namespaces.instances.items.upload",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiSearch.namespaces.instances.items.upload",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "name"
+    ]
+   }
+  },
+  {
+   "id": "named-aiSearch.instances.jobs.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiSearch.instances.jobs.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "id"
+    ]
+   }
+  },
+  {
+   "id": "named-aiSearch.instances.jobs.logs",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "aiSearch.instances.jobs.logs",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "id"
+    ]
+   }
+  },
+  {
+   "id": "named-browserRendering.devtools.browser.page.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "browserRendering.devtools.browser.page.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "session_id"
+    ]
+   }
+  },
+  {
+   "id": "named-browserRendering.devtools.browser.targets.activate",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "browserRendering.devtools.browser.targets.activate",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "session_id"
+    ]
+   }
+  },
+  {
+   "id": "named-browserRendering.devtools.browser.targets.close",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "browserRendering.devtools.browser.targets.close",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "session_id"
+    ]
+   }
+  },
+  {
+   "id": "named-browserRendering.devtools.browser.targets.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "browserRendering.devtools.browser.targets.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "session_id"
+    ]
+   }
+  },
+  {
+   "id": "named-secretsStore.stores.secrets.delete",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "secretsStore.stores.secrets.delete",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "store_id"
+    ]
+   }
+  },
+  {
+   "id": "named-secretsStore.stores.secrets.duplicate",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "secretsStore.stores.secrets.duplicate",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "store_id"
+    ]
+   }
+  },
+  {
+   "id": "named-secretsStore.stores.secrets.edit",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "secretsStore.stores.secrets.edit",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "store_id"
+    ]
+   }
+  },
+  {
+   "id": "named-secretsStore.stores.secrets.get",
+   "kind": "positional-to-named",
+   "match": {
+    "call": "secretsStore.stores.secrets.get",
+    "positional": 2
+   },
+   "transform": {
+    "names": [
+     "store_id"
+    ]
+   }
+  },
+  {
+   "id": "dependency",
+   "kind": "rename-dependency",
+   "match": {
+    "dependency": "cloudflare"
+   },
+   "transform": {
+    "version": "^7.0.0"
+   }
+  }
+ ]
+}
