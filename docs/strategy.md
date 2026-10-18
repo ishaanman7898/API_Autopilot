@@ -54,6 +54,8 @@ Goal. One real provider publishes a signed rule index that the Action consumes.
 - Offer to maintain the first rule set for them, signed with their key, in their repository.
 - Publish the index on their domain and run `watch` against it for real.
 
+Status. The Mux kit is in [providers/mux](../providers/mux/README.md). The sign and index flow was rehearsed with a throwaway key. Mux has not been contacted and no domain serves an index yet.
+
 Exit test. A pull request opened by the Action from a provider signed index, merged by a real consumer.
 
 ### Phase 2, prove the numbers on more targets
