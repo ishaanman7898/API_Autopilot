@@ -26,6 +26,7 @@ const old = () => sdk('acme-sdk', '1.4.0', [
     method('post', '/jobs', 'jobsPreview.create', 'resources/jobs-preview/jobs.ts', '{ ...params }'),
     method('get', '/jobs/{ID}/result', 'jobsPreview.results.retrieve', 'resources/jobs-preview/results.ts', 'id'),
   ] },
+  { title: 'Members', dir: 'members', types: [], methods: [method('get', '/members/{member_id}', 'members.get', 'resources/members.ts', 'memberId, { ...params }')] },
   { title: 'Data', dir: 'data', types: [type('FilterValue', 'resources/data/filters.ts'), type('Gone', 'resources/data/gone.ts')], methods: [
     method('get', '/data/filters/{ID}', 'data.filters.listValues', 'resources/data/filters.ts', 'id, { ...params }'),
     method('get', '/data/dimensions/{ID}', 'data.dimensions.listValues', 'resources/data/dimensions.ts', 'id, { ...params }'),
@@ -40,6 +41,7 @@ const next = () => sdk('@acme/sdk', '2.0.0', [
     method('post', '/jobs', 'jobs.create', 'resources/jobs/jobs.ts', '{ ...params }'),
     method('get', '/jobs/{ID}/result', 'jobs.results.retrieve', 'resources/jobs/results.ts', 'id'),
   ] },
+  { title: 'Members', dir: 'members', types: [], methods: [method('get', '/members/{member_id}', 'members.get', 'resources/members.ts', 'memberID, { ...params }')] },
   { title: 'Data', dir: 'data', types: [type('FilterValue', 'resources/data/filters.ts')], methods: [
     method('get', '/data/dimensions/{ID}', 'data.dimensions.listValues', 'resources/data/dimensions.ts', 'id, { ...params }'),
     method('delete', '/assets/{ID}', 'video.assets.delete', 'resources/data/assets.ts', 'id'),
@@ -52,7 +54,7 @@ test('api.md surfaces are read across linked files with their endpoints and type
   const s = readApiSurface(old());
   assert.equal(s.name, 'acme-sdk');
   assert.equal(s.version, '1.4.0');
-  assert.equal(s.files.length, 3);
+  assert.equal(s.files.length, 4);
   assert.deepEqual(s.methods.get('GET /jobs/{ID}/result'), [{ call: 'jobsPreview.results.retrieve', file: 'src/resources/jobs-preview/results.ts', args: 'id', returns: 'Thing' }]);
   assert.deepEqual([...s.types.get('Job')], ['src/resources/jobs-preview/jobs.ts']);
   assert.throws(() => readApiSurface(mkdtempSync(join(tmpdir(), 'empty-'))), /has no api\.md/);
@@ -65,6 +67,7 @@ test('drafts from two SDK versions: moved modules, package rename, namespace, re
   assert.deepEqual(diff.moves, [{ from: 'resources/jobs-preview', to: 'resources/jobs' }]);
   assert.deepEqual(diff.removedTypes, ['Gone']);
   assert.deepEqual(diff.added.map((x) => x.call), ['video.fresh']);
+  assert.deepEqual(diff.argsChanged.map((c) => c.call), ['video.assets.update'], 'renaming a placeholder such as memberId to memberID is not a change');
   const { ruleSet, report } = draftFromSurfaces(diff, { provider: 'acme', from: a.version, to: b.version, oldName: a.name, newName: b.name, newVersion: b.version, oldMethods: [...a.methods.values()].flat().map((m) => m.call) });
   const summary = ruleSet.rules.map((r) => [r.kind, r.confidence, r.match, r.transform ?? null]);
   assert.deepEqual(summary, [

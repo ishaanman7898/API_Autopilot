@@ -43,6 +43,21 @@ function commonSuffix(a, b) {
   return k;
 }
 
+// What a caller has to pass: positional arguments and objects, without the placeholder names, which
+// often change case between versions (memberId to memberID) without changing any call.
+const argShape = (args) => {
+  const parts = [];
+  let depth = 0;
+  let cur = '';
+  for (const ch of args) {
+    if ('{[('.includes(ch)) depth++;
+    if ('}])'.includes(ch)) depth--;
+    if (ch === ',' && depth === 0) { parts.push(cur.trim()); cur = ''; } else cur += ch;
+  }
+  if (cur.trim()) parts.push(cur.trim());
+  return parts.map((p) => (p.startsWith('{') ? 'object' : p.startsWith('[') ? 'array' : 'value')).join(',');
+};
+
 function commonPrefix(a, b) {
   let k = 0;
   while (k < a.length && k < b.length && a[k] === b[k]) k++;
@@ -73,7 +88,7 @@ export function diffSurfaces(a, b) {
       const n = same ?? (olds.length === 1 && news.length === 1 ? news[0] : null);
       if (!n) { removed.push({ endpoint, call: o.call }); continue; }
       if (n.call !== o.call) renamed.push({ endpoint, from: o.call, to: n.call });
-      if (n.args !== o.args) argsChanged.push({ endpoint, call: n.call, from: o.args, to: n.args });
+      if (argShape(n.args) !== argShape(o.args)) argsChanged.push({ endpoint, call: n.call, from: o.args, to: n.args });
       else if (n.returns !== o.returns) returnsChanged.push({ endpoint, call: n.call, from: o.returns, to: n.returns });
       move(o.file, n.file);
     }
