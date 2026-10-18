@@ -1,0 +1,70 @@
+name: action-selftest
+
+# Runs the composite action in action.yml on a real runner against a copy of examples/app.
+# The pushed branch goes to a local bare repository and `gh` is a stand-in that records its
+# arguments, so the test checks everything up to the pull request without opening one.
+on:
+  push:
+    branches: [main]
+    paths: [action.yml, scripts/**, src/**, bin/**, examples/**, .github/workflows/action-selftest.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: tool
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+
+      - name: Make a consumer repository with a signed rule
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -R tool/examples/app/. .
+          npm ci --omit=dev --ignore-scripts --prefix tool
+          node tool/bin/apimigrate.js keygen --out "$RUNNER_TEMP/keys"
+          mkdir -p migrations keys
+          cp tool/examples/acme-1-to-2.rules.json migrations/acme.rules.json
+          node tool/bin/apimigrate.js sign migrations/acme.rules.json --key "$RUNNER_TEMP/keys/apimigrate-private.pem"
+          cp "$RUNNER_TEMP/keys/apimigrate-keys.json" keys/
+          printf 'tool/\n' > .gitignore
+          git init -q -b main
+          git add -A
+          git -c user.name=t -c user.email=t@example.com commit -q -m base
+          git init -q --bare "$RUNNER_TEMP/remote.git"
+          git remote add origin "$RUNNER_TEMP/remote.git"
+          git push -q origin main
+          mkdir -p "$RUNNER_TEMP/bin"
+          printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >> "$RUNNER_TEMP/gh-calls.log"\n' > "$RUNNER_TEMP/bin/gh"
+          chmod +x "$RUNNER_TEMP/bin/gh"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Run the action
+        uses: ./tool
+        with:
+          rules: migrations/acme.rules.json
+          keys: keys/apimigrate-keys.json
+          test-cmd: node -e "0"
+
+      - name: Check what the action did
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'payments.create({ amount: cents' src/billing.ts
+          grep -q "from '@acme/sdk'" src/billing.ts
+          test -f .apimigrate/evidence.json
+          node -e 'const e = require("./.apimigrate/evidence.json"); if (!e.gate.ok || !e.rule.signed || e.unresolved.length !== 1) process.exit(1)'
+          branch="$(git rev-parse --abbrev-ref HEAD)"
+          case "$branch" in apimigrate/*) ;; *) echo "unexpected branch $branch"; exit 1 ;; esac
+          git --git-dir="$RUNNER_TEMP/remote.git" show "$branch:src/billing.ts" | grep -q 'payments.create'
+          cat "$RUNNER_TEMP/gh-calls.log"
+          grep -q '^pr create --draft --title API migration: acme-sdk-1-to-2 --body-file ' "$RUNNER_TEMP/gh-calls.log"
+          ! grep -q 'merge' "$RUNNER_TEMP/gh-calls.log"
+          echo "action ran on a real runner and asked for a draft pull request only"
