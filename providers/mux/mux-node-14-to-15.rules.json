@@ -1,0 +1,62 @@
+{
+  "schema": "apimigrate/1",
+  "provider": "mux",
+  "package": "@mux/mux-node",
+  "id": "mux-node-14-to-15",
+  "from": "14.x",
+  "to": "15.x",
+  "sunset": "2027-12-31",
+  "rules": [
+    {
+      "id": "move-resources-robots-preview",
+      "kind": "rename-import",
+      "match": {
+        "module": "@mux/mux-node/resources/robots-preview"
+      },
+      "transform": {
+        "to": "@mux/ts/resources/robots"
+      }
+    },
+    {
+      "id": "package-rename",
+      "kind": "rename-import",
+      "match": {
+        "module": "@mux/mux-node"
+      },
+      "transform": {
+        "to": "@mux/ts"
+      }
+    },
+    {
+      "id": "namespace-robotsPreview",
+      "kind": "rename-namespace",
+      "match": {
+        "path": "robotsPreview"
+      },
+      "transform": {
+        "to": "robots"
+      }
+    },
+    {
+      "id": "removed-data.filters.listValues",
+      "kind": "manual",
+      "match": {
+        "call": "data.filters.listValues"
+      },
+      "fallback": {
+        "prompt": "client.data.filters.listValues was removed in @mux/ts 15.0.0. A likely replacement is client.data.dimensions.listValues. Keep the behaviour identical."
+      }
+    },
+    {
+      "id": "dependency",
+      "kind": "rename-dependency",
+      "match": {
+        "dependency": "@mux/mux-node"
+      },
+      "transform": {
+        "to": "@mux/ts",
+        "version": "^15.0.0"
+      }
+    }
+  ]
+}
