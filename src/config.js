@@ -1,11 +1,17 @@
-// Minimal parser for the flat .apimigrate.yml subset: scalars, inline lists and "- item" lists.
+import { UsageError } from './errors.js';
+
+// Parser for the flat .apimigrate.yml subset: scalars, inline lists and "- item" lists.
 const scalar = (v) => {
   v = v.trim();
   if (v === 'true') return true;
   if (v === 'false') return false;
-  if (/^-?\d+$/.test(v)) return Number(v);
+  if (v === 'null' || v === '~') return null;
+  if (/^-?\d+(\.\d+)?$/.test(v)) return Number(v);
   return v.replace(/^(['"])(.*)\1$/, '$2');
 };
+
+// List items stay strings, so a hash made only of digits keeps its leading zeros.
+const listItem = (v) => v.trim().replace(/^(['"])(.*)\1$/, '$2');
 
 export function parseConfig(text) {
   const cfg = {};
@@ -13,19 +19,19 @@ export function parseConfig(text) {
   for (const raw of text.split('\n')) {
     const line = raw.replace(/(^|\s)#.*$/, '').trimEnd();
     if (!line.trim()) continue;
-    const item = line.match(/^\s+-\s+(.*)$/);
-    if (item && list) {
-      cfg[list].push(scalar(item[1]));
+    const bullet = line.match(/^\s+-\s+(.*)$/);
+    if (bullet && list) {
+      cfg[list].push(listItem(bullet[1]));
       continue;
     }
     const kv = line.match(/^([\w-]+):\s*(.*)$/);
-    if (!kv) throw new Error(`.apimigrate.yml: cannot parse "${raw}"`);
+    if (!kv) throw new UsageError(`.apimigrate.yml: cannot parse "${raw.trim()}"`);
     const [, key, val] = kv;
     if (val === '') {
       cfg[key] = [];
       list = key;
     } else if (val.startsWith('[')) {
-      cfg[key] = val.slice(1, -1).split(',').map(scalar).filter((x) => x !== '');
+      cfg[key] = val.slice(1, -1).split(',').map(listItem).filter((x) => x !== '');
       list = null;
     } else {
       cfg[key] = scalar(val);
@@ -43,7 +49,22 @@ export const DEFAULTS = {
   draft: true,
   reviewers: [],
   model: null,
-  group: 'per-provider',
+  protect: [],
+  allow: [],
+  coverageTolerance: 0,
 };
 
-export const withDefaults = (cfg) => ({ ...DEFAULTS, ...cfg });
+const LISTS = ['providers', 'paths', 'extensions', 'pins', 'reviewers', 'protect', 'allow'];
+
+// Unknown keys and wrong types are errors, so a typo cannot silently weaken a setting.
+export function withDefaults(cfg) {
+  for (const key of Object.keys(cfg)) if (!(key in DEFAULTS)) throw new UsageError(`.apimigrate.yml: unknown setting "${key}"`);
+  for (const key of LISTS) {
+    if (cfg[key] !== undefined && (!Array.isArray(cfg[key]) || cfg[key].some((x) => typeof x !== 'string'))) throw new UsageError(`.apimigrate.yml: ${key} must be a list of strings`);
+  }
+  if (cfg.draft !== undefined && typeof cfg.draft !== 'boolean') throw new UsageError('.apimigrate.yml: draft must be true or false');
+  if (cfg.draft === false) throw new UsageError('.apimigrate.yml: draft: false is not supported, pull requests are always drafts');
+  if (cfg.coverageTolerance !== undefined && (typeof cfg.coverageTolerance !== 'number' || cfg.coverageTolerance < 0)) throw new UsageError('.apimigrate.yml: coverageTolerance must be a number of at least 0');
+  for (const pin of cfg.pins ?? []) if (!/^[0-9a-f]{64}$/.test(pin)) throw new UsageError(`.apimigrate.yml: pin "${pin}" is not a 64 character hex hash`);
+  return { ...DEFAULTS, ...cfg };
+}
