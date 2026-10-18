@@ -128,7 +128,7 @@ Related docs are [GitHub Action](docs/github-action.md).
 - Secret detection is a list of patterns, not an entropy check. Prompt-injection stripping is a heuristic.
 - Performance on very large repositories has not been measured. A 114-rule run takes under a second on a 265-file app and about 4 seconds on a monorepo.
 
-Related docs are [security](docs/security.md), [matching](docs/matching.md) and [build log](docs/history.md).
+Related docs are [security](docs/security.md), [matching](docs/matching.md), [build log](docs/history.md) and [strategy](docs/strategy.md).
 
 ## Project
 
