@@ -64,7 +64,9 @@ See [drafting rules](draft.md).
 | `--root dir` | Repository root. Defaults to the current directory. |
 | `--dry-run` | Prints the changes as diffs and writes nothing, not even the audit log. |
 | `--diff` | Prints diffs of the changes that were made. |
-| `--test-cmd cmd` | Runs the command after applying. A non-zero exit fails the run. |
+| `--install` | When a rule changed a `package.json`, installs the new versions before the tests, so they run against them, and updates the lockfile. Each changed `package.json` is installed in the closest folder with a lockfile, using the manager it names: `npm`, `pnpm`, `yarn` or `bun`, always without install scripts. With no lockfile it uses the workspace root that lists the package, or its own folder, and writes no lockfile. A failed install fails the run before the tests. |
+| `--install-cmd cmd` | When a rule changed a `package.json`, runs this command at the root instead of `--install`. |
+| `--test-cmd cmd` | Runs the command after applying, and after the install. A non-zero exit fails the run. |
 | `--cov-base file`, `--cov-head file` | Istanbul `coverage-summary.json` before and after. |
 | `--strict` | Exit 1 if any call site is unresolved. |
 | `--allow-unsigned` | Skips signature checks, prints a warning, and records `signed: false`. Refused when pins are set. |

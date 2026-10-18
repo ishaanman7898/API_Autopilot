@@ -11,14 +11,15 @@
 | `well-known` | Provider domain that serves the key set. Use this or `keys`. |
 | `keys` | Path to a key set file committed in your repository. Use this or `well-known`. |
 | `test-cmd` | Test command. A failure stops the run before any pull request is opened. In `watch` mode it runs after each upgrade. |
+| `install-cmd` | When a rule changes a `package.json`, the new versions are installed before the tests and the lockfile is updated, with the package manager the lockfile names and no install scripts. Set a command to run instead, or `none` to skip it. |
 | `token` | Token for pushing and opening the pull request. Defaults to the workflow token. |
 
 ## What it does
 
 1. Installs the tool's dependencies with `npm ci --omit=dev --ignore-scripts`.
-2. Runs `apply`. If the rule is unsigned, expired, pinned out, fails the gate, or fails your tests, the job fails and no pull request is opened.
+2. Runs `apply` with `--install`, so a changed `package.json` is installed, and its lockfile updated, before your tests run. If the rule is unsigned, expired, pinned out, fails the gate, fails to install, or fails your tests, the job fails and no pull request is opened.
 3. Uploads `evidence.json`, `unresolved.json` and `audit.log` as an artifact.
-4. If files changed, creates a branch named `apimigrate/<rule id>-<run id>`, stages only the files named in the evidence, commits, pushes, and runs `gh pr create --draft`.
+4. If files changed, creates a branch named `apimigrate/<rule id>-<run id>`, stages only the files named in the evidence and the lockfiles the install updated, commits, pushes, and runs `gh pr create --draft`.
 5. The pull request body has a summary table, the unresolved sites, the verify command and the evidence bundle. Long evidence is truncated in the body and complete in the artifact.
 
 If nothing changed, no branch or pull request is created.
@@ -28,8 +29,8 @@ If nothing changed, no branch or pull request is created.
 `examples/watch-workflow.yml` runs the action with `mode: watch` every week.
 
 1. Runs `apimigrate watch` with the repository's `.apimigrate.yml`. It writes the plan and rule files to the runner's temp directory, not to the repository. See [CLI reference](cli.md#watch).
-2. For each upgrade that has rules, starts a branch from the checked out commit and runs `apply`. Signed rules are checked against the key set they were verified with. Drafted rules run with `--allow-unsigned`. When `.apimigrate.yml` sets `pins`, drafts are skipped, since `pins` forbids unsigned rules.
-3. If files changed, the gate and tests passed, and the branch does not already exist on the remote, it stages only the files named in the evidence, commits, pushes, and runs `gh pr create --draft`.
+2. For each upgrade that has rules, starts a branch from the checked out commit and runs `apply`, installing the new versions before your tests as in apply mode. After an upgrade that installed, the base versions are installed again, so each upgrade is tested on its own. Signed rules are checked against the key set they were verified with. Drafted rules run with `--allow-unsigned`. When `.apimigrate.yml` sets `pins`, drafts are skipped, since `pins` forbids unsigned rules.
+3. If files changed, the install, gate and tests passed, and the branch does not already exist on the remote, it stages only the files named in the evidence and the updated lockfiles, commits, pushes, and runs `gh pr create --draft`.
 4. Uploads the plan, rule files, reports, evidence and pull request bodies as the `apimigrate-watch` artifact.
 
 | Rules | Branch | Title |
@@ -54,9 +55,10 @@ The sample workflow in `examples/workflow.yml` asks for `contents: write` and `p
 
 ## Limits
 
-- The action runs on a real GitHub runner in the `action-selftest` workflow, in apply mode against a copy of `examples/app` and in watch mode against a repository that depends on Mux 14, with the real npm registry and GitHub. It pushes to a local bare repository and `gh` is replaced by a stand-in that records its arguments, so that run checks everything up to the pull request but does not open one.
+- The action runs on a real GitHub runner in the `action-selftest` workflow, in apply mode against a copy of `examples/app` and in watch mode against a repository that depends on Mux 14, with the real npm registry and GitHub. In watch mode its tests call the SDK, and a clone of the pushed branch must pass `npm ci` and `npm test`. It pushes to a local bare repository and `gh` is replaced by a stand-in that records its arguments, so that run checks everything up to the pull request but does not open one.
 - Pull requests created with the default workflow token do not trigger other workflows. Use a token with the access you want if you need that.
 - A migration with unresolved sites opens a draft that is partly done. The body says so, and the sites are in the artifact.
-- The repository must already be checked out, and Node 20 or newer must be set up before this action runs.
+- The repository must already be checked out, and Node 20 or newer must be set up before this action runs. Install your dependencies first, as the sample workflows do with `npm ci`, and set up `pnpm`, `yarn` or `bun` if the lockfile names one.
+- A nested project whose `package.json` changed gets its own install only when it has its own lockfile or a workspace root lists it.
 
 Related docs are [CLI reference](cli.md), [evidence and replay](evidence.md) and [security](security.md).

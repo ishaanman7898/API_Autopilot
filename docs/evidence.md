@@ -18,6 +18,7 @@ Every `apply` writes `.apimigrate/evidence.json`. The bundle is built so that tw
 | `agent` | Present after `agent-apply`. Digests of the files the agent edited. |
 | `gate` | The gate result, with each finding. |
 | `tests` | The test command and its exit code, or null. |
+| `install` | With `--install` or `--install-cmd`, each install command, its folder and exit code, and the digests of each lockfile it changed, or null. Changed lockfiles are committed with the pull request, and the head check compares them when they are among the scanned files. |
 | `meta.createdAt` | The only value that depends on the clock. |
 
 ## What makes it deterministic

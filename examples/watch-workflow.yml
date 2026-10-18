@@ -22,7 +22,9 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
-      # Pin this to a full commit SHA of a release you have reviewed.
+      # Pin this to a full commit SHA of a release you have reviewed. Each upgrade's new versions are installed,
+      # without install scripts, before npm test runs, and the updated lockfile is committed with the pull request.
+      # Set install-cmd to use your own command, or none to skip it.
       - uses: ishaanman7898/API_Autopilot@main
         with:
           mode: watch

@@ -23,7 +23,8 @@ This page lists what the tool does about each threat and where it stops. The thr
 ## What the tool trusts
 
 - The signature and the key set you point it at.
-- Your `.apimigrate.yml`, and the command you give to `--test-cmd`, which runs with your permissions.
+- Your `.apimigrate.yml`, and the commands you give to `--test-cmd` and `--install-cmd`, which run with your permissions.
+- With `--install`, your package manager and the registry it installs from. Install scripts are not run, but the new versions' code runs in your tests.
 - The TypeScript compiler it embeds.
 
 ## What it does not protect against

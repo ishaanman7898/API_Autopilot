@@ -118,7 +118,7 @@ Related docs are [GitHub Action](docs/github-action.md).
 - Matching covers JavaScript and TypeScript only. It follows imports, requires, re-exports and local files. It has no type information, so a receiver that arrives as an untyped parameter of an exported function, an untyped class field that is not `readonly`, or a `let` variable that is also given other values cannot be proven and goes to the queue. A parameter typed with the SDK class is followed.
 - A call in a file that neither imports the package nor reaches it through imports of other scanned files is not seen. In a file that does reach it, a call that looks right but cannot be proven is queued.
 - Clients from factory functions, lazily cached variables, `globalThis` caches, CommonJS exports and `tsconfig.json` path aliases are followed. Object methods and class members are not. The [Mux benchmark](bench/mux-14-to-15/README.md) measures how many call sites the tool can see.
-- `rename-dependency` updates `package.json` but not the lockfile. The run output and the pull request say to regenerate it.
+- `rename-dependency` updates `package.json`. With `--install`, which the Action uses, the new versions are installed before your tests and the lockfile is updated, without install scripts. Without it the lockfile is left alone, and the run output and the pull request say to regenerate it.
 - The gate recognizes common JavaScript test styles. It counts per file, so it can flag legitimate test rewrites. The `allow` setting exists for that.
 - Replay reproduces only the deterministic pass. Agent edits are checked by the head digests, the gate and your tests, not reproduced.
 - Regex `replace` rules are not parse-verified and are labelled that way in the evidence.
