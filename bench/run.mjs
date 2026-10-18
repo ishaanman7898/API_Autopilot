@@ -82,6 +82,8 @@ function typecheck(tree, files, label) {
 const minus = (a, b) => [...a].filter(([k]) => !b.has(k)).map(([, v]) => v);
 const IMPORT = /(?:\bfrom\s+|\brequire\(\s*|\bimport\(\s*)['"]((?:@[^'"/]+\/)?[^'"/]+)(?:\/[^'"]*)?['"]/g;
 const DEP_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'];
+// Line and block comments removed, so a package name mentioned in a comment is not counted as an import.
+const stripComments = (text) => text.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' ')).replace(/(^|[^:'"`\\])\/\/.*$/gm, '$1');
 const escape = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 
 // Files that import one of the SDK packages without the nearest package.json declaring it.
@@ -96,7 +98,7 @@ function undeclaredImports(tree, files, names) {
     }
     return false;
   };
-  return files.filter((f) => [...readFileSync(join(tree, f), 'utf8').matchAll(IMPORT)].some((m) => names.includes(m[1]) && !declared(f, m[1])));
+  return files.filter((f) => [...stripComments(readFileSync(join(tree, f), 'utf8')).matchAll(IMPORT)].some((m) => names.includes(m[1]) && !declared(f, m[1])));
 }
 
 function main() {
@@ -158,7 +160,7 @@ function main() {
     row.filesChanged = ev.files.length;
     const leftover = new RegExp(`['"]${escape(pkgName)}(/[^'"]*)?['"]`);
     const migratedFiles = codeFiles(migrated);
-    row.leftoverImports = migratedFiles.filter((p) => leftover.test(readFileSync(join(migrated, p), 'utf8'))).length;
+    row.leftoverImports = migratedFiles.filter((p) => leftover.test(stripComments(readFileSync(join(migrated, p), 'utf8')))).length;
     row.undeclaredImports = undeclaredImports(migrated, migratedFiles, sdkNames);
     row.manifestsChanged = ev.files.filter((f) => /(^|\/)package\.json$/.test(f.path)).map((f) => f.path);
     row.typecheckFiles = row.muxFiles;
@@ -177,7 +179,9 @@ function main() {
     r.brokenByUpgrade = minus(r.B, r.A);
     r.stillBroken = minus(r.C, r.A);
     r.fixed = r.brokenByUpgrade.filter((d) => !r.C.has(`${d.file}:${d.line}:${d.code}`)).length;
-    r.newFromMigration = minus(r.C, r.B);
+    // Errors only the migrated code has. An error already in the original code can be hidden in B when the
+    // upgrade breaks an import, so it is checked against A as well.
+    r.newFromMigration = minus(r.C, new Map([...r.A, ...r.B]));
     r.baselineErrors = r.A.size;
     delete r.A; delete r.B; delete r.C; delete r.typecheckFiles;
   }
