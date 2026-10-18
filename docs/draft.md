@@ -51,7 +51,8 @@ The package name and versions come from each checkout's `package.json` unless `-
 | Types and methods defined under one directory are defined under another | A `rename-import` rule for that subpath, `likely`, placed before the package rename. |
 | The package name changed | A `rename-import` rule for the package, `likely`. |
 | An endpoint is gone | A `manual` rule, `needs-review`, naming the closest method with the same name as a likely replacement. |
-| A method's arguments changed | A `manual` rule, `needs-review`, with both argument lists. |
+| Leading positional arguments moved into the params object, each matching a path parameter of the endpoint | A `positional-to-named` rule, `likely`. |
+| Any other change to the arguments a caller passes | A `manual` rule, `needs-review`, with both argument lists. Renamed placeholders, such as `memberId` to `memberID`, are not changes. |
 | The name or version changed | A `rename-dependency` rule to the new name at `^` the new version, `likely`. |
 
 Added methods, changed return types and removed types are listed in the report. On Mux 14.1.1 to 15.0.0 this drafts 5 rules: the `resources/robots-preview` subpath move, the rename to `@mux/ts`, `robotsPreview` to `robots`, a manual rule for `data.filters.listValues` that suggests `data.dimensions.listValues`, and the dependency.

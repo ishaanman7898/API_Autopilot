@@ -199,6 +199,7 @@ export const cases = [
   ...commonJsCases(),
   ...namespaceCases(),
   ...globalCacheCases(),
+  ...positionalCases(),
   {
     name: 'lookalikes in files that reach the package through local imports are queued, others are not',
     rules: mp,
@@ -226,6 +227,35 @@ export const cases = [
   },
   ...aliasCases(),
 ];
+
+// positional-to-named, as in Cloudflare 7: retrieve(parentId, childId) becomes retrieve(childId, { parent_id }).
+function positionalCases() {
+  const rule = [{ id: 'pn', kind: 'positional-to-named', match: { call: 'parents.children.retrieve', positional: 2 }, transform: { names: ['parent_id'] } }];
+  const imp = "import Acme from 'acme-sdk';\nconst c = new Acme();\n";
+  return [
+    {
+      name: 'positional-to-named moves leading arguments into the params object',
+      rules: rule,
+      files: {
+        'a.ts': `${imp}c.parents.children.retrieve('p_1', 'c_1');\nc.parents.children.retrieve(p.id, childId, { zone_id: z });\nc.parents.children.retrieve(pid, cid, {});\nc.parents.children.retrieve(pid, cid, opts, { timeout: 5 });\nc.parents.children.retrieve(pid, cid, {\n  zone_id: z,\n  name: 'n',\n});\nc.parents.children.retrieve('c_2', { parent_id: 'p_2' });\n`,
+      },
+      expect: {
+        'a.ts': `${imp}c.parents.children.retrieve('c_1', { parent_id: 'p_1' });\nc.parents.children.retrieve(childId, { parent_id: p.id, zone_id: z });\nc.parents.children.retrieve(cid, { parent_id: pid });\nc.parents.children.retrieve(cid, { parent_id: pid, ...opts }, { timeout: 5 });\nc.parents.children.retrieve(cid, { parent_id: pid,\n  zone_id: z,\n  name: 'n',\n});\nc.parents.children.retrieve('c_2', { parent_id: 'p_2' });\n`,
+      },
+      unresolved: [],
+    },
+    {
+      name: 'positional-to-named queues calls it cannot move safely',
+      rules: rule,
+      files: {
+        'a.ts': `${imp}c.parents.children.retrieve(await getParent(), cid);\nc.parents.children.retrieve(...ids);\nc.parents.children.retrieve(pid, cid, { parent_id: other });\nc.parents.children.retrieve(pid);\nfunction f(x) { return x.parents.children.retrieve(pid, cid); }\n`,
+      },
+      expect: {},
+      untouched: ['a.ts'],
+      unresolved: [['a.ts', 3, 'side effects'], ['a.ts', 4, 'spread argument'], ['a.ts', 5, 'already has one of parent_id'], ['a.ts', 6, 'not called with 2 positional arguments'], ['a.ts', 7, 'cannot be traced']],
+    },
+  ];
+}
 
 // Clients cached on the global object so they survive hot reloads, as in Next.js and Prisma's guide.
 function globalCacheCases() {

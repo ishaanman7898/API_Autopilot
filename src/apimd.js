@@ -43,9 +43,8 @@ function commonSuffix(a, b) {
   return k;
 }
 
-// What a caller has to pass: positional arguments and objects, without the placeholder names, which
-// often change case between versions (memberId to memberID) without changing any call.
-const argShape = (args) => {
+// The top-level arguments of an api.md signature such as `memberId, { ...params }`.
+function splitArgs(args) {
   const parts = [];
   let depth = 0;
   let cur = '';
@@ -55,8 +54,31 @@ const argShape = (args) => {
     if (ch === ',' && depth === 0) { parts.push(cur.trim()); cur = ''; } else cur += ch;
   }
   if (cur.trim()) parts.push(cur.trim());
-  return parts.map((p) => (p.startsWith('{') ? 'object' : p.startsWith('[') ? 'array' : 'value')).join(',');
+  return parts;
+}
+
+// What a caller has to pass: positional arguments and objects, without the placeholder names, which
+// often change case between versions (memberId to memberID) without changing any call.
+const argShape = (args) => splitArgs(args).map((p) => (p.startsWith('{') ? 'object' : p.startsWith('[') ? 'array' : 'value')).join(',');
+const positionals = (args) => {
+  const parts = splitArgs(args);
+  const n = parts.findIndex((p) => p.startsWith('{') || p.startsWith('['));
+  return { names: n === -1 ? parts : parts.slice(0, n), next: n === -1 ? null : parts[n] };
 };
+const squash = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+// Leading positional arguments that became keys of the params object, named after the endpoint's path
+// parameters, as in Cloudflare 7: (parentId, childId, { ...params }) to (childId, { ...params }) on
+// /parents/{parent_id}/children/{child_id}. Returns the keys, or null when the change is something else.
+function namedPathParams(change) {
+  const before = positionals(change.from);
+  const after = positionals(change.to);
+  if (after.names.length >= before.names.length || !after.next?.startsWith('{')) return null;
+  const moved = before.names.slice(0, before.names.length - after.names.length);
+  const params = [...change.endpoint.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]);
+  const keys = moved.map((name) => params.find((p) => squash(p) === squash(name)));
+  return keys.every(Boolean) ? { positional: before.names.length, names: keys } : null;
+}
 
 function commonPrefix(a, b) {
   let k = 0;
@@ -157,6 +179,11 @@ export function draftFromSurfaces(diff, { provider, from, to, oldName, newName, 
     add({ id: `removed-${r.call}`, kind: 'manual', confidence: 'needs-review', evidence: `endpoint ${r.endpoint} is gone from the new version`, match: { call: r.call }, fallback: { prompt: `client.${r.call} was removed in ${target} ${to}.${hint} Keep the behaviour identical.` } });
   }
   for (const c of diff.argsChanged) {
+    const named = namedPathParams(c);
+    if (named) {
+      add({ id: `named-${c.call}`, kind: 'positional-to-named', confidence: 'likely', evidence: `(${c.from}) became (${c.to}) on ${c.endpoint}, so ${named.names.join(', ')} moved into the params object`, match: { call: c.call, positional: named.positional }, transform: { names: named.names } });
+      continue;
+    }
     add({ id: `args-${c.call}`, kind: 'manual', confidence: 'needs-review', evidence: `arguments of ${c.endpoint} changed`, match: { call: c.call }, fallback: { prompt: `The arguments of client.${c.call} changed from (${c.from}) to (${c.to}). Update each call.` } });
   }
   if (newVersion && (newName !== oldName || from !== to)) {

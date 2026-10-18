@@ -125,6 +125,58 @@ export function renameNamespace(ctx, sf, rule, out) {
   });
 }
 
+// An argument that can be moved without changing what runs: names, literals and property reads of them.
+function isSimple(n) {
+  while (ts.isParenthesizedExpression(n) || ts.isNonNullExpression(n) || ts.isAsExpression(n)) n = n.expression;
+  if (ts.isIdentifier(n) || ts.isLiteralExpression(n) || n.kind === ts.SyntaxKind.TrueKeyword || n.kind === ts.SyntaxKind.FalseKeyword || n.kind === ts.SyntaxKind.NullKeyword) return true;
+  if (ts.isPropertyAccessExpression(n)) return isSimple(n.expression);
+  if (ts.isTemplateExpression(n)) return n.templateSpans.every((s) => isSimple(s.expression));
+  return false;
+}
+
+const keyFor = (name) => (IDENT.test(name) ? name : JSON.stringify(name));
+
+// Moves the first positional arguments of a call into its params object, as when an SDK switches to named
+// path parameters: retrieve('p_123', 'c_456') becomes retrieve('c_456', { parent_id: 'p_123' }).
+// match.positional is how many positional arguments the old signature takes, and transform.names are the
+// keys the first of them move to. A call already in the new shape is left alone.
+export function positionalToNamed(ctx, sf, rule, out) {
+  const { call, positional } = rule.match;
+  const { names } = rule.transform;
+  const keep = positional - names.length;
+  for (const c of findCalls(ctx, sf, call)) {
+    if (!c.proven) { out.fail(sf, c.node, c.reason); continue; }
+    const args = c.node.arguments;
+    if (args.some(ts.isSpreadElement)) { out.fail(sf, c.node, `${call} is called with a spread argument`); continue; }
+    const migrated = args[keep] && ts.isObjectLiteralExpression(args[keep]) && args[keep].properties.some((p) => p.name && names.includes(keyText(p.name)));
+    if (migrated) continue;
+    if (args.length < positional || args.slice(0, positional).some(ts.isObjectLiteralExpression)) {
+      out.fail(sf, c.node, `${call} is not called with ${positional} positional arguments`);
+      continue;
+    }
+    const moved = args.slice(0, names.length);
+    const kept = args.slice(names.length, positional);
+    if (![...moved, ...kept].every(isSimple)) { out.fail(sf, c.node, `arguments of ${call} could have side effects and moving them would change their order`); continue; }
+    const params = args[positional];
+    if (params && ts.isObjectLiteralExpression(params) && params.properties.some((p) => p.name && names.includes(keyText(p.name)))) {
+      out.fail(sf, c.node, `the params object of ${call} already has one of ${names.join(', ')}`);
+      continue;
+    }
+    const text = (n) => sf.text.slice(n.getStart(sf), n.getEnd());
+    const pairs = names.map((n, i) => `${keyFor(n)}: ${text(moved[i])}`).join(', ');
+    let object;
+    if (!params) object = `{ ${pairs} }`;
+    else if (ts.isObjectLiteralExpression(params)) {
+      // Keeps the object's own layout: a multi-line object gets the new keys on its first line.
+      const inner = sf.text.slice(params.getStart(sf) + 1, params.getEnd() - 1);
+      if (!inner.trim()) object = `{ ${pairs} }`;
+      else object = inner.includes('\n') ? `{ ${pairs},${inner}}` : `{ ${pairs}, ${inner.trim()} }`;
+    } else object = `{ ${pairs}, ...${text(params)} }`;
+    const end = (params ?? args[positional - 1]).getEnd();
+    out.edit(sf, args[0].getStart(sf), end, [...kept.map(text), object].join(', '), c.node);
+  }
+}
+
 export function flagManual(ctx, sf, rule, out) {
   for (const c of findCalls(ctx, sf, rule.match.call)) out.fail(sf, c.node, c.proven ? 'manual rule: call site needs a migration' : c.reason);
 }
@@ -134,5 +186,6 @@ export const TRANSFORMS = {
   'rename-method': renameMethod,
   'rename-param': renameParam,
   'rename-namespace': renameNamespace,
+  'positional-to-named': positionalToNamed,
   manual: flagManual,
 };

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
 export const SCHEMA = 'apimigrate/1';
-export const KINDS = ['rename-import', 'rename-method', 'rename-param', 'rename-namespace', 'rename-dependency', 'replace', 'manual'];
+export const KINDS = ['rename-import', 'rename-method', 'rename-param', 'rename-namespace', 'positional-to-named', 'rename-dependency', 'replace', 'manual'];
 const PROPERTY_PATH = /^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)*$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}(T[\d:.]+(Z|[+-]\d{2}:\d{2}))?$/;
 
@@ -50,6 +50,8 @@ export function validateRuleSet(rs) {
     }
     if (r.kind === 'manual' && !(r.match?.call && r.fallback?.prompt)) errors.push(`${at}: needs match.call and fallback.prompt`);
     if (r.kind === 'rename-namespace' && !(PROPERTY_PATH.test(r.match?.path ?? '') && PROPERTY_PATH.test(r.transform?.to ?? ''))) errors.push(`${at}: needs match.path and transform.to as property paths such as robotsPreview or data.filters`);
+    if (r.kind === 'positional-to-named' && !(r.match?.call && Number.isInteger(r.match?.positional) && Array.isArray(r.transform?.names) && r.transform.names.length > 0 &&
+      r.transform.names.length <= r.match.positional && r.transform.names.every((n) => typeof n === 'string' && n))) errors.push(`${at}: needs match.call, match.positional and transform.names, with no more names than positional arguments`);
     if (r.kind === 'rename-dependency' && !(r.match?.dependency && (typeof r.transform?.to === 'string' || typeof r.transform?.version === 'string'))) errors.push(`${at}: needs match.dependency and transform.to or transform.version`);
   }
   return errors;
