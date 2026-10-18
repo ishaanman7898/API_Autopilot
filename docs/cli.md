@@ -17,7 +17,7 @@ Run `node bin/apimigrate.js <command>`, or `apimigrate <command>` once linked. E
 
 `keygen [--out dir] [--key-id id] [--force]`
 
-Writes `apimigrate-private.pem`, `apimigrate-public.pem` and `apimigrate-keys.json`. Refuses to overwrite without `--force`. Publish the key set file at the well-known URL.
+Writes `apimigrate-private.pem`, `apimigrate-public.pem` and `apimigrate-keys.json`, creating the `--out` folder if needed. Refuses to overwrite without `--force`. Publish the key set file at the well-known URL.
 
 ### lint
 
@@ -97,6 +97,6 @@ Runs only the gate. Settings come from `.apimigrate.yml` in the base directory.
 
 Unknown settings, wrong types and malformed pins are errors with exit code 2.
 
-Directories named `node_modules`, `.git`, `dist`, `build`, `coverage` and `.apimigrate` are skipped, symbolic links are not followed, and files over 2 MB are not scanned.
+Directories named `node_modules`, `.git`, `dist`, `build`, `coverage` and `.apimigrate` are skipped, symbolic links are not followed, and files over 2 MB are not scanned. A configured path that is a symbolic link, or is reached through one, is skipped and listed in the output. List items in `.apimigrate.yml` may be indented or sit at the same indent as their key.
 
 Related docs are [rule format](rule-format.md), [gate](gate.md), [GitHub Action](github-action.md) and [security](security.md).

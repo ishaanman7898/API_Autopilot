@@ -5,7 +5,7 @@ import { UsageError } from '../errors.js';
 import { applyRuleSet } from '../engine.js';
 import { buildEvidence } from '../evidence.js';
 import { runGate } from '../gate.js';
-import { isSunset } from '../rule.js';
+import { hashRuleSet, isSunset } from '../rule.js';
 import { TrustError, verifyRuleSet } from '../signing.js';
 import { writeChanged } from '../tree.js';
 import { TOOL } from '../version.js';
@@ -53,20 +53,31 @@ export async function run({ flags }, io) {
   const before = loadTrees(root, cfg, scan);
   const result = applyRuleSet(rs, before.scanFiles);
   const changed = Object.keys(result.files).filter((f) => before.scanFiles[f] !== result.files[f]);
+  const gateOptions = { base: before.files, protect: protectList(cfg), allow: cfg.allow, coverageTolerance: cfg.coverageTolerance };
+  const preview = { ...before.files, ...result.files };
 
   if (dry || flags.diff) for (const f of changed) io.out(unifiedDiff(f, before.scanFiles[f], result.files[f]).trimEnd());
-  if (!dry) writeChanged(root, before.scanFiles, result.files, before.styles);
 
+  // Gate the rewrite in memory first, so a failing change never reaches the disk. Same order as agent-apply.
+  if (!dry) {
+    const pre = runGate({ ...gateOptions, head: preview });
+    if (!pre.ok) {
+      for (const f of pre.findings) io.err(`gate: ${f.message}`);
+      io.err('nothing was written because the gate failed');
+      audit(root, { event: 'apply', rule: rs.id, hash: hashRuleSet(rs), signed: Boolean(rs.signature), changedFiles: 0, unresolved: result.unresolved.length, gate: false, tests: null });
+      return 1;
+    }
+    writeChanged(root, before.scanFiles, result.files, before.styles);
+  }
+
+  // Gate again after the tests run, because the test command can change files too.
   const tests = flags['test-cmd'] && !dry ? runTests(flags['test-cmd'], root) : null;
-  const head = dry ? { files: { ...before.files, ...result.files } } : loadTrees(root, cfg, scan);
+  const head = dry ? { files: preview } : loadTrees(root, cfg, scan);
   const gate = runGate({
-    base: before.files,
+    ...gateOptions,
     head: head.files,
-    protect: protectList(cfg),
-    allow: cfg.allow,
     coverageBase: readCoverage(flags['cov-base']),
     coverageHead: readCoverage(flags['cov-head']),
-    coverageTolerance: cfg.coverageTolerance,
   });
   const evidence = buildEvidence({ ruleSet: rs, before: before.scanFiles, deterministic: result, gate, tests, tool: TOOL, scan });
 

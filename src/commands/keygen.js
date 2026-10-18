@@ -1,4 +1,4 @@
-import { chmodSync, existsSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { UsageError } from '../errors.js';
 import { generateKeys } from '../signing.js';
@@ -21,6 +21,7 @@ export function run({ flags }, io) {
   const set = join(out, 'apimigrate-keys.json');
   if (!flags.force && [priv, pub, set].some(existsSync)) throw new UsageError(`key files already exist in ${out}, pass --force to overwrite`);
   const { publicPem, privatePem } = generateKeys();
+  mkdirSync(out, { recursive: true });
   writeFileSync(priv, privatePem, { mode: 0o600 });
   try { chmodSync(priv, 0o600); } catch { /* not supported on every platform */ }
   writeFileSync(pub, publicPem);

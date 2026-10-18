@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { UsageError } from './errors.js';
 
@@ -7,6 +7,9 @@ const DEFAULT_EXT = ['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.mts', '.cts
 const MAX_BYTES = 2 * 1024 * 1024;
 
 const posix = (p) => p.split(sep).join('/');
+
+// True when the real location of full is exactly where its path says, so no component is a symbolic link.
+const reachedDirectly = (base, full) => realpathSync(full) === join(realpathSync(base), relative(base, full));
 
 // Text is held as LF without a BOM so digests match across operating systems. The original style is kept for writing back.
 export function normalize(raw) {
@@ -47,8 +50,14 @@ export function readTree(root, { paths = ['.'], extensions = [], match = null } 
   for (const p of paths) {
     const full = resolve(base, p);
     if (full !== base && !full.startsWith(base + sep)) throw new UsageError(`path ${p} is outside the repository root`);
+    // The root itself may be a link the caller chose. Anything below it may not be reached through one.
+    const top = full === base;
     let st;
-    try { st = statSync(full); } catch { continue; }
+    try { st = top ? statSync(full) : lstatSync(full); } catch { continue; }
+    if (!top && (st.isSymbolicLink() || !reachedDirectly(base, full))) {
+      skipped.push({ file: posix(relative(base, full)), reason: 'reached through a symbolic link, not followed' });
+      continue;
+    }
     if (st.isDirectory()) walk(full);
     else if (st.isFile()) take(full);
   }
@@ -63,6 +72,12 @@ export function writeChanged(root, before, after, styles) {
     if (before[file] === text) continue;
     const full = resolve(base, file);
     if (!full.startsWith(base + sep)) throw new Error(`refusing to write outside the repository root: ${file}`);
+    // Check the deepest folder that exists before creating any, so no folder is made through a link either.
+    let dir = dirname(full);
+    while (!existsSync(dir)) dir = dirname(dir);
+    let link = false;
+    try { link = lstatSync(full).isSymbolicLink(); } catch { /* new file */ }
+    if (link || !reachedDirectly(base, dir)) throw new Error(`refusing to write through a symbolic link: ${file}`);
     mkdirSync(dirname(full), { recursive: true });
     writeFileSync(full, denormalize(text, styles[file] ?? { eol: '\n', bom: false }));
     written.push(file);

@@ -49,6 +49,14 @@ test('config parsing and validation', () => {
   assert.deepEqual(parseConfig('paths:\r\n  - src\r\n').paths, ['src']);
 });
 
+test('config list items may sit at the same indent as their key', () => {
+  const cfg = withDefaults(parseConfig('paths:\n- src\n- test # tests\nproviders: [acme]\n'));
+  assert.deepEqual(cfg.paths, ['src', 'test']);
+  assert.deepEqual(cfg.providers, ['acme']);
+  assert.throws(() => parseConfig('- src\n'), /cannot parse "- src"/, 'a bullet with no list key is still an error');
+  assert.throws(() => parseConfig('draft: true\n- src\n'), /cannot parse "- src"/, 'a bullet after a scalar is still an error');
+});
+
 test('argument parsing is strict', () => {
   const spec = { bool: ['dry-run'], value: ['root'], positional: 1 };
   assert.deepEqual(parseArgs(['a', '--root', 'x', '--dry-run'], spec), { flags: { root: 'x', 'dry-run': true }, pos: ['a'] });

@@ -19,7 +19,8 @@ export function parseConfig(text) {
   for (const raw of text.split('\n')) {
     const line = raw.replace(/(^|\s)#.*$/, '').trimEnd();
     if (!line.trim()) continue;
-    const bullet = line.match(/^\s+-\s+(.*)$/);
+    // YAML allows list items at the same indent as their key, so the leading space is optional.
+    const bullet = line.match(/^\s*-\s+(.*)$/);
     if (bullet && list) {
       cfg[list].push(listItem(bullet[1]));
       continue;

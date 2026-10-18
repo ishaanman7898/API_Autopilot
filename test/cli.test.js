@@ -186,6 +186,17 @@ test('the gate fails the run when the test command touches CI config, and when t
   assert.match(strict.err, /strict: unresolved/);
 });
 
+test('a rewrite that fails the gate is never written to disk', async () => {
+  const weaken = { id: 'weaken', kind: 'replace', match: { pattern: 'toBe\\(1\\)', files: ['billing.test.ts'] }, transform: { to: 'toBeTruthy()' } };
+  const repo = write(tmp(), REPO);
+  const r = await apply(await publisher([weaken]), repo);
+  assert.equal(r.code, 1);
+  assert.match(r.err, /gate: test\/billing\.test\.ts:4: weak assertion added/);
+  assert.match(r.err, /nothing was written because the gate failed/);
+  assert.equal(readFileSync(join(repo, 'test/billing.test.ts'), 'utf8'), TEST);
+  assert.equal(existsSync(join(repo, '.apimigrate', 'evidence.json')), false);
+});
+
 test('the gate command compares two trees', async () => {
   const base = write(tmp(), REPO);
   const head = write(tmp(), { ...REPO, 'test/billing.test.ts': TEST.replace("  expect(1).toBe(1);\n", '') });
@@ -252,6 +263,13 @@ test('draft and sign: drafts are written with marks and cannot be signed until r
   assert.equal(refused.code, 2);
   assert.match(refused.err, /refusing to sign/);
   assert.equal((await run('keygen', '--out', dir)).code, 2, 'keygen refuses to overwrite');
+});
+
+test('keygen creates a missing output folder', async () => {
+  const out = join(tmp(), 'nested', 'keys');
+  const r = await run('keygen', '--out', out);
+  assert.equal(r.code, 0, r.err);
+  for (const f of ['apimigrate-private.pem', 'apimigrate-public.pem', 'apimigrate-keys.json']) assert.ok(existsSync(join(out, f)), f);
 });
 
 test('help, per command help and version', async () => {

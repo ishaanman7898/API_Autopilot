@@ -2,6 +2,8 @@
 
 The gate compares the tree before and after a migration and fails when something suggests the tests were made to pass instead of the code being migrated. It runs on deterministic edits and on agent edits, with the same rules. Each finding names a code, a file and a line.
 
+Edits are gated in memory before anything is written, so a change that fails the gate never reaches the disk. `apply` runs the gate a second time after your test command, because the test command can change files too.
+
 ## Checks
 
 | Code | Trips when |

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { applyRuleSet } from '../src/engine.js';
@@ -89,4 +89,28 @@ test('symbolic links are not followed', (t) => {
   writeFileSync(join(outside, 'secret.ts'), 'secret');
   try { symlinkSync(outside, join(root, 'link'), 'dir'); } catch { return t.skip('symlinks not permitted here'); }
   assert.deepEqual(Object.keys(readTree(root).files), []);
+});
+
+test('a scan path that is or passes through a symbolic link is skipped, and writes through one are refused', (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'tree-'));
+  const outside = mkdtempSync(join(tmpdir(), 'outside-'));
+  mkdirSync(join(outside, 'sub'));
+  writeFileSync(join(outside, 'secret.ts'), 'secret');
+  writeFileSync(join(outside, 'sub', 'deep.ts'), 'deep');
+  writeFileSync(join(root, 'own.ts'), 'own');
+  try { symlinkSync(outside, join(root, 'link'), 'dir'); } catch { return t.skip('symlinks not permitted here'); }
+
+  for (const p of ['link', 'link/sub', 'link/secret.ts']) {
+    const { files, skipped } = readTree(root, { paths: [p] });
+    assert.deepEqual(Object.keys(files), [], p);
+    assert.deepEqual(skipped, [{ file: p, reason: 'reached through a symbolic link, not followed' }], p);
+  }
+  assert.throws(() => writeChanged(root, {}, { 'link/secret.ts': 'changed' }, {}), /through a symbolic link/);
+  assert.throws(() => writeChanged(root, {}, { 'link/new/made.ts': 'x' }, {}), /through a symbolic link/);
+  assert.equal(readFileSync(join(outside, 'secret.ts'), 'utf8'), 'secret');
+  assert.equal(existsSync(join(outside, 'new')), false, 'no folder is created through the link');
+
+  const rootLink = join(mkdtempSync(join(tmpdir(), 'rootlink-')), 'repo');
+  symlinkSync(root, rootLink, 'dir');
+  assert.deepEqual(Object.keys(readTree(rootLink).files), ['own.ts'], 'a root that is itself a link is still read');
 });

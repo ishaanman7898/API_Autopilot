@@ -49,9 +49,9 @@ Related docs are [rule format](docs/rule-format.md) and [evidence and replay](do
 
 1. Checks the rule is valid, has not passed its sunset date, and is allowed by `.apimigrate.yml`.
 2. Verifies the signature against keys the publisher published. Anything missing, expired, revoked or mismatched stops the run.
-3. Parses the repository and applies each rule in order. Only call sites it can trace to the package are rewritten.
-4. Runs your test command if you gave one.
-5. Runs the gate, which fails on removed or skipped tests, weakened assertions, lowered coverage, new secrets, and edits to test or CI config.
+3. Parses the repository and applies each rule in order, in memory. Only call sites it can trace to the package are rewritten.
+4. Runs the gate on the rewritten tree, which fails on removed or skipped tests, weakened assertions, new secrets, and edits to test or CI config. If it fails, nothing is written.
+5. Writes the changes, runs your test command if you gave one, then runs the gate again, this time with coverage.
 6. Writes `.apimigrate/evidence.json`, a queue of unresolved sites, and an audit log.
 
 Related docs are [matching](docs/matching.md), [gate](docs/gate.md), [agent fallback](docs/agent.md) and [security](docs/security.md).
