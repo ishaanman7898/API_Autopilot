@@ -1,0 +1,15 @@
+{
+  "schema": "apimigrate/1",
+  "provider": "acme",
+  "package": "acme-sdk",
+  "id": "acme-sdk-1-to-2",
+  "from": "1.x",
+  "to": "2.x",
+  "sunset": "2027-12-31",
+  "rules": [
+    { "id": "import", "kind": "rename-import", "match": { "module": "acme-sdk" }, "transform": { "to": "@acme/sdk" } },
+    { "id": "charges-to-payments", "kind": "rename-method", "match": { "call": "charges.create" }, "transform": { "to": "payments.create" } },
+    { "id": "amount", "kind": "rename-param", "match": { "call": "payments.create", "param": "amount_cents" }, "transform": { "to": "amount" } },
+    { "id": "capture", "kind": "manual", "match": { "call": "charges.capture" }, "fallback": { "prompt": "charges.capture was replaced by payments.confirm(id). Migrate the call and its result handling." } }
+  ]
+}

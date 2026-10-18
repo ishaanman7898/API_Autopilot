@@ -1,0 +1,5 @@
+providers: [acme]
+paths:
+  - src
+  - test
+draft: true
