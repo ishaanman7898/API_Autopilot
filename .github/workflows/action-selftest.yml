@@ -81,18 +81,30 @@ jobs:
           node-version: 22
 
       # @mux/mux-node 15.5.0 is the last release under that name, so this upgrade stays the same.
-      - name: Make a consumer repository that uses Mux 14
+      # The test calls the SDK the way the app does, against a port where nothing listens. It passes
+      # only when the code and the installed version agree: a call the installed SDK lacks is a TypeError.
+      - name: Make a consumer repository that uses Mux 14 and tests against it
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p src
-          printf '%s\n' '{ "name": "consumer", "private": true, "dependencies": { "@mux/mux-node": "^14.1.1" } }' > package.json
+          mkdir -p src test
+          printf '%s\n' '{ "name": "consumer", "private": true, "type": "module", "scripts": { "test": "node --test test/video.test.mjs" }, "dependencies": { "@mux/mux-node": "^14.1.1" } }' > package.json
           printf '%s\n' \
             "import Mux from '@mux/mux-node';" \
-            "const mux = new Mux();" \
+            "export const mux = new Mux({ tokenId: 'id', tokenSecret: 'secret', baseURL: 'http://127.0.0.1:9', maxRetries: 0 });" \
             "export const summarize = (id: string) => mux.robotsPreview.jobs.summarize.create({ parameters: { asset_id: id } });" \
             "export const browsers = () => mux.data.filters.listValues('browser');" > src/video.ts
-          printf 'tool/\n' > .gitignore
+          printf '%s\n' \
+            "import test from 'node:test';" \
+            "import assert from 'node:assert/strict';" \
+            "import { summarize } from '../src/video.ts';" \
+            "test('summarize reaches the API through the installed SDK', async () => {" \
+            "  const error = await summarize('asset').then(() => null, (e) => e);" \
+            "  assert.ok(error && !(error instanceof TypeError), String(error));" \
+            "});" > test/video.test.mjs
+          npm install --ignore-scripts --no-audit --no-fund
+          npm test
+          printf 'tool/\nnode_modules/\n.apimigrate/\n' > .gitignore
           # The action is checked out under tool/, so limit the watcher to the consumer's dependency.
           printf 'watch:\n- "@mux/mux-node"\n' > .apimigrate.yml
           git init -q -b main
@@ -110,7 +122,7 @@ jobs:
         uses: ./tool
         with:
           mode: watch
-          test-cmd: node -e "0"
+          test-cmd: npm test
 
       - name: Check the unsigned draft pull request
         shell: bash
@@ -123,19 +135,35 @@ jobs:
           git --git-dir="$remote" show "$branch:src/video.ts" | grep -q 'mux.robots.jobs.summarize.create'
           git --git-dir="$remote" show "$branch:src/video.ts" | grep -q 'mux.data.filters.listValues'
           git --git-dir="$remote" show "$branch:package.json" | grep -q '"@mux/ts": "^15.5.0"'
-          test "$(git --git-dir="$remote" diff --name-only main "$branch" | tr '\n' ' ')" = "package.json src/video.ts "
+          git --git-dir="$remote" show "$branch:package-lock.json" | grep -q '"node_modules/@mux/ts"'
+          test "$(git --git-dir="$remote" diff --name-only main "$branch" | tr '\n' ' ')" = "package-lock.json package.json src/video.ts "
           test "$(git rev-parse --abbrev-ref HEAD)" = main
           cat "$RUNNER_TEMP/gh-calls.log"
           grep -q '^pr create --draft --base main --head apimigrate/mux-mux-node-14-to-15-unsigned --title \[unsigned draft\] API migration: @mux/mux-node 14.1.1 to 15.5.0 --body-file ' "$RUNNER_TEMP/gh-calls.log"
           body="$(sed -n 's/.* --body-file //p' "$RUNNER_TEMP/gh-calls.log")"
           grep -q '^> \*\*Unsigned\.\*\*' "$body"
           grep -q 'removed-data.filters.listValues' "$body"
+          grep -q '| Tests | exit code 0 |' "$body"
+          grep -q '`package-lock.json` was updated' "$body"
           ! grep -q 'merge' "$RUNNER_TEMP/gh-calls.log"
+          # The base versions are installed again after the upgrade.
+          test "$(node -p "JSON.parse(require('fs').readFileSync('node_modules/@mux/mux-node/package.json', 'utf8')).version.split('.')[0]")" = 14
+          test ! -e node_modules/@mux/ts
+
+      - name: Check that the pull request installs and passes its tests as it would in CI
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q -b apimigrate/mux-mux-node-14-to-15-unsigned "$RUNNER_TEMP/remote.git" "$RUNNER_TEMP/pr"
+          cd "$RUNNER_TEMP/pr"
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm test
 
       - name: Watch again
         uses: ./tool
         with:
           mode: watch
+          test-cmd: npm test
 
       - name: Check that nothing was opened twice
         shell: bash
