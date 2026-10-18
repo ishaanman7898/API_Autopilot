@@ -1,0 +1,1373 @@
+{
+ "rules": "bench/mux-14-to-15/rules.json",
+ "oldSdk": [
+  "@mux/mux-node@14.1.1"
+ ],
+ "newSdk": [
+  "@mux/mux-node@15.5.0",
+  "@mux/ts@15.5.0"
+ ],
+ "ranAt": "2026-10-18T06:54:17.744Z",
+ "results": [
+  {
+   "repo": "19leva89/react-ts-next-newtube",
+   "version": "^14.1.1",
+   "commit": "3707c471f9d7b4765e404278d27c26773681d9d8",
+   "muxFiles": [
+    "src/app/api/videos/webhook/route.ts",
+    "src/lib/mux.ts"
+   ],
+   "applyMs": 1100,
+   "applyExit": 0,
+   "changed": 2,
+   "changedByRule": {
+    "package-rename": 2
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 2,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "src/app/api/videos/webhook/route.ts",
+     "line": 9,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts/resources/webhooks/webhooks.mjs' or its corresponding type declarations."
+    },
+    {
+     "file": "src/lib/mux.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 10
+  },
+  {
+   "repo": "1outsyde/outsyde-backend",
+   "version": "^14.1.1",
+   "commit": "fd81722f100e88b80ad342e07f9840782511a203",
+   "muxFiles": [
+    "server/services/mux.ts"
+   ],
+   "applyMs": 6639,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "package-rename": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "server/services/mux.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 2
+  },
+  {
+   "repo": "Ali-Razahaider/lms",
+   "version": "^14.1.1",
+   "commit": "140b62a02bbb40bd9e384d07c07c0a967d1f9e5e",
+   "muxFiles": [
+    "lib/mux.ts"
+   ],
+   "applyMs": 594,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "package-rename": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "lib/mux.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 8
+  },
+  {
+   "repo": "BestOlumese/tyims-lms",
+   "version": "14.0.1",
+   "commit": "919dc48c94ed8388c9683fceb0956790395bfef6",
+   "muxFiles": [
+    "lib/inngest/functions.ts",
+    "lib/mux.ts"
+   ],
+   "applyMs": 3754,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "package-rename": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "lib/mux.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 7
+  },
+  {
+   "repo": "Docaari/GrindfyManager",
+   "version": "^14.0.1",
+   "commit": "fe769faab522ad506fb8d894880ab14e7d764f43",
+   "muxFiles": [
+    "server/services/muxAssetCreator.ts",
+    "server/services/muxMediaProvider.ts",
+    "server/services/transcriptionIngestor.ts",
+    "tests/server/library/muxMediaProvider.test.ts"
+   ],
+   "applyMs": 37559,
+   "applyExit": 0,
+   "changed": 3,
+   "changedByRule": {
+    "package-rename": 3
+   },
+   "unresolved": [
+    {
+     "file": "tests/server/library/muxMediaProvider.test.ts",
+     "line": 50,
+     "ruleId": "package-rename",
+     "reason": "module name @mux/mux-node appears outside import syntax"
+    }
+   ],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 3,
+   "leftoverImports": 1,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "server/services/muxAssetCreator.ts",
+     "line": 100,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "server/services/muxMediaProvider.ts",
+     "line": 32,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "server/services/transcriptionIngestor.ts",
+     "line": 113,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 30
+  },
+  {
+   "repo": "Javaris500/allan-palmer",
+   "version": "^14.0.1",
+   "commit": "e64e877427baf8556d623361409830612124520b",
+   "muxFiles": [
+    "lib/mux.ts",
+    "scripts/seed-gallery-videos.ts"
+   ],
+   "applyMs": 2056,
+   "applyExit": 0,
+   "changed": 2,
+   "changedByRule": {
+    "package-rename": 2
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 2,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "lib/mux.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "scripts/seed-gallery-videos.ts",
+     "line": 27,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 13
+  },
+  {
+   "repo": "Keats0206/retailtherapy",
+   "version": "^14.1.1",
+   "commit": "d43e0141bf2e972e9d646b83f5ad4aa07131b540",
+   "muxFiles": [
+    "scripts/create-stream.mjs",
+    "scripts/smoke-test-show.ts",
+    "src/lib/mux.ts"
+   ],
+   "applyMs": 1928,
+   "applyExit": 0,
+   "changed": 3,
+   "changedByRule": {
+    "package-rename": 3
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 3,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "scripts/create-stream.mjs",
+     "line": 4,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "scripts/smoke-test-show.ts",
+     "line": 7,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "src/lib/mux.ts",
+     "line": 2,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 13
+  },
+  {
+   "repo": "LetsChurch/lets.church",
+   "version": "^14.1.1",
+   "commit": "3754ef409ee3d5b2a5bd992e9c2a13ae7bff52b0",
+   "muxFiles": [
+    "packages/temporal/src/util/mux.ts",
+    "packages/web/src/util/mux.ts"
+   ],
+   "applyMs": 12428,
+   "applyExit": 0,
+   "changed": 2,
+   "changedByRule": {
+    "package-rename": 2
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 2,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "packages/temporal/src/util/mux.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "packages/web/src/util/mux.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 5
+  },
+  {
+   "repo": "Luzzotica/partii",
+   "version": "^14.0.1",
+   "commit": "623785307400f28dffbebf7e86b6acfabe34b678",
+   "muxFiles": [
+    "lib/mux/client.ts"
+   ],
+   "applyMs": 5820,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "package-rename": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "lib/mux/client.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 3
+  },
+  {
+   "repo": "MeetMajh/v0-majh-events-ecosystem",
+   "version": "^14.0.0",
+   "commit": "d9eb8f141087956c2ff167d0d8077d5c2b01a708",
+   "muxFiles": [
+    "lib/mux.ts"
+   ],
+   "applyMs": 7851,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "package-rename": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "lib/mux.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 3
+  },
+  {
+   "repo": "Mohammad-Ali-Soomro/CourseForge",
+   "version": "^14.1.1",
+   "commit": "a913a4ac8165a4d40e156fda6bb22acfc18d8acc",
+   "muxFiles": [
+    "lib/mux/client.ts"
+   ],
+   "applyMs": 542,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "package-rename": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "lib/mux/client.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 2
+  },
+  {
+   "repo": "Pritam-Kundu/EduSmart",
+   "version": "^14.1.1",
+   "commit": "32d8b8cfcafea6297888253cc111e465633f6286",
+   "muxFiles": [
+    "controllers/lessonController.js",
+    "controllers/teacherController.js",
+    "routes/muxWebhook.js"
+   ],
+   "applyMs": 939,
+   "applyExit": 0,
+   "changed": 3,
+   "changedByRule": {
+    "package-rename": 3
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 3,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "controllers/lessonController.js",
+     "line": 7,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "controllers/teacherController.js",
+     "line": 4,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "routes/muxWebhook.js",
+     "line": 3,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 41
+  },
+  {
+   "repo": "QASchoolUSA/Alla-LMS",
+   "version": "^14.0.1",
+   "commit": "4952172019a112ae9d9440364552c0d284a98e83",
+   "muxFiles": [
+    "lib/mux-signing.ts",
+    "lib/mux.ts"
+   ],
+   "applyMs": 642,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "package-rename": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "lib/mux.ts",
+     "line": 2,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 9
+  },
+  {
+   "repo": "Schuchhardt/kefy",
+   "version": "^14.1.0",
+   "commit": "22d099619fb24e3147a5e1675bdba56a7210d428",
+   "muxFiles": [
+    "lib/mux.ts",
+    "next.config.ts"
+   ],
+   "applyMs": 7306,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "package-rename": 1
+   },
+   "unresolved": [
+    {
+     "file": "next.config.ts",
+     "line": 47,
+     "ruleId": "package-rename",
+     "reason": "module name @mux/mux-node appears outside import syntax"
+    }
+   ],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": 1,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "lib/mux.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 9
+  },
+  {
+   "repo": "Shivanshu49/NEDC-Platform",
+   "version": "^14.1.1",
+   "commit": "b69043711352b758393348111c124d6300f5212a",
+   "muxFiles": [
+    "lib/mux.ts"
+   ],
+   "applyMs": 936,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "package-rename": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "lib/mux.ts",
+     "line": 2,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 4
+  },
+  {
+   "repo": "XAct1HP/10kp",
+   "version": "^14.1.1",
+   "commit": "bce67a16786e940059ea8644a8dcf4106a631bbe",
+   "muxFiles": [
+    "lib/moderation/mux-visual-moderation.js",
+    "lib/mux.js"
+   ],
+   "applyMs": 2829,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "package-rename": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": 1,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [
+    {
+     "file": "lib/moderation/mux-visual-moderation.js",
+     "line": 40,
+     "code": "TS2339",
+     "message": "Property 'robotsPreview' does not exist on type 'Mux'."
+    },
+    {
+     "file": "lib/moderation/mux-visual-moderation.js",
+     "line": 64,
+     "code": "TS2339",
+     "message": "Property 'robotsPreview' does not exist on type 'Mux'."
+    },
+    {
+     "file": "lib/moderation/mux-visual-moderation.js",
+     "line": 72,
+     "code": "TS2339",
+     "message": "Property 'robotsPreview' does not exist on type 'Mux'."
+    },
+    {
+     "file": "lib/moderation/mux-visual-moderation.js",
+     "line": 90,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/mux-node/resources/robots-preview/jobs/moderate' or its corresponding type declarations."
+    }
+   ],
+   "stillBroken": [
+    {
+     "file": "lib/moderation/mux-visual-moderation.js",
+     "line": 40,
+     "code": "TS2339",
+     "message": "Property 'robotsPreview' does not exist on type 'Mux'."
+    },
+    {
+     "file": "lib/moderation/mux-visual-moderation.js",
+     "line": 64,
+     "code": "TS2339",
+     "message": "Property 'robotsPreview' does not exist on type 'Mux'."
+    },
+    {
+     "file": "lib/moderation/mux-visual-moderation.js",
+     "line": 72,
+     "code": "TS2339",
+     "message": "Property 'robotsPreview' does not exist on type 'Mux'."
+    },
+    {
+     "file": "lib/moderation/mux-visual-moderation.js",
+     "line": 90,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/mux-node/resources/robots-preview/jobs/moderate' or its corresponding type declarations."
+    }
+   ],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "lib/moderation/mux-visual-moderation.js",
+     "line": 90,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/mux-node/resources/robots-preview/jobs/moderate' or its corresponding type declarations."
+    },
+    {
+     "file": "lib/mux.js",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 13
+  },
+  {
+   "repo": "abbnelhaj/wasl_academy",
+   "version": "^14.1.1",
+   "commit": "18cba1e0663408a06c64d5a50df4b95764f817a0",
+   "muxFiles": [
+    "lib/actions/mux.ts"
+   ],
+   "applyMs": 1058,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "package-rename": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "lib/actions/mux.ts",
+     "line": 4,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 10
+  },
+  {
+   "repo": "acvigue/fitness-backend",
+   "version": "^14.0.1",
+   "commit": "25de45119d1d43478d7b23c4e46ef2a2fcddee8b",
+   "muxFiles": [
+    "src/rest/video/mux.service.ts"
+   ],
+   "applyMs": 1866,
+   "applyExit": 0,
+   "changed": 2,
+   "changedByRule": {
+    "package-rename": 2
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "src/rest/video/mux.service.ts",
+     "line": 2,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "src/rest/video/mux.service.ts",
+     "line": 3,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts/resources/webhooks/webhooks' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 6
+  },
+  {
+   "repo": "anaisbetts/atmospics",
+   "version": "^14.0.1",
+   "commit": "90483ded4213ec918cd24c3076b4b3a799a7eef9",
+   "muxFiles": [
+    "src/lib/utils.ts"
+   ],
+   "applyMs": 519,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "package-rename": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "src/lib/utils.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 4
+  },
+  {
+   "repo": "brightsolutions-tn/Bright-Abodes",
+   "version": "^14.1.1",
+   "commit": "884568aedaa3ddf423969b11330efd45a1ebfd5a",
+   "muxFiles": [
+    "api/src/index.ts"
+   ],
+   "applyMs": 590,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "package-rename": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "api/src/index.ts",
+     "line": 5,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 29
+  },
+  {
+   "repo": "byjasonz/sponsor-tracker",
+   "version": "^14.0.1",
+   "commit": "a69045af28ce6b4fe01cc90b0423d6a81aef736a",
+   "muxFiles": [
+    "lib/mux.ts"
+   ],
+   "applyMs": 531,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "package-rename": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "lib/mux.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 2
+  },
+  {
+   "repo": "dittastudio/raw",
+   "version": "^14.0.1",
+   "commit": "bc7d0cd1534a3b051b33e2305e85153cde06bbb1",
+   "muxFiles": [
+    "server/api/mux-assets.get.ts"
+   ],
+   "applyMs": 438,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "package-rename": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "server/api/mux-assets.get.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 3
+  },
+  {
+   "repo": "divyansh2102t-dev/VertexHub",
+   "version": "^14.1.1",
+   "commit": "2b92f7b66c367f5a56b550b7f1d2d2a6f82325cd",
+   "muxFiles": [
+    "src/lib/storage/mux.ts"
+   ],
+   "applyMs": 2778,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "package-rename": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "src/lib/storage/mux.ts",
+     "line": 6,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 3
+  },
+  {
+   "repo": "m3nd0zit4/dayana-pnl",
+   "version": "^14.1.1",
+   "commit": "9ced7906c61503ed0b56ddcfa2b0f2421d405490",
+   "muxFiles": [
+    "lib/mux/client.ts",
+    "lib/webhooks/verify.ts"
+   ],
+   "applyMs": 12247,
+   "applyExit": 0,
+   "changed": 2,
+   "changedByRule": {
+    "package-rename": 2
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 2,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "lib/mux/client.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "lib/webhooks/verify.ts",
+     "line": 2,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts/resources/webhooks/webhooks' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 33
+  },
+  {
+   "repo": "manu-180/ponchospanish_next",
+   "version": "^14.1.0",
+   "commit": "d816a75f4e79aa092163faee123914a14a92cf91",
+   "muxFiles": [
+    "lib/mux/client.ts"
+   ],
+   "applyMs": 1795,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "package-rename": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "lib/mux/client.ts",
+     "line": 13,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 1
+  },
+  {
+   "repo": "music-city/music-city",
+   "version": "^14.1.1",
+   "commit": "3c254d8eeca2a0a65c0dc05610603ca6edba3026",
+   "muxFiles": [
+    "server/src/modules/media/media.service.ts",
+    "server/src/services/mux.service.ts"
+   ],
+   "applyMs": 3081,
+   "applyExit": 0,
+   "changed": 2,
+   "changedByRule": {
+    "package-rename": 2
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 2,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "server/src/modules/media/media.service.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "server/src/services/mux.service.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 40
+  },
+  {
+   "repo": "nayyarsatwik30/CollabCut",
+   "version": "^14.1.1",
+   "commit": "10b1c700f9a6d7274dc3488cbd6e745da4e75ced",
+   "muxFiles": [
+    "lib/mux.ts"
+   ],
+   "applyMs": 1254,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "package-rename": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "lib/mux.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 4
+  },
+  {
+   "repo": "pontusab/behindthecode",
+   "version": "^14.1.1",
+   "commit": "c52e5be761fb0e9efb7e7fdcef3f4a4109ebd0d4",
+   "muxFiles": [
+    "packages/mux/src/client.ts"
+   ],
+   "applyMs": 1047,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "package-rename": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "packages/mux/src/client.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 6
+  },
+  {
+   "repo": "pro-laico/payload-plugins",
+   "version": "^14.1.1",
+   "commit": "9d5f5390da335309bd357e19e2862b9c2a4488b0",
+   "muxFiles": [
+    "examples/mux-sandbox/tests/mux.int.spec.ts",
+    "packages/payload-mux/src/collections/MuxVideo.ts",
+    "packages/payload-mux/src/endpoints/refresh.ts",
+    "packages/payload-mux/src/endpoints/upload.ts",
+    "packages/payload-mux/src/endpoints/webhook.ts",
+    "packages/payload-mux/src/hooks/collection/afterDelete.ts",
+    "packages/payload-mux/src/hooks/collection/beforeChange.ts",
+    "packages/payload-mux/src/hooks/collection/beforeValidate.ts",
+    "packages/payload-mux/src/hooks/field/afterRead.ts",
+    "packages/payload-mux/src/lib/ingest.ts",
+    "packages/payload-mux/src/plugin.ts",
+    "packages/payload-mux/src/types/settings/uploadSettings.ts"
+   ],
+   "applyMs": 4323,
+   "applyExit": 0,
+   "changed": 12,
+   "changedByRule": {
+    "package-rename": 12
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 12,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "examples/mux-sandbox/tests/mux.int.spec.ts",
+     "line": 5,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "packages/payload-mux/src/collections/MuxVideo.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "packages/payload-mux/src/endpoints/refresh.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "packages/payload-mux/src/endpoints/upload.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "packages/payload-mux/src/endpoints/webhook.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "packages/payload-mux/src/hooks/collection/afterDelete.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "packages/payload-mux/src/hooks/collection/beforeChange.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "packages/payload-mux/src/hooks/collection/beforeValidate.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "packages/payload-mux/src/hooks/field/afterRead.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "packages/payload-mux/src/lib/ingest.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "packages/payload-mux/src/lib/ingest.ts",
+     "line": 65,
+     "code": "TS2339",
+     "message": "Property 'asset_id' does not exist on type 'unknown'."
+    },
+    {
+     "file": "packages/payload-mux/src/lib/ingest.ts",
+     "line": 68,
+     "code": "TS2339",
+     "message": "Property 'asset_id' does not exist on type 'unknown'."
+    },
+    {
+     "file": "packages/payload-mux/src/lib/ingest.ts",
+     "line": 69,
+     "code": "TS2339",
+     "message": "Property 'asset_id' does not exist on type 'unknown'."
+    },
+    {
+     "file": "packages/payload-mux/src/lib/ingest.ts",
+     "line": 73,
+     "code": "TS2339",
+     "message": "Property 'status' does not exist on type 'unknown'."
+    },
+    {
+     "file": "packages/payload-mux/src/lib/ingest.ts",
+     "line": 76,
+     "code": "TS2339",
+     "message": "Property 'id' does not exist on type 'unknown'."
+    },
+    {
+     "file": "packages/payload-mux/src/lib/ingest.ts",
+     "line": 77,
+     "code": "TS2339",
+     "message": "Property 'status' does not exist on type 'unknown'."
+    },
+    {
+     "file": "packages/payload-mux/src/lib/ingest.ts",
+     "line": 78,
+     "code": "TS2339",
+     "message": "Property 'errors' does not exist on type 'unknown'."
+    },
+    {
+     "file": "packages/payload-mux/src/lib/ingest.ts",
+     "line": 79,
+     "code": "TS2339",
+     "message": "Property 'status' does not exist on type 'unknown'."
+    },
+    {
+     "file": "packages/payload-mux/src/plugin.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "packages/payload-mux/src/types/settings/uploadSettings.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 52
+  },
+  {
+   "repo": "reno99sonu-eng/inplayer",
+   "version": "^14.1.1",
+   "commit": "9b21da2ecbf3469bf28351edf46aab469fc2901a",
+   "muxFiles": [
+    "app/lib/mux.ts"
+   ],
+   "applyMs": 5431,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "package-rename": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "app/lib/mux.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 6
+  },
+  {
+   "repo": "ssquaremarketings/ssquaremarketings",
+   "version": "^14.0.0",
+   "commit": "d76ddef5936dde3746884c2f80ec37d32c283e85",
+   "muxFiles": [
+    "app/api/mux/asset-status/route.ts",
+    "app/api/mux/delete/route.ts",
+    "app/api/mux/upload-url/route.ts",
+    "app/api/projects/[id]/mux.ts"
+   ],
+   "applyMs": 661,
+   "applyExit": 0,
+   "changed": 4,
+   "changedByRule": {
+    "package-rename": 4
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 4,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "app/api/mux/asset-status/route.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "app/api/mux/delete/route.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "app/api/mux/upload-url/route.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    },
+    {
+     "file": "app/api/projects/[id]/mux.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 16
+  },
+  {
+   "repo": "ultrabconstructions-spec/playverse-app",
+   "version": "^14.1.0",
+   "commit": "d56d79211974b230ed568534c532511771ff97f2",
+   "muxFiles": [
+    "lib/mux.ts"
+   ],
+   "applyMs": 367,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "package-rename": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": 0,
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [],
+   "stillBroken": [],
+   "fixed": 0,
+   "newFromMigration": [],
+   "brokenWithoutManifest": [
+    {
+     "file": "lib/mux.ts",
+     "line": 1,
+     "code": "TS2307",
+     "message": "Cannot find module '@mux/ts' or its corresponding type declarations."
+    }
+   ],
+   "baselineErrors": 2
+  }
+ ]
+}

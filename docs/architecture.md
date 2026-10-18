@@ -45,6 +45,6 @@ The core is a set of small modules that work on plain maps of path to text. The 
 
 ## Roadmap
 
-A GitHub App with narrow permissions, more languages, an agent runner that consumes the queue, signed evidence bundles, and a benchmark of recorded breaking changes. None of these exist yet.
+A GitHub App with narrow permissions, more languages, an agent runner that consumes the queue, and signed evidence bundles. None of these exist yet. A benchmark of recorded breaking changes has started in [bench](../bench/README.md), with one change so far.
 
 Related docs are [matching](matching.md), [evidence and replay](evidence.md), [gate](gate.md) and [CLI reference](cli.md).

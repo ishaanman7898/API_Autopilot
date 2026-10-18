@@ -105,6 +105,8 @@ Related docs are [GitHub Action](docs/github-action.md).
 
 - Matching covers JavaScript and TypeScript only. It follows imports, requires, re-exports and local files. It has no type information, so a receiver that arrives as a function parameter, a class field or a `let` variable cannot be proven and goes to the queue.
 - A call in a file that neither imports the package nor reaches it through a relative import is not seen.
+- Path aliases from `tsconfig.json`, such as `@/lib/client`, are not resolved, and a client returned from a function, such as `getClient()`, cannot be traced. Calls on either are not seen unless the file imports the package itself. In the [Mux benchmark](bench/mux-14-to-15/README.md) this hid 56% of call sites.
+- `rename-import` does not update `package.json`, so the dependency must be renamed by hand in the same change.
 - The gate recognizes common JavaScript test styles. It counts per file, so it can flag legitimate test rewrites. The `allow` setting exists for that.
 - Replay reproduces only the deterministic pass. Agent edits are checked by the head digests, the gate and your tests, not reproduced.
 - Regex `replace` rules are not parse-verified and are labelled that way in the evidence.

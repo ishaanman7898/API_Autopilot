@@ -28,6 +28,6 @@ The test suite runs with the Node test runner and covers each item above, includ
 - The GitHub Action on a real runner.
 - The well-known fetch against a live domain. It is tested with injected fetch functions.
 - Performance on large repositories.
-- The tool on real third party SDK migrations. The fixtures are small and written for the tests.
+- Real third party SDK migrations beyond one. The [Mux 14 to 15 benchmark](../bench/mux-14-to-15/README.md) ran the tool on 32 public repositories: no new type errors, but 56% of call sites were invisible to it because of path aliases and factory functions. It type-checks only, and runs no tests.
 
 Related docs are [architecture](architecture.md) and [security](security.md).
