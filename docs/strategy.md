@@ -54,7 +54,7 @@ Goal. One real provider publishes a signed rule index that the Action consumes.
 - Offer to maintain the first rule set for them, signed with their key, in their repository.
 - Publish the index on their domain and run `watch` against it for real.
 
-Status. The kits are in [providers/mux](../providers/mux/README.md) and [providers/cloudflare](../providers/cloudflare/README.md), and the checklist is in the [plan](plan.md). The sign and index flow was rehearsed with a throwaway key. Neither provider has been contacted and no domain serves an index yet.
+Status. The kits are in [providers/mux](../providers/mux/README.md), [providers/cloudflare](../providers/cloudflare/README.md) and [providers/orb](../providers/orb/README.md), and the checklist is in the [plan](plan.md). The sign and index flow was rehearsed with a throwaway key. No provider has been contacted and no domain serves an index yet.
 
 Exit test. A pull request opened by the Action from a provider signed index, merged by a real consumer.
 

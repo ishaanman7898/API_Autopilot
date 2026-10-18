@@ -7,13 +7,15 @@ This is the working checklist for Phase 1 of the [strategy](strategy.md). It lis
 - A signed rule format, an engine, a gate, evidence and replay, a draft command, a watcher and an Action.
 - A Mux kit in [providers/mux](../providers/mux/README.md) with 5 rules, publishing steps and a draft message.
 - A Cloudflare kit in [providers/cloudflare](../providers/cloudflare/README.md) with 254 rules, publishing steps and a draft message.
+- An Orb kit in [providers/orb](../providers/orb/README.md) with 23 rules drafted from `orb-billing` 5.76.0 and 6.0.0, publishing steps and a draft message. It has not been benchmarked.
 - A test that each kit lints, signs with a throwaway key and builds an index.
 
 ## Not done
 
-- Neither provider has been contacted.
+- No provider has been contacted.
 - No domain serves a rule index, so the live fetch from a provider domain is unverified.
 - The rules are drafted from SDK diffs. No provider has reviewed them.
+- The Orb kit has not run on any repository.
 - The Cloudflare argument rewrites have not run on real code, because none of the 12 benchmark repositories calls an affected method.
 
 ## Steps for the maintainer
@@ -47,7 +49,8 @@ Remove-Item -Recurse -Force rehearsal
 
 1. Read `providers/mux/outreach.md` and send it as an issue on the `muxinc/mux-ts` repository, or by email. This is outward facing and goes out under your name.
 2. Read `providers/cloudflare/outreach.md` and send it as an issue on the `cloudflare/cloudflare-typescript` repository, or by email.
-3. If a provider agrees, send them the README from its kit. They run the publishing steps with their own key. You never hold their private key.
+3. Read `providers/orb/outreach.md` and send it as an issue on the `orbcorp/orb-typescript` repository, or by email.
+4. If a provider agrees, send them the README from its kit. They run the publishing steps with their own key. You never hold their private key.
 
 ### 4. Turn on private vulnerability reporting
 
@@ -58,7 +61,7 @@ In the repository on GitHub, open Settings, then Code security, and enable priva
 Give each provider one to two weeks.
 
 - If one agrees, help them publish and then run `watch` against their domain. That run is the exit test of Phase 1, a pull request opened from a provider signed index and merged by a real consumer.
-- If both say no or do not answer, build a kit for a third provider with frequent major releases, and ask what made the first two a poor fit. If three providers decline, treat the project as a codemod and audit tool and lead with the gate and evidence, as the [strategy](strategy.md) says.
+- If both say no or do not answer, build a kit for another provider with frequent major releases, and ask what made these a poor fit. If three providers decline, treat the project as a codemod and audit tool and lead with the gate and evidence, as the [strategy](strategy.md) says.
 
 ## Then
 
