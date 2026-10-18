@@ -1,0 +1,27 @@
+# Copy to .github/workflows/apimigrate.yml in the repository you want to migrate.
+name: apimigrate
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'
+
+# The job can push a branch and open a pull request. It cannot merge, and it has no other access.
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - run: npm ci
+      # Pin this to a full commit SHA of a release you have reviewed.
+      - uses: ishaanman7898/API_Autopilot@main
+        with:
+          rules: migrations/acme-sdk-1-to-2.rules.json
+          well-known: api.acme.com
+          test-cmd: npm test
