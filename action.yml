@@ -1,26 +1,76 @@
 name: API Autopilot
-description: Apply a signed provider migration rule and open a draft PR with an evidence bundle. Code stays on your runner.
+description: Apply a signed migration rule and open a draft pull request with an evidence bundle. Code stays on your runner. Never merges.
 inputs:
   rules:
     description: Path to the signed rule file
     required: true
   well-known:
-    description: Provider domain that publishes /.well-known/apimigrate-keys.json
-    required: true
+    description: Provider domain that publishes /.well-known/apimigrate-keys.json. Use this or keys.
+    required: false
+  keys:
+    description: Path to a key set JSON file you pinned in your repository. Use this or well-known.
+    required: false
   test-cmd:
-    description: Command that runs your tests
-    default: npm test
+    description: Command that runs your tests. A failure stops the run before any pull request is opened.
+    required: false
+  token:
+    description: Token used to push the branch and open the pull request
+    required: false
+    default: ${{ github.token }}
 runs:
   using: composite
   steps:
-    - shell: bash
-      run: node "${{ github.action_path }}/bin/apimigrate.js" apply --rules "${{ inputs.rules }}" --well-known "${{ inputs.well-known }}" --test-cmd "${{ inputs.test-cmd }}"
-    - shell: bash
+    - name: Install apimigrate dependencies
+      shell: bash
       env:
-        GH_TOKEN: ${{ github.token }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: npm ci --omit=dev --ignore-scripts --prefix "$ACTION_PATH"
+
+    - name: Apply the rule
+      id: apply
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        RULES: ${{ inputs.rules }}
+        WELL_KNOWN: ${{ inputs.well-known }}
+        KEYS: ${{ inputs.keys }}
+        TEST_CMD: ${{ inputs.test-cmd }}
       run: |
-        git switch -c "apimigrate/${{ github.run_id }}"
-        git add -A ':!.apimigrate'
-        git -c user.name=apimigrate -c user.email=apimigrate@users.noreply.github.com commit -m "apply signed API migration"
-        git push origin HEAD
-        gh pr create --draft --title "API migration" --body-file .apimigrate/evidence.json
+        set -euo pipefail
+        args=(apply --rules "$RULES")
+        if [ -n "$WELL_KNOWN" ] && [ -n "$KEYS" ]; then echo "pass only one of well-known and keys" >&2; exit 2; fi
+        if [ -n "$WELL_KNOWN" ]; then args+=(--well-known "$WELL_KNOWN"); fi
+        if [ -n "$KEYS" ]; then args+=(--keys "$KEYS"); fi
+        if [ -n "$TEST_CMD" ]; then args+=(--test-cmd "$TEST_CMD"); fi
+        node "$ACTION_PATH/bin/apimigrate.js" "${args[@]}"
+
+    - name: Upload the evidence bundle
+      if: always() && hashFiles('.apimigrate/evidence.json') != ''
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      with:
+        name: apimigrate-evidence
+        path: |
+          .apimigrate/evidence.json
+          .apimigrate/unresolved.json
+          .apimigrate/audit.log
+
+    - name: Open a draft pull request
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        RULES: ${{ inputs.rules }}
+        GH_TOKEN: ${{ inputs.token }}
+        RUN_ID: ${{ github.run_id }}
+      run: |
+        set -euo pipefail
+        evidence=.apimigrate/evidence.json
+        mapfile -d '' paths < <(node "$ACTION_PATH/scripts/pr.mjs" paths "$evidence")
+        if [ "${#paths[@]}" -eq 0 ]; then echo "nothing to migrate, no pull request opened"; exit 0; fi
+        branch="$(node "$ACTION_PATH/scripts/pr.mjs" branch "$evidence" "$RUN_ID")"
+        title="API migration: $(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).rule.id.replace(/[^\w.-]+/g,"-"))' "$evidence")"
+        node "$ACTION_PATH/scripts/pr.mjs" body "$evidence" "$RULES" > "$RUNNER_TEMP/apimigrate-pr-body.md"
+        git switch -c "$branch"
+        git add -- "${paths[@]}"
+        git -c user.name=apimigrate -c user.email=apimigrate@users.noreply.github.com commit -m "$title"
+        git push origin "$branch"
+        gh pr create --draft --title "$title" --body-file "$RUNNER_TEMP/apimigrate-pr-body.md"
