@@ -319,6 +319,13 @@ export function createResolver(checker, isPackage, sourceFiles = []) {
   function fromDeclaration(decl, depth) {
     if (ts.isFunctionDeclaration(decl)) return { fn: decl };
     if (ts.isParameter(decl)) return fromParameter(decl, depth);
+    // A class field typed with the SDK class, or a readonly field initialised with the client.
+    if (ts.isPropertyDeclaration(decl)) {
+      const typed = fromTypeAnnotation(decl.type, depth);
+      if (typed || decl.type) return typed;
+      const readonly = (ts.getCombinedModifierFlags(decl) & ts.ModifierFlags.Readonly) !== 0;
+      return readonly && decl.initializer ? originOf(decl.initializer, depth + 1) : null;
+    }
     if (ts.isVariableDeclaration(decl)) {
       if (!ts.isIdentifier(decl.name)) return null;
       if (!isConst(decl)) return ts.isVariableDeclarationList(decl.parent) && !ts.isCatchClause(decl.parent.parent) ? fromMutable(decl, depth) : null;
@@ -374,6 +381,8 @@ export function createResolver(checker, isPackage, sourceFiles = []) {
     if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) return { fn: node };
     if (ts.isPropertyAccessExpression(node)) {
       if (ts.isIdentifier(node.name) && isGlobalObject(node.expression)) return fromGlobalCache(node.name.text, depth + 1);
+      // this.client inside a class: the field's declaration, or a constructor parameter property.
+      if (node.expression.kind === ts.SyntaxKind.ThisKeyword) return fromSymbol(checker.getSymbolAtLocation(node.name), depth + 1);
       const base = originOf(node.expression, depth + 1);
       return base && ts.isIdentifier(node.name) ? extend(base, node.name.text, undefined, depth) : null;
     }

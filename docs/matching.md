@@ -28,6 +28,7 @@ The engine traces the receiver of a call back to an export of the package. These
 | Factory function | `function getClient() { return new Acme() }`, then `getClient().charges.create()`. Also arrow and async functions, and factories that call other factories. |
 | Lazily cached client | `let cached = null; function getClient() { if (!cached) cached = new Acme(); return cached }` |
 | Parameter typed with the SDK class | `function run(client: Acme)`, also `Acme \| null` and `acme.Client` |
+| Class field through `this` | `private readonly client: Acme`, `constructor(private client: Acme)` or `private readonly client = new Acme()`, used as `this.client` |
 | Untyped parameter of a local function | `function zone(cf) {...}` when every call in the file passes the same package value, and the function is not exported, passed on or bound |
 | Client cached on the global object | `export const client = globalThis.__client ?? makeClient()`, with `globalThis.__client = client` in development, or the same through `const g = globalThis as unknown as {...}` |
 | `??`, `\|\|` and `? :` | `cached ?? new Acme()`, when every side is the same value or `null` |

@@ -247,6 +247,17 @@ function parameterCases() {
       unresolved: [['a.ts', 8, 'cannot be traced']],
     },
     {
+      name: 'class fields and constructor parameter properties are followed through this',
+      rules: mp,
+      files: {
+        'a.ts': `${imp}export class A {\n  private readonly client: Acme;\n  constructor() { this.client = new Acme(); }\n  pay() { ${call('this.client')} }\n}\nexport class B {\n  constructor(private readonly client: Acme) {}\n  pay() { ${call('this.client')} }\n}\nexport class C {\n  private readonly client = new Acme();\n  pay() { ${call('this.client')} }\n}\nexport class D {\n  private client = new Acme();\n  pay() { ${call('this.client')} }\n}\n`,
+      },
+      expect: {
+        'a.ts': `${imp}export class A {\n  private readonly client: Acme;\n  constructor() { this.client = new Acme(); }\n  pay() { ${done('this.client')} }\n}\nexport class B {\n  constructor(private readonly client: Acme) {}\n  pay() { ${done('this.client')} }\n}\nexport class C {\n  private readonly client = new Acme();\n  pay() { ${done('this.client')} }\n}\nexport class D {\n  private client = new Acme();\n  pay() { ${call('this.client')} }\n}\n`,
+      },
+      unresolved: [['a.ts', 17, 'cannot be traced']],
+    },
+    {
       name: 'an untyped parameter of a local helper is followed when every call passes the client',
       rules: mp,
       files: {
