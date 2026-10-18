@@ -1,27 +1,31 @@
 # Overview
 
 ## The problem
-Anyone who ships something other people build on will eventually break it: an API provider renames an endpoint, a library drops an option, a framework changes a config key, a CLI retires a flag. Every downstream user then does the same migration by hand, and each of them gets it a little differently.
+
+Anyone who ships something other people build on will eventually break it. An API provider renames a method, a library drops an option, a framework changes a config key. Every downstream user then does the same migration by hand, and each of them does it a little differently.
 
 ## The idea
-The **publisher** of the change writes the migration once, as a **signed rule file**. Every **consumer** applies it with an engine that is deterministic first, hands anything uncertain to an agent, and produces a **pull request they can verify**.
+
+The publisher of the change writes the migration once, as a signed rule file. Each consumer applies it with a tool that rewrites only what it can prove, queues the rest, and produces evidence a reviewer can replay.
 
 | Role | What they do |
 | --- | --- |
-| Publisher | Writes and signs a rule file, publishes their public key at `/.well-known/apimigrate-keys.json` |
-| Consumer | Runs `apimigrate apply` in their own CI; code never leaves their runner |
-| Reviewer | Reads the PR's evidence bundle and can replay it with `apimigrate verify` |
+| Publisher | Writes and signs a rule file and publishes a key set at `/.well-known/apimigrate-keys.json`. |
+| Consumer | Runs `apimigrate apply` on their own machine or CI. Code does not leave it. |
+| Reviewer | Reads the pull request, then replays it with `apimigrate verify`. |
 
 ## What it is not
-It is not a general coding agent. Agents are the fallback for call sites the rules cannot prove they handled. The value is the signed rule, the narrow deterministic engine, and the evidence.
 
-## Why "universal"
-Nothing in the rule format is specific to HTTP APIs. A rule is: *where to look*, *what to change*, *what to hand to an agent*, *when it expires*. That covers:
+It is not a general coding agent. An agent is the fallback for call sites the rules cannot prove. The value is the signed rule, the narrow deterministic engine, the gate and the evidence.
 
-- SDK and API client upgrades (renamed methods, params, imports)
-- Library and framework major versions (config keys, deprecated options)
-- Build, CI and infrastructure config (webpack, ESLint, GitHub Actions, Terraform providers)
-- CLI flag changes in scripts and Dockerfiles
-- Internal platform changes (a company migrating its own teams off a deprecated internal library)
+It does not decide what a breaking change is. A publisher writes the rule, or drafts one from two OpenAPI specs and reviews it.
 
-Use `"scope": "any"` and `replace` rules for anything that is not an import-gated code call. See [rule-format.md](rule-format.md) and `examples/webpack-4-to-5.rules.json`.
+## Beyond APIs
+
+Nothing in the rule format is specific to HTTP APIs. A rule says where to look, what to change, what to hand to an agent, and when it expires. Code rules cover renamed imports, methods and parameters in JavaScript and TypeScript. Regex `replace` rules cover other text, such as config keys and flags, in named files. See `examples/webpack-4-to-5.rules.json`.
+
+## Where to go next
+
+Start with [rule format](rule-format.md) if you publish rules, or [CLI reference](cli.md) if you apply them. [Matching](matching.md) explains what counts as proven.
+
+Related docs are [architecture](architecture.md), [security](security.md) and [build log](history.md).
