@@ -1,47 +1,71 @@
 import { createHash } from 'node:crypto';
 import { applyRuleSet } from './engine.js';
-import { canonical } from './rule.js';
+import { canonical, hashRuleSet } from './rule.js';
 
-const sha = (text) => createHash('sha256').update(text).digest('hex');
+export const EVIDENCE_SCHEMA = 'apimigrate-evidence/2';
 
-// Per-file before/after digests: enough for a reviewer to replay the migration and compare byte for byte.
+const sha = (text) => createHash('sha256').update(text, 'utf8').digest('hex');
+const byPath = (a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+const bySite = (a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : a.line - b.line || (a.ruleId < b.ruleId ? -1 : 1));
+
+// Digests of every file whose text changed. Inputs are LF-normalized, so the result does not depend on the OS.
 export function fileDigests(before, after) {
-  return Object.keys(after)
+  const changed = Object.keys(after)
     .filter((p) => before[p] !== after[p])
-    .sort()
     .map((path) => ({ path, before: sha(before[path] ?? ''), after: sha(after[path]) }));
+  const removed = Object.keys(before).filter((p) => !(p in after)).map((path) => ({ path, before: sha(before[path]), after: null }));
+  return [...changed, ...removed].sort(byPath);
 }
 
-export function buildEvidence({ ruleSet, before, result, gate, tests = null }) {
-  const files = fileDigests(before, result.files);
+export const replayDigestOf = (ruleSet, files) => sha(canonical({ rule: hashRuleSet(ruleSet), files }));
+
+// Everything except meta is a pure function of the rule, the base tree and any agent edits.
+export function buildEvidence({ ruleSet, before, deterministic, final = deterministic.files, gate, tests = null, agent = null, tool, now = new Date() }) {
+  const detFiles = fileDigests(before, deterministic.files);
   return {
-    schema: 'apimigrate-evidence/1',
-    createdAt: new Date().toISOString(),
+    schema: EVIDENCE_SCHEMA,
     rule: {
       id: ruleSet.id,
       provider: ruleSet.provider,
-      hash: ruleSet.signature?.hash ?? null,
-      keyId: ruleSet.signature?.keyId ?? null,
+      contentHash: hashRuleSet(ruleSet),
       signed: Boolean(ruleSet.signature),
+      keyId: ruleSet.signature?.keyId ?? null,
     },
-    callSites: result.changes,
-    unresolved: result.unresolved.map(({ file, line, ruleId }) => ({ file, line, ruleId })),
-    files,
-    replayDigest: sha(canonical(files)),
+    tool,
+    callSites: [...deterministic.changes].sort(bySite),
+    unresolved: deterministic.unresolved.map(({ file, line, ruleId, reason }) => ({ file, line, ruleId, reason })).sort(bySite),
+    skipped: [...deterministic.skipped].sort((a, b) => (a.file < b.file ? -1 : 1)),
+    deterministic: { files: detFiles, replayDigest: replayDigestOf(ruleSet, detFiles) },
+    files: fileDigests(before, final),
+    agent,
     gate,
     tests,
+    meta: { createdAt: now.toISOString() },
   };
 }
 
-// Re-run the deterministic pass on a checkout of the PR's base commit and compare digests to the evidence bundle.
+// Re-runs the deterministic pass on a checkout of the base commit and compares digests with the bundle.
 export function replay(ruleSet, baseFiles, evidence) {
+  if (evidence.schema !== EVIDENCE_SCHEMA) return { ok: false, reason: `unsupported evidence schema ${evidence.schema}` };
+  if (hashRuleSet(ruleSet) !== evidence.rule.contentHash) return { ok: false, reason: 'rule file differs from the one the evidence was built with' };
   const result = applyRuleSet(ruleSet, baseFiles);
-  const digest = sha(canonical(fileDigests(baseFiles, result.files)));
-  const expected = evidence.replayDigest;
-  return {
-    ok: digest === expected && (ruleSet.signature?.hash ?? null) === evidence.rule.hash,
-    digest,
-    expected,
-    note: evidence.unresolved.length ? 'unresolved call sites were handled by an agent; only the deterministic pass is replayed' : undefined,
-  };
+  const files = fileDigests(baseFiles, result.files);
+  const digest = replayDigestOf(ruleSet, files);
+  if (digest !== evidence.deterministic.replayDigest) {
+    const expected = new Map(evidence.deterministic.files.map((f) => [f.path, f]));
+    const drift = files.filter((f) => expected.get(f.path)?.after !== f.after).map((f) => f.path);
+    for (const f of expected.keys()) if (!files.some((x) => x.path === f)) drift.push(f);
+    return { ok: false, reason: 'replay digest differs', digest, expected: evidence.deterministic.replayDigest, drift: [...new Set(drift)].sort() };
+  }
+  return { ok: true, digest };
+}
+
+// Checks a head tree against the final digests recorded in the bundle, including any agent edits.
+export function checkHead(baseFiles, headFiles, evidence) {
+  const actual = fileDigests(baseFiles, headFiles);
+  const expected = evidence.files;
+  const want = new Map(expected.map((f) => [f.path, f.after]));
+  const got = new Map(actual.map((f) => [f.path, f.after]));
+  const drift = [...new Set([...want.keys(), ...got.keys()])].filter((p) => want.get(p) !== got.get(p)).sort();
+  return drift.length ? { ok: false, reason: 'head tree differs from the evidence', drift } : { ok: true };
 }
