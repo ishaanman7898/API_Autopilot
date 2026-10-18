@@ -46,10 +46,11 @@ export function buildEvidence({ ruleSet, before, deterministic, final = determin
 }
 
 // Re-runs the deterministic pass on a checkout of the base commit and compares digests with the bundle.
-export function replay(ruleSet, baseFiles, evidence) {
+// configs are the base checkout's project config files, so path aliases resolve as they did in the run.
+export function replay(ruleSet, baseFiles, evidence, configs = {}) {
   if (evidence.schema !== EVIDENCE_SCHEMA) return { ok: false, reason: `unsupported evidence schema ${evidence.schema}` };
   if (hashRuleSet(ruleSet) !== evidence.rule.contentHash) return { ok: false, reason: 'rule file differs from the one the evidence was built with' };
-  const result = applyRuleSet(ruleSet, baseFiles);
+  const result = applyRuleSet(ruleSet, baseFiles, configs);
   const files = fileDigests(baseFiles, result.files);
   const digest = replayDigestOf(ruleSet, files);
   if (digest !== evidence.deterministic.replayDigest) {

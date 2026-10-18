@@ -32,7 +32,7 @@ export async function run({ flags }, io) {
   const cfg = loadConfig(root);
   const scan = evidence.scan ?? { paths: cfg.paths, extensions: cfg.extensions };
   const base = loadTrees(root, cfg, scan);
-  const replayed = replay(rs, base.scanFiles, evidence);
+  const replayed = replay(rs, base.scanFiles, evidence, base.configs);
   if (!replayed.ok) {
     io.err(`replay failed: ${replayed.reason}`);
     for (const f of replayed.drift ?? []) io.err(`  differs: ${f}`);

@@ -178,6 +178,99 @@ export const cases = [
     untouched: ['a.ts'],
     unresolved: [['a.ts', 3, 'cannot be traced']],
   },
+  ...aliasCases(),
 ];
+
+// Path aliases from tsconfig.json and jsconfig.json. configs are passed to the engine beside the files.
+function aliasCases() {
+  const client = "import Acme from 'acme-sdk';\nexport const client = new Acme();\n";
+  const use = (spec) => `import { client } from '${spec}';\nclient.charges.create({ amount_cents: 1 });\n`;
+  const used = (spec) => `import { client } from '${spec}';\nclient.payments.create({ amount: 1 });\n`;
+  return [
+    {
+      name: 'tsconfig paths alias with baseUrl',
+      rules: mp,
+      configs: { 'tsconfig.json': '{ "compilerOptions": { "baseUrl": ".", "paths": { "@/*": ["./src/*"] } } }' },
+      files: { 'src/lib/client.ts': client, 'src/app/route.ts': use('@/lib/client') },
+      expect: { 'src/app/route.ts': used('@/lib/client') },
+      unresolved: [],
+    },
+    {
+      name: 'paths without baseUrl, comments and trailing commas, a default export and a .js extension',
+      rules: mp,
+      configs: { 'tsconfig.json': '{\n  // aliases\n  "compilerOptions": { "paths": { "~lib/*": ["lib/*"], }, },\n}\n' },
+      files: {
+        'lib/acme.ts': "import Acme from 'acme-sdk';\nexport default new Acme();\n",
+        'app.ts': "import acme from '~lib/acme.js';\nacme.charges.create({ amount_cents: 1 });\n",
+      },
+      expect: { 'app.ts': "import acme from '~lib/acme.js';\nacme.payments.create({ amount: 1 });\n" },
+      unresolved: [],
+    },
+    {
+      name: 'baseUrl alone resolves bare imports and an exact paths key wins',
+      rules: mp,
+      configs: { 'tsconfig.json': '{ "compilerOptions": { "baseUrl": "src", "paths": { "acme-client": ["services/acme.ts"], "acme-*": ["nowhere/*"] } } }' },
+      files: { 'src/services/acme.ts': client, 'src/page.ts': use('services/acme'), 'src/exact.ts': use('acme-client') },
+      expect: { 'src/page.ts': used('services/acme'), 'src/exact.ts': used('acme-client') },
+      unresolved: [],
+    },
+    {
+      name: 'monorepo: each file uses its nearest config, following extends',
+      rules: mp,
+      configs: {
+        'tsconfig.base.json': '{ "compilerOptions": { "baseUrl": ".", "paths": { "@shared/*": ["packages/shared/*"] } } }',
+        'packages/web/tsconfig.json': '{ "extends": "../../tsconfig.base" }',
+        'packages/api/tsconfig.json': '{ "compilerOptions": { "paths": { "@/*": ["./src/*"] } } }',
+      },
+      files: {
+        'packages/shared/acme.ts': client,
+        'packages/web/a.ts': use('@shared/acme'),
+        'packages/web/c.ts': use('@/client'),
+        'packages/api/src/client.ts': client,
+        'packages/api/b.ts': use('@/client'),
+      },
+      expect: { 'packages/web/a.ts': used('@shared/acme'), 'packages/api/b.ts': used('@/client') },
+      untouched: ['packages/web/c.ts'],
+      unresolved: [],
+    },
+    {
+      name: 'jsconfig alias in a JavaScript project',
+      rules: mp,
+      configs: { 'jsconfig.json': '{ "compilerOptions": { "baseUrl": ".", "paths": { "@/*": ["*"] } } }' },
+      files: { 'lib/acme.js': client, 'pages/api.js': use('@/lib/acme') },
+      expect: { 'pages/api.js': used('@/lib/acme') },
+      unresolved: [],
+    },
+    {
+      name: 'solution style tsconfig keeps its aliases in a referenced config',
+      rules: mp,
+      configs: {
+        'tsconfig.json': '{ "files": [], "references": [{ "path": "./tsconfig.node.json" }, { "path": "./tsconfig.app.json" }] }',
+        'tsconfig.node.json': '{ "compilerOptions": { "composite": true } }',
+        'tsconfig.app.json': '{ "compilerOptions": { "baseUrl": ".", "paths": { "@/*": ["./src/*"] } } }',
+      },
+      files: { 'src/client.ts': client, 'src/main.ts': use('@/client') },
+      expect: { 'src/main.ts': used('@/client') },
+      unresolved: [],
+    },
+    {
+      name: 'an alias that resolves to no scanned file is treated as another package',
+      rules: mp,
+      configs: { 'tsconfig.json': '{ "compilerOptions": { "paths": { "@/*": ["./src/*"] } } }' },
+      files: { 'a.ts': "import Acme from 'acme-sdk';\nimport { client } from '@/missing';\nnew Acme();\nclient.charges.create({ amount_cents: 1 });\n" },
+      expect: {},
+      untouched: ['a.ts'],
+      unresolved: [],
+    },
+    {
+      name: 'without the config the same alias is not followed',
+      rules: mp,
+      files: { 'src/lib/client.ts': client, 'src/app/route.ts': use('@/lib/client') },
+      expect: {},
+      untouched: ['src/app/route.ts'],
+      unresolved: [],
+    },
+  ];
+}
 
 export const ruleSet = (rules, extra = {}) => ({ ...base, rules, ...extra });

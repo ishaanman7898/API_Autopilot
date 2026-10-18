@@ -44,10 +44,10 @@ export function createResolver(checker, isPackage) {
       const root = kind === 'named' ? 'named' : kind;
       return { module: spec, root, ...(kind === 'named' ? { name } : {}), props: [], site };
     }
-    if (!isRelative(spec)) return { module: spec, root: 'other', props: [] };
     let target;
-    try { target = checker.getImmediateAliasedSymbol(sym); } catch { return null; }
-    if (!target?.declarations?.length) return null;
+    try { target = checker.getImmediateAliasedSymbol(sym); } catch { target = null; }
+    // A bare specifier names another package, unless a tsconfig path alias resolved it to a scanned file.
+    if (!target?.declarations?.length) return isRelative(spec) ? null : { module: spec, root: 'other', props: [] };
     if (kind === 'namespace' && target.flags & ts.SymbolFlags.ValueModule) return { local: target };
     return fromSymbol(target, depth + 1);
   }

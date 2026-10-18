@@ -8,7 +8,7 @@ for (const c of cases) {
   test(`match: ${c.name}`, () => {
     const rs = ruleSet(c.rules);
     assert.deepEqual(validateRuleSet(rs), []);
-    const r = applyRuleSet(rs, c.files);
+    const r = applyRuleSet(rs, c.files, c.configs);
     for (const [file, text] of Object.entries(c.expect)) assert.equal(r.files[file], text, file);
     for (const file of c.untouched ?? []) assert.equal(r.files[file], c.files[file], `${file} must be untouched`);
     const got = r.unresolved.map((u) => [u.file, u.line, u.reason]);

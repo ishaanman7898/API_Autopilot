@@ -51,7 +51,7 @@ export async function run({ flags }, io) {
   const dry = Boolean(flags['dry-run']);
   const scan = { paths: cfg.paths, extensions: cfg.extensions };
   const before = loadTrees(root, cfg, scan);
-  const result = applyRuleSet(rs, before.scanFiles);
+  const result = applyRuleSet(rs, before.scanFiles, before.configs);
   const changed = Object.keys(result.files).filter((f) => before.scanFiles[f] !== result.files[f]);
   const gateOptions = { base: before.files, protect: protectList(cfg), allow: cfg.allow, coverageTolerance: cfg.coverageTolerance };
   const preview = { ...before.files, ...result.files };

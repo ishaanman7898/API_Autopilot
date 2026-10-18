@@ -197,6 +197,28 @@ test('a rewrite that fails the gate is never written to disk', async () => {
   assert.equal(existsSync(join(repo, '.apimigrate', 'evidence.json')), false);
 });
 
+test('path aliases come from the root tsconfig even outside the scan paths, replay the same way, and are never edited', async () => {
+  const tsconfig = '{ "compilerOptions": { "baseUrl": ".", "paths": { "@/*": ["./src/*"] } } }\n';
+  const aliased = {
+    '.apimigrate.yml': 'paths: [src]\n',
+    'tsconfig.json': tsconfig,
+    'src/lib/acme.ts': "import Acme from 'acme-sdk';\nexport const client = new Acme();\n",
+    'src/app/route.ts': "import { client } from '@/lib/acme';\nexport const pay = () => client.charges.create({ amount_cents: 5 });\n",
+  };
+  const touchConfig = { id: 'cfg', kind: 'replace', match: { pattern: '"baseUrl"', files: ['tsconfig.json'] }, transform: { to: '"rootDir"' } };
+  const pub = await publisher([method, param, touchConfig]);
+  const base = write(tmp(), aliased);
+  const work = tmp();
+  cpSync(base, work, { recursive: true });
+  const r = await apply(pub, work);
+  assert.equal(r.code, 0, r.err);
+  assert.equal(readFileSync(join(work, 'src/app/route.ts'), 'utf8'), "import { client } from '@/lib/acme';\nexport const pay = () => client.payments.create({ amount: 5 });\n");
+  assert.equal(readFileSync(join(work, 'tsconfig.json'), 'utf8'), tsconfig, 'rules never edit project configs');
+  const v = await run('verify', '--rules', pub.rules, '--evidence', join(work, '.apimigrate/evidence.json'), '--root', base, '--head', work, '--keys', pub.keys);
+  assert.equal(v.code, 0, v.err);
+  assert.match(v.out, /replay matches/);
+});
+
 test('the gate command compares two trees', async () => {
   const base = write(tmp(), REPO);
   const head = write(tmp(), { ...REPO, 'test/billing.test.ts': TEST.replace("  expect(1).toBe(1);\n", '') });

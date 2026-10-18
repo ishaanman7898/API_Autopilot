@@ -42,11 +42,23 @@ export async function loadKeys(flags, rs) {
   return loadKeySetFile(flags.pubkey, flags['key-id'] ?? rs?.signature?.keyId ?? '');
 }
 
+// tsconfig.json, jsconfig.json and variants such as tsconfig.base.json. Read from the whole repository,
+// because the config that declares a path alias is often outside the scanned paths.
+const PROJECT_CONFIG = /(?:^|\/)[jt]sconfig(?:\.[^/]+)?\.json$/;
+
 // Scan files plus every test, CI and test config file the gate watches, all as LF text.
+// configs holds the project config files the engine resolves path aliases with. Rules never edit them.
 export function loadTrees(root, cfg, scan = { paths: cfg.paths, extensions: cfg.extensions }) {
   const code = readTree(root, scan);
   const watched = readTree(root, { paths: ['.'], match: (rel) => isGateFile(rel, protectList(cfg)) });
-  return { files: { ...watched.files, ...code.files }, scanFiles: code.files, styles: { ...watched.styles, ...code.styles }, skipped: [...code.skipped, ...watched.skipped] };
+  const configs = readTree(root, { paths: ['.'], match: (rel) => PROJECT_CONFIG.test(rel) });
+  return {
+    files: { ...watched.files, ...code.files },
+    scanFiles: code.files,
+    configs: configs.files,
+    styles: { ...watched.styles, ...code.styles },
+    skipped: [...code.skipped, ...watched.skipped],
+  };
 }
 
 export function audit(root, event) {

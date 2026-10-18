@@ -23,11 +23,18 @@ The engine traces the receiver of a call back to an export of the package. These
 | Value from a package call | `const client = createClient()` where `createClient` comes from the package |
 | Re-export | `export { default as Acme } from 'acme-sdk'`, then `import { Acme } from './barrel'` |
 | Value exported from another scanned file | `export const client = new Acme()`, used in another file |
+| Path alias to another scanned file | `import { client } from '@/lib/acme'`, with `"paths": { "@/*": ["./src/*"] }` in `tsconfig.json` |
 | Parentheses, `as`, `!`, `await` around any of the above | `(await import('acme-sdk')).default` |
 
 Only `const` bindings are followed. A `let` or `var` can be reassigned, so a receiver that goes through one is not proven.
 
 A call whose receiver comes from a different package is ignored on purpose, even if its shape matches.
+
+## Path aliases
+
+Each file uses the `tsconfig.json` or `jsconfig.json` nearest to it, so a monorepo can have different aliases per package. The engine reads `compilerOptions.paths` and `baseUrl`, follows `extends` that point to a relative file, and in a solution-style config with only `references` it uses the first referenced config that declares aliases. The longest matching `paths` key wins, an exact key beats a wildcard, and `baseUrl` is tried after `paths`, as in TypeScript.
+
+Config files are read from the whole repository, not only the scanned paths, and they are never edited. A bare specifier that does not resolve to a scanned file is treated as a different package. `extends` that names a package, such as `@tsconfig/next`, is not followed.
 
 ## What is rewritten
 
@@ -57,7 +64,8 @@ Files with syntax errors are skipped and listed. Files larger than 2 MB are not 
 ## Limits
 
 - No type information. The engine does not know the type of a parameter or a field.
-- A call in a file that does not import the package, and does not reach it through a relative import of another scanned file, is not seen.
+- A call in a file that does not import the package, and does not reach it through a relative or aliased import of another scanned file, is not seen.
+- A value returned from a function, such as `getClient()`, is not traced, so calls on it are not seen unless the file imports the package.
 - Files outside `paths` are not part of the program, so imports of them are not followed.
 - `export * from` is not followed.
 - Computed property names and dynamic calls are not followed.

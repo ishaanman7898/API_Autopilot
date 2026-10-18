@@ -26,8 +26,8 @@ function snippet(sf, line) {
   return lines.slice(Math.max(0, line - 3), line + 2).join('\n');
 }
 
-function runAstRule(rule, rs, files, names, report) {
-  const built = buildProgram(files);
+function runAstRule(rule, rs, files, configs, names, report) {
+  const built = buildProgram(files, configs);
   const isPackage = (spec) => names.some((n) => spec === n || spec.startsWith(n + '/'));
   const resolver = createResolver(built.checker, isPackage);
   const ctx = { ...resolver, isPackage, packageName: rs.package ?? names[0] };
@@ -81,12 +81,13 @@ function runReplaceRule(rule, files, report) {
 }
 
 // Deterministic pass. Rules run in order and each sees the output of the one before. Anything not proven goes to unresolved.
-export function applyRuleSet(rs, files) {
+// configs maps paths of tsconfig.json and jsconfig.json files to their text. They are read for path aliases and never edited.
+export function applyRuleSet(rs, files, configs = {}) {
   const report = { changes: [], unresolved: [], skipped: [] };
   const names = packageNames(rs);
   let current = { ...files };
   for (const rule of rs.rules) {
-    current = rule.kind === 'replace' ? runReplaceRule(rule, current, report) : runAstRule(rule, rs, current, names, report);
+    current = rule.kind === 'replace' ? runReplaceRule(rule, current, report) : runAstRule(rule, rs, current, configs, names, report);
   }
   const seen = new Set();
   const unresolved = report.unresolved.filter((u) => {
