@@ -13,6 +13,7 @@ import { RAW, githubRepo, releaseRefs } from '../src/upstream.js';
 import { openWatchPullRequests } from '../src/watchpr.js';
 import { watchBranch, watchTitle } from '../src/prbody.js';
 import { fetchText } from '../src/net.js';
+import { versionLine } from '../src/commands/index.js';
 
 // A fake fetch that serves a fixed map of URL to JSON or text, and 404 for anything else.
 export function fakeFetch(routes, seen = []) {
@@ -340,4 +341,110 @@ test('watch branches depend only on the package, the lines and whether the rules
   assert.equal(watchBranch({ ...e, to: '15.6.0', source: 'signed' }), 'apimigrate/mux-mux-node-14-to-15');
   assert.equal(watchBranch({ ...e, line: '0.44', to: '0.45.1' }), 'apimigrate/mux-mux-node-0.44-to-0.45-unsigned');
   assert.equal(watchTitle(e), '[unsigned draft] API migration: @mux/mux-node 14.1.1 to 15.5.0');
+});
+
+test('rule file versions name a line, and 0.x names none', () => {
+  const cases = [['1.x', '1'], ['14', '14'], ['14.x.x', '14'], ['v2.3.0', '2'], ['^2.3.0', '2'], ['~15.1', '15'], ['3.0.0-beta.1', '3'], ['0.44.x', '0.44'], ['0.44', '0.44'],
+    ['0.x', null], ['0', null], ['latest', null], ['>=1 <3', null], ['1.x || 2.x', null], [2, null]];
+  for (const [v, line] of cases) assert.equal(versionLine(v), line, String(v));
+});
+
+test('index lists signed rule files so that watch finds and verifies them', async () => {
+  const keyDir = mkdtempSync(join(tmpdir(), 'keys-'));
+  assert.equal((await cli(['keygen', '--out', keyDir])).code, 0);
+  const keys = join(keyDir, 'apimigrate-keys.json');
+  const tool = { ...ruleFor('@scope/tool'), id: 'tool-0.8-to-0.9', from: '0.8.x', to: '0.9.x' };
+  const dir = repoWith({ 'acme-sdk-1-to-2.json': JSON.stringify(ruleFor()), 'scope-tool-0.8-to-0.9.json': JSON.stringify(tool), 'README.md': 'not a rule file' });
+  for (const f of ['acme-sdk-1-to-2.json', 'scope-tool-0.8-to-0.9.json']) assert.equal((await cli(['sign', join(dir, f), '--key', join(keyDir, 'apimigrate-private.pem')])).code, 0);
+
+  const printed = await cli(['index', dir, '--base-url', `https://${DOMAIN}/rules`, '--keys', keys]);
+  assert.equal(printed.code, 0, printed.err);
+  assert.deepEqual(JSON.parse(printed.out), { rules: [
+    { package: '@scope/tool', from: '0.8', to: '0.9', url: `https://${DOMAIN}/rules/scope-tool-0.8-to-0.9.json` },
+    { package: 'acme-sdk', from: '1', to: '2', url: `https://${DOMAIN}/rules/acme-sdk-1-to-2.json` },
+  ] });
+  const out = join(dir, 'apimigrate-rules.json');
+  for (let i = 0; i < 2; i++) {
+    const written = await cli(['index', dir, '--base-url', `https://${DOMAIN}/rules/`, '--keys', keys, '--out', out]);
+    assert.equal(written.code, 0, written.err);
+    assert.equal(readFileSync(out, 'utf8'), printed.out + '\n', 'the same files give the same index, and the index is not read as a rule file');
+  }
+  assert.match((await cli(['index', '--help'])).out, /^usage: apimigrate index <rules dir> --base-url/);
+
+  const signed = Object.fromEntries(JSON.parse(printed.out).rules.map((r) => [r.url, readFileSync(join(dir, r.url.split('/').at(-1)), 'utf8')]));
+  const routes = { ...registryRoutes, ...signed, [`https://${DOMAIN}/.well-known/apimigrate-rules.json`]: readFileSync(out, 'utf8'), [`https://${DOMAIN}/.well-known/apimigrate-keys.json`]: readFileSync(keys, 'utf8') };
+  const consumer = repoWith({
+    'package.json': JSON.stringify({ dependencies: { 'acme-sdk': '^1.4.0', '@scope/tool': '^0.8.0' } }),
+    '.apimigrate.yml': `sources:\n- "acme-sdk ${DOMAIN}"\n- "@scope/tool ${DOMAIN}"\n`,
+  });
+  const w = await cli(['watch', '--root', consumer], fakeFetch(routes));
+  assert.equal(w.code, 0, w.err);
+  assert.match(w.out, /@scope\/tool: 0\.8\.3 -> 0\.9\.0 in package\.json: signed rules from acme\.example/);
+  assert.match(w.out, /acme-sdk: 1\.4\.1 -> 2\.1\.0 in package\.json: signed rules from acme\.example/);
+  const plan = JSON.parse(readFileSync(join(consumer, '.apimigrate/watch/plan.json'), 'utf8'));
+  assert.deepEqual(plan.upgrades.map((u) => [u.package, u.source, u.url, u.keyId, u.hash]), Object.entries(signed).map(([url, text]) => [JSON.parse(text).package, 'signed', url, 'k1', JSON.parse(text).signature.hash]));
+  for (const u of plan.upgrades) {
+    const check = await cli(['check', join(consumer, u.rules), '--keys', join(consumer, u.keys)]);
+    assert.equal(check.code, 0, check.err);
+  }
+});
+
+test('index names every refused rule file and its reason, and writes nothing', async () => {
+  const signer = generateKeys();
+  const keys = join(repoWith({ 'apimigrate-keys.json': JSON.stringify({ keys: [{ keyId: 'k1', publicKey: signer.publicPem }] }) }), 'apimigrate-keys.json');
+  const signed = (extra = {}, by = signer) => JSON.stringify(signRuleSet({ ...ruleFor(), ...extra }, by.privatePem, 'k1'));
+  const { package: _, ...noPackage } = ruleFor();
+  const dir = repoWith({
+    'a-good.json': signed(),
+    'b-same-lines.json': signed({ id: 'again', from: '1.2.0', to: '^2.0.0' }),
+    'draft.json': JSON.stringify({ ...ruleFor(), draft: true }),
+    'unsigned.json': JSON.stringify(ruleFor()),
+    'expired.json': signed({ sunset: '2020-01-01' }),
+    'other-key.json': signed({}, generateKeys()),
+    'zero.json': signed({ from: '0.x', to: '1.x' }),
+    'backwards.json': signed({ from: '2.x', to: '2.5' }),
+    'any.json': JSON.stringify(signRuleSet({ ...noPackage, scope: 'any' }, signer.privatePem, 'k1')),
+    'invalid.json': JSON.stringify({ schema: 'apimigrate/1' }),
+    'broken.json': '{ nope',
+  });
+  const out = join(dir, 'apimigrate-rules.json');
+  const index = (...extra) => cli(['index', dir, '--base-url', `https://${DOMAIN}/rules`, '--keys', keys, ...extra]);
+  const r = await index('--out', out);
+  assert.equal(r.code, 3, 'a trust refusal exits 3');
+  assert.equal(existsSync(out), false);
+  const [head, ...lines] = r.err.split('\n');
+  assert.equal(head, 'error: refusing to build the index, nothing was written:');
+  const reasons = Object.fromEntries(lines.map((l) => l.trim().split(/: (.*)/s, 2)));
+  const want = {
+    'any.json': /^has no package, so watch cannot match it$/,
+    'b-same-lines.json': /^acme-sdk 1 to 2 is already in a-good\.json$/,
+    'backwards.json': /^to line 2 is not after from line 2$/,
+    'broken.json': /^cannot read it as JSON: /,
+    'draft.json': /^file is marked draft$/,
+    'expired.json': /^has passed its sunset date 2020-01-01$/,
+    'invalid.json': /^not a valid rule file: missing provider, missing id, /,
+    'other-key.json': /^bad signature$/,
+    'unsigned.json': /^unsigned$/,
+    'zero.json': /^from "0\.x" names no version line, such as "2\.x", or "0\.44\.x" below 1\.0$/,
+  };
+  assert.deepEqual(Object.keys(reasons), Object.keys(want));
+  for (const [file, reason] of Object.entries(want)) assert.match(reasons[file], reason, file);
+
+  const dup = repoWith({ 'a.json': signed(), 'b.json': signed({ id: 'b' }) });
+  const d = await cli(['index', dup, '--base-url', `https://${DOMAIN}/rules`, '--keys', keys]);
+  assert.equal(d.code, 2, 'refusals that are not about trust exit 2');
+  assert.match(d.err, /^ {2}b\.json: acme-sdk 1 to 2 is already in a\.json$/m);
+  assert.equal(d.out, '');
+
+  const usage = async (args, pattern) => {
+    const u = await cli(['index', ...args]);
+    assert.equal(u.code, 2, args.join(' '));
+    assert.match(u.err, pattern);
+  };
+  await usage([dup, '--base-url', `https://${DOMAIN}/rules`], /index needs --base-url and --keys/);
+  await usage([dup, '--keys', keys], /index needs --base-url and --keys/);
+  for (const url of [`http://${DOMAIN}/rules`, 'acme.example/rules', `https://${DOMAIN}/rules?v=1`, `https://user@${DOMAIN}/rules`]) await usage([dup, '--base-url', url, '--keys', keys], /--base-url must be an https URL/);
+  await usage([dup, '--base-url', `https://${DOMAIN}/rules`, '--keys', join(dirname(keys), 'apimigrate-public.pem')], /--keys must be the key set JSON/);
+  await usage([repoWith({ 'notes.txt': 'x' }), '--base-url', `https://${DOMAIN}/rules`, '--keys', keys], /has no \.json rule files/);
+  await usage([join(dup, 'missing'), '--base-url', `https://${DOMAIN}/rules`, '--keys', keys], /cannot read .*missing/);
 });

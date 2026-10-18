@@ -73,6 +73,7 @@ Related docs are [CLI reference](docs/cli.md#watch), [drafting rules](docs/draft
 | `keygen` | Create an ed25519 key pair and a publishable key set. |
 | `lint` | Validate a rule file. |
 | `sign` | Sign a rule file. Refuses drafts. |
+| `index` | Build the rule index a provider publishes for `watch`, from a folder of signed rule files. |
 | `check` | Verify a rule file signature. |
 | `draft` | Draft rules from two OpenAPI 3.x specs in JSON, or two SDK checkouts with `api.md`. |
 | `apply` | Apply a signed rule and write evidence. Supports `--dry-run`. |

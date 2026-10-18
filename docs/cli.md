@@ -31,6 +31,16 @@ Validates a rule file and lists anything that would block signing.
 
 Signs in place unless `--out` is given. Refuses files that are drafts or still carry `confidence` marks.
 
+### index
+
+`index <rules dir> --base-url https://acme.com/rules --keys apimigrate-keys.json [--out file]`
+
+Builds the [rule index](rule-format.md#rule-index) that `watch` reads at `https://<domain>/.well-known/apimigrate-rules.json`. It reads every `*.json` file in the folder, except the `--keys` and `--out` files, and does not look in subfolders. Each file must be a valid rule file for one package, without draft or `confidence` marks, signed by a key in `--keys` that is valid now, and before its sunset date. `--keys` is the key set JSON the same domain publishes, since `watch` checks each file against that domain's keys.
+
+The index takes the package from each file, and the lines from its `from` and `to`. `"1.x"`, `"14"`, `"^2.3.0"` and `"0.44.x"` give the lines `1`, `14`, `2` and `0.44`. A version that names no line, such as `"0.x"` or `"latest"`, is refused, and so is a `to` line that is not after the `from` line. Two files for the same package and lines are refused. Each `url` is `--base-url`, which must be https, followed by the file name, so upload the files under that URL with the names they have in the folder.
+
+Entries are sorted by package, then by line, so the same files give the same index. It is printed, or written to `--out`. When any file is refused, the command names each file with its reason and writes nothing. It exits 3 when a refusal is about trust, such as an unsigned, badly signed or expired file, and 2 otherwise.
+
 ### check
 
 `check <rules.json> (--keys file | --pubkey file.pem | --well-known domain) [--key-id id]`
@@ -89,7 +99,7 @@ Reads every `package.json` in the repository and asks the npm registry, by defau
 
 It writes `.apimigrate/watch/plan.json`, unless `--dry-run` is given. The `watch` setting limits it to the packages listed.
 
-For a package listed in the `sources` setting, `watch` asks that package's domain for a signed rule file. It reads `https://<domain>/.well-known/apimigrate-rules.json`, finds the entry for the package with the same `from` and `to` lines, and fetches its `url`. The file is kept only when it is a valid rule file for that package, signed by a key in the same domain's `/.well-known/apimigrate-keys.json`, not past its sunset date, and allowed by `providers` and `pins`. Otherwise the plan records why. A kept file is written next to the plan as `<package>-<from>-to-<to>.rules.json`, with the key set it was checked against as `.keys.json`, so `check` and `apply` can use it with `--keys`. All fetches use HTTPS only and do not follow redirects.
+For a package listed in the `sources` setting, `watch` asks that package's domain for a signed rule file. It reads `https://<domain>/.well-known/apimigrate-rules.json`, finds the entry for the package with the same `from` and `to` lines, and fetches its `url`. The file is kept only when it is a valid rule file for that package, signed by a key in the same domain's `/.well-known/apimigrate-keys.json`, not past its sunset date, and allowed by `providers` and `pins`. Otherwise the plan records why. A kept file is written next to the plan as `<package>-<from>-to-<to>.rules.json`, with the key set it was checked against as `.keys.json`, so `check` and `apply` can use it with `--keys`. All fetches use HTTPS only and do not follow redirects. Providers build the index with `index`.
 
 ```json
 { "rules": [{ "package": "acme-sdk", "from": "1", "to": "2", "url": "https://acme.com/rules/acme-sdk-1-to-2.json" }] }

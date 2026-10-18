@@ -77,6 +77,14 @@ A publisher can also list its rule files at `https://<domain>/.well-known/apimig
 
 The index is not signed. Each rule file it points to must be signed by a key in the same domain's key set. See [CLI reference](cli.md#watch).
 
+`apimigrate index` builds it from a folder of signed rule files. It checks each one against the key set, reads the lines from `from` and `to`, and refuses drafts, unsigned files, files past their sunset, versions that name no line, and two files for the same package and lines.
+
+```sh
+apimigrate index rules --base-url https://acme.com/rules --keys apimigrate-keys.json --out .well-known/apimigrate-rules.json
+```
+
+Serve the files in `rules` at `https://acme.com/rules/`, and the index and key set under `/.well-known/` of the domain that consumers list in `sources`. See [CLI reference](cli.md#index).
+
 ## Draft marks
 
 `apimigrate draft` adds `draft: true` and gives each rule a `confidence` of `likely` or `needs-review` plus an `evidence` sentence. `sign` refuses a file that still has them. The publisher reads each rule, then removes the marks. See [drafting rules](draft.md).
