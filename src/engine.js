@@ -52,7 +52,7 @@ export function applyRuleSet(rs, files) {
   const names = [rs.package, ...rs.rules.filter((r) => r.kind === 'rename-import').map((r) => r.transform.to)];
 
   for (const [file, original] of Object.entries(files)) {
-    if (!importsPackage(original, names)) continue;
+    if (rs.scope !== 'any' && !importsPackage(original, names)) continue;
     let text = original;
 
     for (const rule of rs.rules) {
@@ -92,6 +92,14 @@ export function applyRuleSet(rs, files) {
           text = text.slice(0, e.from) + e.next + text.slice(e.to);
           changes.push({ file, line: e.line, ruleId: rule.id });
         }
+      } else if (rule.kind === 'replace') {
+        if (rule.match.files && !rule.match.files.some((f) => file.endsWith(f))) continue;
+        const snapshot = text;
+        text = snapshot.replace(new RegExp(rule.match.pattern, rule.match.flags ?? 'g'), (m, ...rest) => {
+          const off = rest.find((x) => typeof x === 'number');
+          changes.push({ file, line: lineOf(snapshot, off), ruleId: rule.id });
+          return m.replace(new RegExp(rule.match.pattern, rule.match.flags?.replace('g', '') ?? ''), rule.transform.to);
+        });
       } else if (rule.kind === 'manual') {
         const re = callRegex(rule.match.call, '(?=\\s*\\()');
         let m;

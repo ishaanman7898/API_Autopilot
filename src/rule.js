@@ -1,7 +1,7 @@
 import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, sign, verify } from 'node:crypto';
 
 export const SCHEMA = 'apimigrate/1';
-export const KINDS = ['rename-import', 'rename-method', 'rename-param', 'manual'];
+export const KINDS = ['rename-import', 'rename-method', 'rename-param', 'replace', 'manual'];
 
 export function canonical(v) {
   if (Array.isArray(v)) return '[' + v.map(canonical).join(',') + ']';
@@ -19,7 +19,7 @@ export function hashRuleSet(ruleSet) {
 export function validateRuleSet(rs) {
   const errors = [];
   if (rs.schema !== SCHEMA) errors.push(`schema must be ${SCHEMA}`);
-  for (const f of ['provider', 'package', 'id', 'from', 'to']) {
+  for (const f of ['provider', 'id', 'from', 'to', ...(rs.scope === 'any' ? [] : ['package'])]) {
     if (typeof rs[f] !== 'string' || !rs[f]) errors.push(`missing ${f}`);
   }
   if (!rs.sunset || Number.isNaN(Date.parse(rs.sunset))) errors.push('sunset must be an ISO date');
@@ -33,6 +33,10 @@ export function validateRuleSet(rs) {
     if (r.kind === 'rename-import' && !(r.match?.module && r.transform?.to)) errors.push(`${at}: needs match.module and transform.to`);
     if (r.kind === 'rename-method' && !(r.match?.call && r.transform?.to)) errors.push(`${at}: needs match.call and transform.to`);
     if (r.kind === 'rename-param' && !(r.match?.call && r.match?.param && r.transform?.to)) errors.push(`${at}: needs match.call, match.param and transform.to`);
+    if (r.kind === 'replace') {
+      try { new RegExp(r.match?.pattern); } catch { errors.push(`${at}: match.pattern must be a valid regex`); }
+      if (typeof r.transform?.to !== 'string') errors.push(`${at}: needs transform.to`);
+    }
     if (r.kind === 'manual' && !(r.match?.call && r.fallback?.prompt)) errors.push(`${at}: needs match.call and fallback.prompt`);
   }
   return errors;
