@@ -1,9 +1,9 @@
 {
  "totals": {
   "text": 156,
-  "proven": 56,
-  "queued": 44,
-  "invisible": 56
+  "proven": 136,
+  "queued": 20,
+  "invisible": 0
  },
  "rows": [
   {
@@ -25,13 +25,10 @@
   {
    "repo": "Ali-Razahaider/lms",
    "text": 3,
-   "proven": 0,
-   "queued": 1,
-   "invisible": 2,
-   "invisibleSites": [
-    "app/api/upload/video/status/route.ts:33 video.uploads.retrieve",
-    "app/api/upload/video/status/route.ts:49 video.assets.retrieve"
-   ]
+   "proven": 3,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": []
   },
   {
    "repo": "BestOlumese/tyims-lms",
@@ -52,55 +49,34 @@
   {
    "repo": "Javaris500/allan-palmer",
    "text": 11,
-   "proven": 2,
+   "proven": 11,
    "queued": 0,
-   "invisible": 9,
-   "invisibleSites": [
-    "app/admin/media/video-actions.ts:83 video.uploads.create",
-    "app/admin/media/video-actions.ts:227 video.uploads.retrieve",
-    "app/admin/media/video-actions.ts:236 video.assets.retrieve",
-    "app/api/admin/media/backfill-mux/route.ts:63 video.uploads.retrieve",
-    "app/api/admin/media/backfill-mux/route.ts:94 video.assets.retrieve",
-    "app/api/admin/media/seed-feature-videos/route.ts:133 video.playbackIds.retrieve",
-    "app/api/admin/media/seed-feature-videos/route.ts:136 video.assets.retrieve",
-    "app/api/admin/media/seed-videos/route.ts:100 video.playbackIds.retrieve",
-    "app/api/admin/media/seed-videos/route.ts:103 video.assets.retrieve"
-   ]
+   "invisible": 0,
+   "invisibleSites": []
   },
   {
    "repo": "Keats0206/retailtherapy",
    "text": 11,
-   "proven": 2,
-   "queued": 8,
-   "invisible": 1,
-   "invisibleSites": [
-    "src/app/api/mux/webhook/route.ts:64 video.assets.retrieve"
-   ]
+   "proven": 11,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": []
   },
   {
    "repo": "LetsChurch/lets.church",
    "text": 7,
-   "proven": 0,
-   "queued": 1,
-   "invisible": 6,
-   "invisibleSites": [
-    "packages/temporal/src/activities/import/delete-mux-asset.ts:14 video.assets.delete",
-    "packages/web/src/trpc/procedures/dashboard/live-streaming.ts:44 video.liveStreams.retrieve",
-    "packages/web/src/trpc/procedures/dashboard/live-streaming.ts:77 video.liveStreams.create",
-    "packages/web/src/trpc/procedures/dashboard/live-streaming.ts:144 video.liveStreams.resetStreamKey",
-    "packages/web/src/trpc/procedures/dashboard/live-streaming.ts:189 video.liveStreams.createSimulcastTarget",
-    "packages/web/src/trpc/procedures/dashboard/live-streaming.ts:233 video.liveStreams.deleteSimulcastTarget"
-   ]
+   "proven": 7,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": []
   },
   {
    "repo": "Luzzotica/partii",
    "text": 1,
-   "proven": 0,
+   "proven": 1,
    "queued": 0,
-   "invisible": 1,
-   "invisibleSites": [
-    "app/api/admin/lessons/[id]/upload-url/route.ts:20 video.uploads.create"
-   ]
+   "invisible": 0,
+   "invisibleSites": []
   },
   {
    "repo": "MeetMajh/v0-majh-events-ecosystem",
@@ -113,14 +89,10 @@
   {
    "repo": "Mohammad-Ali-Soomro/CourseForge",
    "text": 3,
-   "proven": 0,
+   "proven": 3,
    "queued": 0,
-   "invisible": 3,
-   "invisibleSites": [
-    "app/api/mux/asset-status/route.ts:24 video.uploads.retrieve",
-    "app/api/mux/asset-status/route.ts:27 video.assets.retrieve",
-    "app/api/mux/upload-url/route.ts:20 video.uploads.create"
-   ]
+   "invisible": 0,
+   "invisibleSites": []
   },
   {
    "repo": "Pritam-Kundu/EduSmart",
@@ -133,51 +105,34 @@
   {
    "repo": "QASchoolUSA/Alla-LMS",
    "text": 3,
-   "proven": 0,
+   "proven": 3,
    "queued": 0,
-   "invisible": 3,
-   "invisibleSites": [
-    "app/api/mux/upload/route.ts:21 video.uploads.create",
-    "lib/mux-lesson-sync.ts:76 video.uploads.retrieve",
-    "lib/mux-lesson-sync.ts:120 video.assets.retrieve"
-   ]
+   "invisible": 0,
+   "invisibleSites": []
   },
   {
    "repo": "Schuchhardt/kefy",
    "text": 5,
-   "proven": 0,
-   "queued": 5,
+   "proven": 5,
+   "queued": 0,
    "invisible": 0,
    "invisibleSites": []
   },
   {
    "repo": "Shivanshu49/NEDC-Platform",
    "text": 1,
-   "proven": 0,
-   "queued": 1,
+   "proven": 1,
+   "queued": 0,
    "invisible": 0,
    "invisibleSites": []
   },
   {
    "repo": "XAct1HP/10kp",
    "text": 12,
-   "proven": 0,
-   "queued": 0,
-   "invisible": 12,
-   "invisibleSites": [
-    "app/api/admin/analytics/route.js:155 data.videoViews.list",
-    "app/api/admin/pitches/route.js:265 video.assets.delete",
-    "app/api/admin/seed-pitches/route.js:205 video.uploads.create",
-    "app/api/admin/seed-pitches/route.js:399 video.assets.delete",
-    "app/api/mux/create-upload/route.js:51 video.uploads.create",
-    "app/api/profile/pitches/route.js:473 video.assets.delete",
-    "app/api/profile/pitches/route.js:548 data.videoViews.list",
-    "app/api/webhooks/mux/route.js:91 video.assets.createPlaybackId",
-    "lib/moderation/mux-visual-moderation.js:40 robotsPreview.jobs.moderate.create",
-    "lib/moderation/mux-visual-moderation.js:64 robotsPreview.jobs.moderate.retrieve",
-    "lib/moderation/mux-visual-moderation.js:72 robotsPreview.jobs.cancel",
-    "lib/moderation/transcript.js:24 video.assets.retrieve"
-   ]
+   "proven": 11,
+   "queued": 1,
+   "invisible": 0,
+   "invisibleSites": []
   },
   {
    "repo": "abbnelhaj/wasl_academy",
@@ -198,15 +153,10 @@
   {
    "repo": "anaisbetts/atmospics",
    "text": 4,
-   "proven": 0,
+   "proven": 4,
    "queued": 0,
-   "invisible": 4,
-   "invisibleSites": [
-    "scripts/import-instagram-archive.ts:57 video.assets.create",
-    "scripts/import-instagram-archive.ts:70 video.assets.retrieve",
-    "src/lib/bluesky.ts:48 video.assets.create",
-    "src/lib/bluesky.ts:61 video.assets.retrieve"
-   ]
+   "invisible": 0,
+   "invisibleSites": []
   },
   {
    "repo": "brightsolutions-tn/Bright-Abodes",
@@ -219,12 +169,10 @@
   {
    "repo": "byjasonz/sponsor-tracker",
    "text": 2,
-   "proven": 1,
+   "proven": 2,
    "queued": 0,
-   "invisible": 1,
-   "invisibleSites": [
-    "app/actions/files.ts:48 video.assets.delete"
-   ]
+   "invisible": 0,
+   "invisibleSites": []
   },
   {
    "repo": "dittastudio/raw",
@@ -237,39 +185,32 @@
   {
    "repo": "divyansh2102t-dev/VertexHub",
    "text": 4,
-   "proven": 0,
-   "queued": 4,
+   "proven": 4,
+   "queued": 0,
    "invisible": 0,
    "invisibleSites": []
   },
   {
    "repo": "m3nd0zit4/dayana-pnl",
    "text": 4,
-   "proven": 0,
+   "proven": 4,
    "queued": 0,
-   "invisible": 4,
-   "invisibleSites": [
-    "lib/crm/free-webinar.ts:1204 video.uploads.create",
-    "lib/crm/free-webinar.ts:1307 video.uploads.retrieve",
-    "lib/crm/free-webinar.ts:1314 video.assets.retrieve",
-    "lib/lms/course-admin.ts:433 video.uploads.create"
-   ]
+   "invisible": 0,
+   "invisibleSites": []
   },
   {
    "repo": "manu-180/ponchospanish_next",
    "text": 1,
-   "proven": 0,
+   "proven": 1,
    "queued": 0,
-   "invisible": 1,
-   "invisibleSites": [
-    "app/api/mux/direct-upload/route.ts:55 video.uploads.create"
-   ]
+   "invisible": 0,
+   "invisibleSites": []
   },
   {
    "repo": "music-city/music-city",
    "text": 5,
-   "proven": 0,
-   "queued": 5,
+   "proven": 5,
+   "queued": 0,
    "invisible": 0,
    "invisibleSites": []
   },
@@ -284,17 +225,10 @@
   {
    "repo": "pontusab/behindthecode",
    "text": 6,
-   "proven": 0,
+   "proven": 6,
    "queued": 0,
-   "invisible": 6,
-   "invisibleSites": [
-    "packages/mux/src/index.ts:27 video.uploads.create",
-    "packages/mux/src/index.ts:48 video.uploads.retrieve",
-    "packages/mux/src/index.ts:54 video.assets.retrieve",
-    "packages/mux/src/index.ts:59 video.assets.delete",
-    "packages/mux/src/index.ts:70 video.assets.createPlaybackId",
-    "packages/mux/src/index.ts:227 data.metrics.getOverallValues"
-   ]
+   "invisible": 0,
+   "invisibleSites": []
   },
   {
    "repo": "pro-laico/payload-plugins",
@@ -315,14 +249,10 @@
   {
    "repo": "ssquaremarketings/ssquaremarketings",
    "text": 7,
-   "proven": 4,
+   "proven": 7,
    "queued": 0,
-   "invisible": 3,
-   "invisibleSites": [
-    "app/api/projects/[id]/route.ts:69 video.assets.delete",
-    "app/api/projects/[id]/route.ts:160 video.assets.delete",
-    "app/api/projects/[id]/video/route.ts:69 video.assets.delete"
-   ]
+   "invisible": 0,
+   "invisibleSites": []
   },
   {
    "repo": "ultrabconstructions-spec/playverse-app",
