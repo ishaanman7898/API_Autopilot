@@ -264,8 +264,61 @@ export function createResolver(checker, isPackage, sourceFiles = []) {
     }
   }
 
+  // A type annotation that names a package export, such as `client: Acme`, `client: Acme | null` or
+  // `client: acme.Client`, is read as an instance of it.
+  function fromTypeAnnotation(type, depth) {
+    if (!type) return null;
+    if (ts.isParenthesizedTypeNode(type)) return fromTypeAnnotation(type.type, depth);
+    if (ts.isUnionTypeNode(type)) {
+      const parts = type.types.filter((m) => !(ts.isLiteralTypeNode(m) && m.literal.kind === ts.SyntaxKind.NullKeyword) && m.kind !== ts.SyntaxKind.UndefinedKeyword);
+      return parts.length === 1 ? fromTypeAnnotation(parts[0], depth) : null;
+    }
+    if (!ts.isTypeReferenceNode(type) || type.typeArguments?.length) return null;
+    const names = [];
+    let n = type.typeName;
+    while (ts.isQualifiedName(n)) { names.unshift(n.right.text); n = n.left; }
+    let base = fromSymbol(checker.getSymbolAtLocation(n), depth + 1);
+    for (const name of names) base = base && extend(base, name, undefined, depth);
+    return base?.module && isPackage(base.module) ? { module: base.module, root: 'instance', props: [] } : null;
+  }
+
+  // An untyped parameter of a local function, when every call to the function passes the same package
+  // value. A function that is exported, or used other than by calling it, can have callers that are not
+  // seen, so its parameters are not followed.
+  function fromParameter(param, depth) {
+    const typed = fromTypeAnnotation(param.type, depth);
+    if (typed || param.type) return typed;
+    const fn = param.parent;
+    if (!ts.isIdentifier(param.name) || param.dotDotDotToken || !(ts.isFunctionDeclaration(fn) || ts.isArrowFunction(fn) || ts.isFunctionExpression(fn))) return null;
+    const holder = ts.isFunctionDeclaration(fn) ? fn : ts.isVariableDeclaration(fn.parent) && fn.parent.initializer === fn && isConst(fn.parent) ? fn.parent : null;
+    if (!holder?.name || !ts.isIdentifier(holder.name)) return null;
+    const exported = (ts.getCombinedModifierFlags(holder) & ts.ModifierFlags.Export) !== 0;
+    const fnSymbol = checker.getSymbolAtLocation(holder.name);
+    const paramSymbol = checker.getSymbolAtLocation(param.name);
+    if (exported || !fnSymbol || !paramSymbol) return null;
+    if (pendingSymbols.has(paramSymbol)) return PENDING;
+    pendingSymbols.add(paramSymbol);
+    try {
+      const index = fn.parameters.indexOf(param);
+      const values = [];
+      let escapes = false;
+      walk(holder.getSourceFile(), (n) => {
+        if (escapes || !ts.isIdentifier(n) || n === holder.name || checker.getSymbolAtLocation(n) !== fnSymbol) return;
+        const call = n.parent;
+        if (!ts.isCallExpression(call) || call.expression !== n) { escapes = true; return; }
+        const arg = call.arguments[index];
+        if (call.arguments.slice(0, index + 1).some(ts.isSpreadElement)) { escapes = true; return; }
+        values.push(arg ? valueOf(arg, depth + 1) : param.initializer ? valueOf(param.initializer, depth + 1) : NULLISH);
+      });
+      return escapes || !values.length ? null : join(values);
+    } finally {
+      pendingSymbols.delete(paramSymbol);
+    }
+  }
+
   function fromDeclaration(decl, depth) {
     if (ts.isFunctionDeclaration(decl)) return { fn: decl };
+    if (ts.isParameter(decl)) return fromParameter(decl, depth);
     if (ts.isVariableDeclaration(decl)) {
       if (!ts.isIdentifier(decl.name)) return null;
       if (!isConst(decl)) return ts.isVariableDeclarationList(decl.parent) && !ts.isCatchClause(decl.parent.parent) ? fromMutable(decl, depth) : null;

@@ -56,9 +56,9 @@ export const cases = [
     unresolved: [['a.ts', 4, 'crosses a variable binding']],
   },
   {
-    name: 'parameter receiver cannot be proven',
+    name: 'an untyped parameter of an exported function cannot be proven',
     rules: mp,
-    files: { 'a.ts': "import Acme from 'acme-sdk';\nexport function f(client: Acme) {\n  return client.charges.create({ amount_cents: 1 });\n}\n" },
+    files: { 'a.ts': "import Acme from 'acme-sdk';\nexport function f(client) {\n  return client.charges.create({ amount_cents: 1 });\n}\n" },
     expect: {},
     untouched: ['a.ts'],
     unresolved: [['a.ts', 3, 'cannot be traced']],
@@ -200,6 +200,7 @@ export const cases = [
   ...namespaceCases(),
   ...globalCacheCases(),
   ...positionalCases(),
+  ...parameterCases(),
   {
     name: 'lookalikes in files that reach the package through local imports are queued, others are not',
     rules: mp,
@@ -227,6 +228,47 @@ export const cases = [
   },
   ...aliasCases(),
 ];
+
+// Clients passed in as parameters: typed with the SDK class, or untyped in a local helper.
+function parameterCases() {
+  const imp = "import Acme from 'acme-sdk';\n";
+  const call = (r) => `${r}.charges.create({ amount_cents: 1 });`;
+  const done = (r) => `${r}.payments.create({ amount: 1 });`;
+  return [
+    {
+      name: 'a parameter typed with the SDK class is followed',
+      rules: mp,
+      files: {
+        'a.ts': `${imp}import * as acme from 'acme-sdk';\nimport type { Client } from 'acme-sdk';\nexport function a(client: Acme) { ${call('client')} }\nexport function b(client: Acme | null) { ${call('client!')} }\nexport function c(client: acme.Client) { ${call('client')} }\nclass S { run(client: Client) { ${call('client')} } }\nexport function d(client: Map<string, Acme>) { ${call('client')} }\n`,
+      },
+      expect: {
+        'a.ts': `${imp}import * as acme from 'acme-sdk';\nimport type { Client } from 'acme-sdk';\nexport function a(client: Acme) { ${done('client')} }\nexport function b(client: Acme | null) { ${done('client!')} }\nexport function c(client: acme.Client) { ${done('client')} }\nclass S { run(client: Client) { ${done('client')} } }\nexport function d(client: Map<string, Acme>) { ${call('client')} }\n`,
+      },
+      unresolved: [['a.ts', 8, 'cannot be traced']],
+    },
+    {
+      name: 'an untyped parameter of a local helper is followed when every call passes the client',
+      rules: mp,
+      files: {
+        'a.js': `${imp}const cf = new Acme();\nasync function zone(c, name) {\n  return ${call('c')}\n}\nconst run = (c = cf) => ${call('c')}\nzone(cf, 'x');\nzone(cf, 'y');\nrun();\nrun(cf);\n`,
+      },
+      expect: {
+        'a.js': `${imp}const cf = new Acme();\nasync function zone(c, name) {\n  return ${done('c')}\n}\nconst run = (c = cf) => ${done('c')}\nzone(cf, 'x');\nzone(cf, 'y');\nrun();\nrun(cf);\n`,
+      },
+      unresolved: [],
+    },
+    {
+      name: 'a helper parameter is not followed when a call passes something else or the helper escapes',
+      rules: mp,
+      files: {
+        'a.js': `${imp}const cf = new Acme();\nfunction one(c) { ${call('c')} }\none(cf);\none(makeFake());\nfunction two(c) { ${call('c')} }\ntwo(cf);\nsetTimeout(two, 1);\nfunction three(c) { ${call('c')} }\nthree.bind(null, cf)();\n`,
+      },
+      expect: {},
+      untouched: ['a.js'],
+      unresolved: [['a.js', 3, 'cannot be traced'], ['a.js', 6, 'cannot be traced'], ['a.js', 9, 'cannot be traced']],
+    },
+  ];
+}
 
 // positional-to-named, as in Cloudflare 7: retrieve(parentId, childId) becomes retrieve(childId, { parent_id }).
 function positionalCases() {

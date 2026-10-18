@@ -103,7 +103,7 @@ Related docs are [GitHub Action](docs/github-action.md).
 
 ## Limits of v0
 
-- Matching covers JavaScript and TypeScript only. It follows imports, requires, re-exports and local files. It has no type information, so a receiver that arrives as a function parameter, a class field or a `let` variable that is also given other values cannot be proven and goes to the queue.
+- Matching covers JavaScript and TypeScript only. It follows imports, requires, re-exports and local files. It has no type information, so a receiver that arrives as an untyped parameter of an exported function, a class field or a `let` variable that is also given other values cannot be proven and goes to the queue. A parameter typed with the SDK class is followed.
 - A call in a file that neither imports the package nor reaches it through imports of other scanned files is not seen. In a file that does reach it, a call that looks right but cannot be proven is queued.
 - Clients from factory functions, lazily cached variables, `globalThis` caches, CommonJS exports and `tsconfig.json` path aliases are followed. Object methods and class members are not. The [Mux benchmark](bench/mux-14-to-15/README.md) measures how many call sites the tool can see.
 - `rename-dependency` updates `package.json` but not the lockfile. The run output and the pull request say to regenerate it.
