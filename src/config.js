@@ -38,6 +38,7 @@ export function parseConfig(text) {
 export const DEFAULTS = {
   providers: [],
   paths: ['.'],
+  extensions: [],
   pins: [],
   draft: true,
   reviewers: [],

@@ -25,14 +25,15 @@ function parseArgs(argv) {
   return { flags, pos };
 }
 
-function readTree(root, paths = ['.']) {
+function readTree(root, paths = ['.'], extensions = []) {
+  const wanted = { test: (name) => (extensions.length ? extensions.some((x) => name.endsWith(x)) : CODE.test(name)) };
   const files = {};
   const walk = (dir) => {
     for (const name of readdirSync(dir)) {
       if (SKIP.has(name)) continue;
       const full = join(dir, name);
       if (statSync(full).isDirectory()) walk(full);
-      else if (CODE.test(name)) files[relative(root, full).replaceAll('\\', '/')] = readFileSync(full, 'utf8');
+      else if (wanted.test(name)) files[relative(root, full).replaceAll('\\', '/')] = readFileSync(full, 'utf8');
     }
   };
   for (const p of paths) {
@@ -117,7 +118,7 @@ const commands = {
       if (!res.ok) return console.error(`refusing unsigned or invalid rule: ${res.reason}`), 1;
     }
 
-    const before = readTree(root, cfg.paths);
+    const before = readTree(root, cfg.paths, cfg.extensions);
     const result = applyRuleSet(rs, before);
     if (!flags['dry-run']) {
       for (const [p, text] of Object.entries(result.files)) if (before[p] !== text) writeFileSync(join(root, p), text);
@@ -129,7 +130,7 @@ const commands = {
       tests = { cmd: flags['test-cmd'], exitCode: r.status };
     }
 
-    const after = flags['dry-run'] ? result.files : readTree(root, cfg.paths);
+    const after = flags['dry-run'] ? result.files : readTree(root, cfg.paths, cfg.extensions);
     const cov = (p) => (p && existsSync(p) ? linePct(readJson(p)) : null);
     const gate = runGate({ base: before, head: after, coverageBase: cov(flags['cov-base']), coverageHead: cov(flags['cov-head']) });
     const evidence = buildEvidence({ ruleSet: rs, before, result, gate, tests });
@@ -150,7 +151,7 @@ const commands = {
     const root = resolve(flags.root ?? '.');
     const rs = readJson(flags.rules);
     const evidence = readJson(flags.evidence);
-    const res = replay(rs, readTree(root, loadConfig(root).paths), evidence);
+    const res = replay(rs, readTree(root, loadConfig(root).paths, loadConfig(root).extensions), evidence);
     console.log(res.ok ? `replay matches ${res.digest}` : `MISMATCH expected ${res.expected} got ${res.digest}`);
     if (res.note) console.log(res.note);
     return res.ok ? 0 : 1;
