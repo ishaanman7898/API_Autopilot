@@ -11,7 +11,7 @@ The 32 repositories are every public GitHub repository that code search found pi
 1. **Every error the upgrade causes is now fixed, and nothing new breaks.** Upgrading breaks the type-check in 1 repository of 32, XAct1HP/10kp, with 4 errors: three `mux.robotsPreview.jobs.*` calls on a client from a `getMuxClient()` factory, and a JSDoc `import("@mux/mux-node/resources/robots-preview/...")` type. Version 0.2 fixed none of them and reported 0 unresolved. Now all 4 are fixed, with no new type errors and no gate failures in any repository.
 2. **Builds no longer break on the package rename.** Version 0.2 rewrote the imports to `@mux/ts` but left `package.json` depending on `@mux/mux-node`, so all 32 migrated repositories failed to resolve the package. `rename-dependency` now updates 34 `package.json` files across the 32 repositories, and every SDK import in the migrated code is declared. Lockfiles still need regenerating, which the run output and the pull request say.
 3. **Package names in plain strings are queued.** `vi.mock('@mux/mux-node', ...)` in a test and `serverExternalPackages` in a Next.js config would break silently if renamed blindly. Both are queued for a person.
-4. **The tool now sees every Mux call in the sample.** A probe with one `manual` rule per Mux method found 156 Mux calls by text search.
+4. **The tool now sees every Mux call in the sample and proves 98% of them.** A probe with one `manual` rule per Mux method found 156 Mux calls by text search.
 
    | Version | Proven | Queued | Invisible |
    | --- | ---: | ---: | ---: |
@@ -20,16 +20,16 @@ The 32 repositories are every public GitHub repository that code search found pi
    | with `export default <name>` followed | 56 (36%) | 44 (28%) | 56 (36%) |
    | with factory functions, lazy caches, and lookalikes queued in files that reach the package | 126 (81%) | 29 (19%) | 1 (1%) |
    | with CommonJS exports and `globalThis` caches | 136 (87%) | 20 (13%) | 0 |
+   | with clients passed as parameters or held in class fields | 153 (98%) | 3 (2%) | 0 |
 
-   The 20 queued calls are clients passed in as function parameters, such as a Payload plugin handing its client to hook functions (12), and clients built from a dynamically imported constructor. Following a client through parameters needs type information the engine does not use.
+   The 3 calls still queued build their client from a constructor loaded with a dynamic `import()` at run time, which cannot be proven without running the code.
 5. **Large rule sets are fast.** The 114-rule probe used to rebuild the program for every rule and took 131 s on the largest repository. Reusing the program between rules and caching resolver answers brought it to 3.8 s with identical output. The median apply time with the five rules is about 1.2 s.
 
 ## What to build next
 
-- Follow a client passed as a function parameter when every caller in the scanned files passes the same package value. That covers the remaining queued sites.
 - Rewrite moved type names inside TypeScript type positions, such as `Mux.RobotsPreview.Job`, not only import paths.
 
-Done since the first run: `tsconfig.json` and `jsconfig.json` path aliases, `export default <name>`, factory functions and lazy caches, queueing lookalikes in files that reach the package, CommonJS `require` and `module.exports`, `globalThis` caches, JSDoc `import()` types, `rename-dependency`, `rename-namespace`, drafting from `api.md`, and program reuse between rules.
+Done since the first run: `tsconfig.json` and `jsconfig.json` path aliases, `export default <name>`, factory functions and lazy caches, queueing lookalikes in files that reach the package, CommonJS `require` and `module.exports`, `globalThis` caches, typed and untyped parameters, class fields, JSDoc `import()` types, `rename-dependency`, `rename-namespace`, drafting from `api.md`, and program reuse between rules.
 
 ## Results
 
@@ -55,7 +55,7 @@ Rule file `bench/mux-14-to-15/rules.json`, old SDK `@mux/mux-node@14.1.1`, new S
 | Repos with an SDK import its package.json does not declare | 0 of 32 (0 files) |
 | Repos where the SDK resolved in the baseline type-check | 32 of 32 |
 | Old package names left in code after migration | 2 files |
-| Median apply time | 1223 ms |
+| Median apply time | 1234 ms |
 
 ### Per repository
 

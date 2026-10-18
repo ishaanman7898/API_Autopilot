@@ -1,8 +1,8 @@
 {
  "totals": {
   "text": 156,
-  "proven": 136,
-  "queued": 20,
+  "proven": 153,
+  "queued": 3,
   "invisible": 0
  },
  "rows": [
@@ -129,8 +129,8 @@
   {
    "repo": "XAct1HP/10kp",
    "text": 12,
-   "proven": 11,
-   "queued": 1,
+   "proven": 12,
+   "queued": 0,
    "invisible": 0,
    "invisibleSites": []
   },
@@ -145,8 +145,8 @@
   {
    "repo": "acvigue/fitness-backend",
    "text": 4,
-   "proven": 0,
-   "queued": 4,
+   "proven": 4,
+   "queued": 0,
    "invisible": 0,
    "invisibleSites": []
   },
@@ -233,8 +233,8 @@
   {
    "repo": "pro-laico/payload-plugins",
    "text": 12,
-   "proven": 0,
-   "queued": 12,
+   "proven": 12,
+   "queued": 0,
    "invisible": 0,
    "invisibleSites": []
   },

@@ -7,7 +7,8 @@
   "@mux/mux-node@15.5.0",
   "@mux/ts@15.5.0"
  ],
- "ranAt": "2026-10-18T17:14:23.820Z",
+ "types": [],
+ "ranAt": "2026-10-18T18:04:07.156Z",
  "results": [
   {
    "repo": "19leva89/react-ts-next-newtube",
@@ -17,7 +18,7 @@
     "src/app/api/videos/webhook/route.ts",
     "src/lib/mux.ts"
    ],
-   "applyMs": 432,
+   "applyMs": 428,
    "applyExit": 0,
    "changed": 3,
    "changedByRule": {
@@ -47,7 +48,7 @@
    "muxFiles": [
     "server/services/mux.ts"
    ],
-   "applyMs": 5588,
+   "applyMs": 5928,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -77,7 +78,7 @@
    "muxFiles": [
     "lib/mux.ts"
    ],
-   "applyMs": 426,
+   "applyMs": 423,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -108,7 +109,7 @@
     "lib/inngest/functions.ts",
     "lib/mux.ts"
    ],
-   "applyMs": 2015,
+   "applyMs": 2552,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -141,7 +142,7 @@
     "server/services/transcriptionIngestor.ts",
     "tests/server/library/muxMediaProvider.test.ts"
    ],
-   "applyMs": 49664,
+   "applyMs": 50703,
    "applyExit": 0,
    "changed": 4,
    "changedByRule": {
@@ -179,7 +180,7 @@
     "lib/mux.ts",
     "scripts/seed-gallery-videos.ts"
    ],
-   "applyMs": 2018,
+   "applyMs": 2024,
    "applyExit": 0,
    "changed": 3,
    "changedByRule": {
@@ -211,7 +212,7 @@
     "scripts/smoke-test-show.ts",
     "src/lib/mux.ts"
    ],
-   "applyMs": 837,
+   "applyMs": 838,
    "applyExit": 0,
    "changed": 4,
    "changedByRule": {
@@ -242,7 +243,7 @@
     "packages/temporal/src/util/mux.ts",
     "packages/web/src/util/mux.ts"
    ],
-   "applyMs": 6649,
+   "applyMs": 6713,
    "applyExit": 0,
    "changed": 4,
    "changedByRule": {
@@ -273,7 +274,7 @@
    "muxFiles": [
     "lib/mux/client.ts"
    ],
-   "applyMs": 4199,
+   "applyMs": 4492,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -303,7 +304,7 @@
    "muxFiles": [
     "lib/mux.ts"
    ],
-   "applyMs": 4289,
+   "applyMs": 4219,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -333,7 +334,7 @@
    "muxFiles": [
     "lib/mux/client.ts"
    ],
-   "applyMs": 313,
+   "applyMs": 317,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -365,7 +366,7 @@
     "controllers/teacherController.js",
     "routes/muxWebhook.js"
    ],
-   "applyMs": 480,
+   "applyMs": 578,
    "applyExit": 0,
    "changed": 4,
    "changedByRule": {
@@ -396,7 +397,7 @@
     "lib/mux-signing.ts",
     "lib/mux.ts"
    ],
-   "applyMs": 345,
+   "applyMs": 356,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -427,7 +428,7 @@
     "lib/mux.ts",
     "next.config.ts"
    ],
-   "applyMs": 4426,
+   "applyMs": 4571,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -495,7 +496,7 @@
     "lib/moderation/mux-visual-moderation.js",
     "lib/mux.js"
    ],
-   "applyMs": 1401,
+   "applyMs": 2245,
    "applyExit": 0,
    "changed": 6,
    "changedByRule": {
@@ -552,7 +553,7 @@
    "muxFiles": [
     "lib/actions/mux.ts"
    ],
-   "applyMs": 440,
+   "applyMs": 488,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -582,7 +583,7 @@
    "muxFiles": [
     "src/rest/video/mux.service.ts"
    ],
-   "applyMs": 1230,
+   "applyMs": 1234,
    "applyExit": 0,
    "changed": 3,
    "changedByRule": {
@@ -612,7 +613,7 @@
    "muxFiles": [
     "src/lib/utils.ts"
    ],
-   "applyMs": 316,
+   "applyMs": 312,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -642,7 +643,7 @@
    "muxFiles": [
     "api/src/index.ts"
    ],
-   "applyMs": 332,
+   "applyMs": 343,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -672,7 +673,7 @@
    "muxFiles": [
     "lib/mux.ts"
    ],
-   "applyMs": 324,
+   "applyMs": 323,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -702,7 +703,7 @@
    "muxFiles": [
     "server/api/mux-assets.get.ts"
    ],
-   "applyMs": 296,
+   "applyMs": 336,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -732,7 +733,7 @@
    "muxFiles": [
     "src/lib/storage/mux.ts"
    ],
-   "applyMs": 2108,
+   "applyMs": 2123,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -763,7 +764,7 @@
     "lib/mux/client.ts",
     "lib/webhooks/verify.ts"
    ],
-   "applyMs": 9381,
+   "applyMs": 9224,
    "applyExit": 0,
    "changed": 3,
    "changedByRule": {
@@ -793,7 +794,7 @@
    "muxFiles": [
     "lib/mux/client.ts"
    ],
-   "applyMs": 667,
+   "applyMs": 690,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -824,7 +825,7 @@
     "server/src/modules/media/media.service.ts",
     "server/src/services/mux.service.ts"
    ],
-   "applyMs": 1415,
+   "applyMs": 1429,
    "applyExit": 0,
    "changed": 3,
    "changedByRule": {
@@ -854,7 +855,7 @@
    "muxFiles": [
     "lib/mux.ts"
    ],
-   "applyMs": 1223,
+   "applyMs": 1242,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -884,7 +885,7 @@
    "muxFiles": [
     "packages/mux/src/client.ts"
    ],
-   "applyMs": 518,
+   "applyMs": 514,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -925,7 +926,7 @@
     "packages/payload-mux/src/plugin.ts",
     "packages/payload-mux/src/types/settings/uploadSettings.ts"
    ],
-   "applyMs": 1833,
+   "applyMs": 1843,
    "applyExit": 0,
    "changed": 14,
    "changedByRule": {
@@ -956,7 +957,7 @@
    "muxFiles": [
     "app/lib/mux.ts"
    ],
-   "applyMs": 5237,
+   "applyMs": 5202,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -989,7 +990,7 @@
     "app/api/mux/upload-url/route.ts",
     "app/api/projects/[id]/mux.ts"
    ],
-   "applyMs": 363,
+   "applyMs": 355,
    "applyExit": 0,
    "changed": 5,
    "changedByRule": {
@@ -1019,7 +1020,7 @@
    "muxFiles": [
     "lib/mux.ts"
    ],
-   "applyMs": 275,
+   "applyMs": 270,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
