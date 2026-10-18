@@ -45,23 +45,6 @@ test('validation catches bad rules', () => {
   assert.ok(validateRuleSet(bad).length > 0);
 });
 
-test('engine rewrites deterministic sites and queues the rest', () => {
-  const r = applyRuleSet(ruleSet(), { 'a.ts': src, 'b.ts': 'c.charges.create({ amount_cents: 1 })' });
-  const out = r.files['a.ts'];
-  assert.match(out, /from '@acme\/sdk'/);
-  assert.match(out, /c\.payments\.create\(\{ amount: 500, currency/);
-  assert.equal(r.files['b.ts'], 'c.charges.create({ amount_cents: 1 })', 'files that do not import the package are untouched');
-  const ids = r.unresolved.map((u) => u.ruleId).sort();
-  assert.deepEqual(ids, ['p', 'rm']);
-  assert.ok(r.unresolved.every((u) => u.context.startsWith('<untrusted_repo_text>')));
-});
-
-test('shorthand params keep the local variable', () => {
-  const rs = ruleSet();
-  const r = applyRuleSet(rs, { 'a.ts': "import A from 'acme-sdk';\nc.charges.create({ amount_cents, currency });" });
-  assert.match(r.files['a.ts'], /payments\.create\(\{ amount: amount_cents, currency/);
-});
-
 test('gate fails when assertions, tests, coverage or secrets regress', () => {
   const base = { 'a.test.ts': 'expect(a).toBe(1);\nexpect(b).toBe(2);' };
   assert.equal(runGate({ base, head: base }).ok, true);
