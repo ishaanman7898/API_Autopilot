@@ -23,7 +23,7 @@ This is the working checklist for Phase 1 of the [strategy](strategy.md). It lis
 ### 1. Check the project on your machine
 
 ```
-cd C:\Users\ishaa\OneDrive\Desktop\API-Autopilot
+cd API_Autopilot
 git pull
 npm ci
 npm test
@@ -61,7 +61,7 @@ In the repository on GitHub, open Settings, then Code security, and enable priva
 Give each provider one to two weeks.
 
 - If one agrees, help them publish and then run `watch` against their domain. That run is the exit test of Phase 1, a pull request opened from a provider signed index and merged by a real consumer.
-- If both say no or do not answer, build a kit for another provider with frequent major releases, and ask what made these a poor fit. If three providers decline, treat the project as a codemod and audit tool and lead with the gate and evidence, as the [strategy](strategy.md) says.
+- If none of the three agrees or answers, ask each what made it a poor fit. Three providers declining is the point where the project is treated as a codemod and audit tool that leads with the gate and evidence, as the [strategy](strategy.md) says. Building a kit for another provider with frequent major releases is still worth it if a reply points to a better fit.
 
 ## Then
 

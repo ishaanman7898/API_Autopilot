@@ -39,12 +39,12 @@ Use your real domain and base URL in place of the ones above. The index and the 
 
 ```
 sources:
-  - cloudflare
+  - "cloudflare cloudflare.com"
 providers:
   - cloudflare
 ```
 
-Put that in `.apimigrate.yml`. `watch` then finds the new major on npm, reads the index, checks the signature and opens a draft pull request. Nothing is merged for them.
+Put that in `.apimigrate.yml`. Each `sources` entry is the package and the domain that serves its index, here the example domain from the publishing steps. `watch` then finds the new major on npm, reads the index on that domain, checks the signature against the same domain's key set and opens a draft pull request. Nothing is merged for them. Because `providers` lists only `cloudflare`, rules from anyone else are skipped, including the unsigned drafts `watch` makes for other dependencies. Leave `providers` out to keep those drafts.
 
 ## Status
 

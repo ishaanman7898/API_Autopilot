@@ -111,7 +111,7 @@ Exit test. Three teams use the hosted side in place of the open Action and say w
 
 ## Risks
 
-- Providers never publish rules. The mitigation is drafted rules from release notes, which already work, but they are unsigned and weaker. If no provider publishes after Phase 1 with real effort, the project is a codemod tool and should be positioned as one.
+- Providers never publish rules. The mitigation is rules drafted from the SDK diff of two releases, which already work, but they are unsigned and weaker. If no provider publishes after Phase 1 with real effort, the project is a codemod tool and should be positioned as one.
 - General agents become reliable enough that no one wants a rule at all. Then the value moves to verification and audit alone, which the gate and evidence already provide, and the project should lead with those.
 - A large platform ships the same thing. Dependency update bots and code hosts could add signed migrations. The defense is an open format they adopt, and speed to a real provider and a real corpus.
 - A bad signed rule does damage at scale. A trust system makes a bad rule more believable. The pins, key windows, revocation and the gate limit the harm, but a transparency log and a rule test format are needed before wide use.
