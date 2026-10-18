@@ -81,6 +81,14 @@ See [evidence and replay](evidence.md).
 
 Runs only the gate. Settings come from `.apimigrate.yml` in the base directory.
 
+### watch
+
+`watch [--root dir] [--out dir] [--registry url] [--dry-run]`
+
+Reads every `package.json` in the repository and asks the npm registry, by default `https://registry.npmjs.org`, for each dependency's versions. A dependency is reported when its latest release is on a newer line than its range allows. A line is the major version, or `0.minor` below 1.0, where npm treats each minor as breaking. `from` is the newest release on the current line and `to` is the latest release. Ranges such as `*`, `latest`, `workspace:`, `file:`, git and URL dependencies are not followed. An `npm:` alias is checked under the package it points to. A deprecation message on the latest release is printed, since it often names a renamed package.
+
+It writes `.apimigrate/watch/plan.json`, unless `--dry-run` is given. The `watch` setting limits it to the packages listed.
+
 ## Configuration
 
 `.apimigrate.yml` in the repository root.
@@ -95,6 +103,7 @@ Runs only the gate. Settings come from `.apimigrate.yml` in the base directory.
 | `allow` | Paths exempt from the protected file check. |
 | `coverageTolerance` | Allowed drop in line coverage, in points. Default 0. |
 | `draft` | Must be true or omitted. Pull requests are always drafts. |
+| `watch` | Packages `watch` checks. Default every dependency. |
 | `reviewers`, `model` | Accepted so a shared config file can carry them. The tool does not use them. |
 
 Unknown settings, wrong types and malformed pins are errors with exit code 2.

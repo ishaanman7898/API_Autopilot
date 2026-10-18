@@ -69,6 +69,7 @@ Related docs are [matching](docs/matching.md), [gate](docs/gate.md), [agent fall
 | `agent-apply` | Validate and apply agent output for unresolved sites, through the same gate. |
 | `verify` | Replay a migration on a base checkout and compare it with the evidence. |
 | `gate` | Run only the gate between two trees. |
+| `watch` | Find dependencies with a new major version on npm and write a migration plan. |
 
 Exit codes are 0 for success, 1 for a gate, test or verify failure, 2 for a usage or config error, and 3 for a trust failure.
 

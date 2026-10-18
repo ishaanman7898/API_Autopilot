@@ -53,9 +53,11 @@ export const DEFAULTS = {
   protect: [],
   allow: [],
   coverageTolerance: 0,
+  watch: [],
+  sources: [],
 };
 
-const LISTS = ['providers', 'paths', 'extensions', 'pins', 'reviewers', 'protect', 'allow'];
+const LISTS = ['providers', 'paths', 'extensions', 'pins', 'reviewers', 'protect', 'allow', 'watch', 'sources'];
 
 // Unknown keys and wrong types are errors, so a typo cannot silently weaken a setting.
 export function withDefaults(cfg) {

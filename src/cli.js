@@ -11,8 +11,9 @@ import * as keygen from './commands/keygen.js';
 import * as lint from './commands/lint.js';
 import * as sign from './commands/sign.js';
 import * as verify from './commands/verify.js';
+import * as watch from './commands/watch.js';
 
-const COMMANDS = [keygen, lint, sign, check, draft, apply, agentApply, verify, gate];
+const COMMANDS = [keygen, lint, sign, check, draft, apply, agentApply, verify, gate, watch];
 const byName = Object.fromEntries(COMMANDS.map((c) => [c.spec.name, c]));
 
 export function helpFor(name) {
