@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
+import { UsageError } from './errors.js';
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.apimigrate']);
 const DEFAULT_EXT = ['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.mts', '.cts'];
@@ -19,7 +20,7 @@ export function normalize(raw) {
 export const denormalize = (text, style) => (style.bom ? '﻿' : '') + (style.eol === '\r\n' ? text.replace(/\n/g, '\r\n') : text);
 
 // Reads files under paths in sorted order. Paths may not leave root and symbolic links are never followed.
-export function readTree(root, { paths = ['.'], extensions = [] } = {}) {
+export function readTree(root, { paths = ['.'], extensions = [], match = null } = {}) {
   const base = resolve(root);
   const wanted = extensions.length ? extensions : DEFAULT_EXT;
   const files = {};
@@ -39,13 +40,13 @@ export function readTree(root, { paths = ['.'], extensions = [] } = {}) {
       if (e.isSymbolicLink() || SKIP_DIRS.has(e.name)) continue;
       const full = join(dir, e.name);
       if (e.isDirectory()) walk(full);
-      else if (e.isFile() && wanted.some((x) => e.name.endsWith(x))) take(full);
+      else if (e.isFile() && (match ? match(posix(relative(base, full))) : wanted.some((x) => e.name.endsWith(x)))) take(full);
     }
   };
 
   for (const p of paths) {
     const full = resolve(base, p);
-    if (full !== base && !full.startsWith(base + sep)) throw new Error(`path ${p} is outside the repository root`);
+    if (full !== base && !full.startsWith(base + sep)) throw new UsageError(`path ${p} is outside the repository root`);
     let st;
     try { st = statSync(full); } catch { continue; }
     if (st.isDirectory()) walk(full);
