@@ -1,0 +1,262 @@
+{
+  "schema": "apimigrate/1",
+  "provider": "orb",
+  "package": "orb-billing",
+  "id": "orb-billing-5-to-6",
+  "from": "5.x",
+  "to": "6.x",
+  "sunset": "2027-12-31",
+  "rules": [
+    {
+      "id": "namespace-beta.externalPlanId",
+      "kind": "rename-namespace",
+      "match": {
+        "path": "beta.externalPlanId"
+      },
+      "transform": {
+        "to": "beta.externalPlanID"
+      }
+    },
+    {
+      "id": "rename-customers.fetchByExternalId",
+      "kind": "rename-method",
+      "match": {
+        "call": "customers.fetchByExternalId"
+      },
+      "transform": {
+        "to": "customers.fetchByExternalID"
+      }
+    },
+    {
+      "id": "rename-customers.syncPaymentMethodsFromGatewayByExternalCustomerId",
+      "kind": "rename-method",
+      "match": {
+        "call": "customers.syncPaymentMethodsFromGatewayByExternalCustomerId"
+      },
+      "transform": {
+        "to": "customers.syncPaymentMethodsFromGatewayByExternalCustomerID"
+      }
+    },
+    {
+      "id": "rename-customers.updateByExternalId",
+      "kind": "rename-method",
+      "match": {
+        "call": "customers.updateByExternalId"
+      },
+      "transform": {
+        "to": "customers.updateByExternalID"
+      }
+    },
+    {
+      "id": "rename-customers.costs.listByExternalId",
+      "kind": "rename-method",
+      "match": {
+        "call": "customers.costs.listByExternalId"
+      },
+      "transform": {
+        "to": "customers.costs.listByExternalID"
+      }
+    },
+    {
+      "id": "rename-customers.credits.listByExternalId",
+      "kind": "rename-method",
+      "match": {
+        "call": "customers.credits.listByExternalId"
+      },
+      "transform": {
+        "to": "customers.credits.listByExternalID"
+      }
+    },
+    {
+      "id": "rename-customers.credits.ledger.createEntryByExternalId",
+      "kind": "rename-method",
+      "match": {
+        "call": "customers.credits.ledger.createEntryByExternalId"
+      },
+      "transform": {
+        "to": "customers.credits.ledger.createEntryByExternalID"
+      }
+    },
+    {
+      "id": "rename-customers.credits.ledger.listByExternalId",
+      "kind": "rename-method",
+      "match": {
+        "call": "customers.credits.ledger.listByExternalId"
+      },
+      "transform": {
+        "to": "customers.credits.ledger.listByExternalID"
+      }
+    },
+    {
+      "id": "rename-customers.credits.topUps.createByExternalId",
+      "kind": "rename-method",
+      "match": {
+        "call": "customers.credits.topUps.createByExternalId"
+      },
+      "transform": {
+        "to": "customers.credits.topUps.createByExternalID"
+      }
+    },
+    {
+      "id": "rename-customers.credits.topUps.deleteByExternalId",
+      "kind": "rename-method",
+      "match": {
+        "call": "customers.credits.topUps.deleteByExternalId"
+      },
+      "transform": {
+        "to": "customers.credits.topUps.deleteByExternalID"
+      }
+    },
+    {
+      "id": "rename-customers.credits.topUps.listByExternalId",
+      "kind": "rename-method",
+      "match": {
+        "call": "customers.credits.topUps.listByExternalId"
+      },
+      "transform": {
+        "to": "customers.credits.topUps.listByExternalID"
+      }
+    },
+    {
+      "id": "namespace-plans.externalPlanId",
+      "kind": "rename-namespace",
+      "match": {
+        "path": "plans.externalPlanId"
+      },
+      "transform": {
+        "to": "plans.externalPlanID"
+      }
+    },
+    {
+      "id": "namespace-prices.externalPriceId",
+      "kind": "rename-namespace",
+      "match": {
+        "path": "prices.externalPriceId"
+      },
+      "transform": {
+        "to": "prices.externalPriceID"
+      }
+    },
+    {
+      "id": "namespace-dimensionalPriceGroups.externalDimensionalPriceGroupId",
+      "kind": "rename-namespace",
+      "match": {
+        "path": "dimensionalPriceGroups.externalDimensionalPriceGroupId"
+      },
+      "transform": {
+        "to": "dimensionalPriceGroups.externalDimensionalPriceGroupID"
+      }
+    },
+    {
+      "id": "rename-licenses.retrieveByExternalId",
+      "kind": "rename-method",
+      "match": {
+        "call": "licenses.retrieveByExternalId"
+      },
+      "transform": {
+        "to": "licenses.retrieveByExternalID"
+      }
+    },
+    {
+      "id": "named-beta.fetchPlanVersion",
+      "kind": "positional-to-named",
+      "match": {
+        "call": "beta.fetchPlanVersion",
+        "positional": 2
+      },
+      "transform": {
+        "names": [
+          "plan_id"
+        ]
+      }
+    },
+    {
+      "id": "named-beta.externalPlanID.fetchPlanVersion",
+      "kind": "positional-to-named",
+      "match": {
+        "call": "beta.externalPlanID.fetchPlanVersion",
+        "positional": 2
+      },
+      "transform": {
+        "names": [
+          "external_plan_id"
+        ]
+      }
+    },
+    {
+      "id": "named-customers.credits.topUps.delete",
+      "kind": "positional-to-named",
+      "match": {
+        "call": "customers.credits.topUps.delete",
+        "positional": 2
+      },
+      "transform": {
+        "names": [
+          "customer_id"
+        ]
+      }
+    },
+    {
+      "id": "named-customers.credits.topUps.deleteByExternalID",
+      "kind": "positional-to-named",
+      "match": {
+        "call": "customers.credits.topUps.deleteByExternalID",
+        "positional": 2
+      },
+      "transform": {
+        "names": [
+          "external_customer_id"
+        ]
+      }
+    },
+    {
+      "id": "named-invoices.deleteLineItem",
+      "kind": "positional-to-named",
+      "match": {
+        "call": "invoices.deleteLineItem",
+        "positional": 2
+      },
+      "transform": {
+        "names": [
+          "invoice_id"
+        ]
+      }
+    },
+    {
+      "id": "named-plans.migrations.retrieve",
+      "kind": "positional-to-named",
+      "match": {
+        "call": "plans.migrations.retrieve",
+        "positional": 2
+      },
+      "transform": {
+        "names": [
+          "plan_id"
+        ]
+      }
+    },
+    {
+      "id": "named-plans.migrations.cancel",
+      "kind": "positional-to-named",
+      "match": {
+        "call": "plans.migrations.cancel",
+        "positional": 2
+      },
+      "transform": {
+        "names": [
+          "plan_id"
+        ]
+      }
+    },
+    {
+      "id": "dependency",
+      "kind": "rename-dependency",
+      "match": {
+        "dependency": "orb-billing"
+      },
+      "transform": {
+        "version": "^6.0.0"
+      }
+    }
+  ]
+}
