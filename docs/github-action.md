@@ -54,7 +54,7 @@ The sample workflow in `examples/workflow.yml` asks for `contents: write` and `p
 
 ## Limits
 
-- The action runs on a real GitHub runner in the `action-selftest` workflow, against a copy of `examples/app`. It pushes to a local bare repository and `gh` is replaced by a stand-in that records its arguments, so that run checks everything up to the pull request but does not open one.
+- The action runs on a real GitHub runner in the `action-selftest` workflow, in apply mode against a copy of `examples/app` and in watch mode against a repository that depends on Mux 14, with the real npm registry and GitHub. It pushes to a local bare repository and `gh` is replaced by a stand-in that records its arguments, so that run checks everything up to the pull request but does not open one.
 - Pull requests created with the default workflow token do not trigger other workflows. Use a token with the access you want if you need that.
 - A migration with unresolved sites opens a draft that is partly done. The body says so, and the sites are in the artifact.
 - The repository must already be checked out, and Node 20 or newer must be set up before this action runs.
