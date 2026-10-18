@@ -219,6 +219,27 @@ test('path aliases come from the root tsconfig even outside the scan paths, repl
   assert.match(v.out, /replay matches/);
 });
 
+test('rename-dependency edits package.json outside the scan paths, passes the gate, and replays', async () => {
+  const pkg = '{\n  "scripts": { "test": "node --test" },\n  "dependencies": { "acme-sdk": "^1.0.0" }\n}\n';
+  const repo = { ...REPO, '.apimigrate.yml': 'paths: [src]\n', 'package.json': pkg };
+  const imports = { id: 'imp', kind: 'rename-import', match: { module: 'acme-sdk' }, transform: { to: '@acme/sdk' } };
+  const dep = { id: 'dep', kind: 'rename-dependency', match: { dependency: 'acme-sdk' }, transform: { to: '@acme/sdk', version: '^2.0.0' } };
+  const pub = await publisher([imports, dep]);
+  const base = write(tmp(), repo);
+  const work = tmp();
+  cpSync(base, work, { recursive: true });
+  const r = await apply(pub, work);
+  assert.equal(r.code, 0, r.err);
+  assert.match(r.out, /note: package\.json dependencies changed, update the lockfile/);
+  assert.equal(readFileSync(join(work, 'package.json'), 'utf8'), pkg.replace('"acme-sdk": "^1.0.0"', '"@acme/sdk": "^2.0.0"'));
+  assert.match(readFileSync(join(work, 'src/billing.ts'), 'utf8'), /from '@acme\/sdk'/);
+  const evidence = JSON.parse(readFileSync(join(work, '.apimigrate/evidence.json'), 'utf8'));
+  assert.ok(evidence.files.some((f) => f.path === 'package.json'));
+  assert.equal(evidence.gate.ok, true);
+  const v = await run('verify', '--rules', pub.rules, '--evidence', join(work, '.apimigrate/evidence.json'), '--root', base, '--head', work, '--keys', pub.keys);
+  assert.equal(v.code, 0, v.err);
+});
+
 test('the gate command compares two trees', async () => {
   const base = write(tmp(), REPO);
   const head = write(tmp(), { ...REPO, 'test/billing.test.ts': TEST.replace("  expect(1).toBe(1);\n", '') });

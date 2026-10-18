@@ -45,18 +45,23 @@ export async function loadKeys(flags, rs) {
 // tsconfig.json, jsconfig.json and variants such as tsconfig.base.json. Read from the whole repository,
 // because the config that declares a path alias is often outside the scanned paths.
 const PROJECT_CONFIG = /(?:^|\/)[jt]sconfig(?:\.[^/]+)?\.json$/;
+const MANIFEST = /(?:^|\/)package\.json$/;
 
 // Scan files plus every test, CI and test config file the gate watches, all as LF text.
-// configs holds the project config files the engine resolves path aliases with. Rules never edit them.
+// Every package.json joins the scan files, wherever it is, so rename-dependency can edit it and the
+// change is recorded in the evidence and replayed. configs holds the project config files the engine
+// resolves path aliases with. Rules never edit them.
 export function loadTrees(root, cfg, scan = { paths: cfg.paths, extensions: cfg.extensions }) {
   const code = readTree(root, scan);
   const watched = readTree(root, { paths: ['.'], match: (rel) => isGateFile(rel, protectList(cfg)) });
   const configs = readTree(root, { paths: ['.'], match: (rel) => PROJECT_CONFIG.test(rel) });
+  const manifests = readTree(root, { paths: ['.'], match: (rel) => MANIFEST.test(rel) });
+  const scanFiles = Object.fromEntries(Object.entries({ ...code.files, ...manifests.files }).sort(([a], [b]) => (a < b ? -1 : 1)));
   return {
-    files: { ...watched.files, ...code.files },
-    scanFiles: code.files,
+    files: { ...watched.files, ...scanFiles },
+    scanFiles,
     configs: configs.files,
-    styles: { ...watched.styles, ...code.styles },
+    styles: { ...watched.styles, ...manifests.styles, ...code.styles },
     skipped: [...code.skipped, ...watched.skipped],
   };
 }

@@ -95,6 +95,7 @@ export async function run({ flags }, io) {
   for (const u of result.unresolved) io.out(`unresolved: ${u.file}:${u.line} ${u.ruleId}: ${u.reason}`);
   for (const s of [...result.skipped, ...before.skipped]) io.out(`skipped: ${s.file}: ${s.reason}`);
   if (unproven) io.out(`note: ${unproven} changes came from regex replace rules and are not parse-verified`);
+  if (changed.some((f) => /(?:^|\/)package\.json$/.test(f))) io.out('note: package.json dependencies changed, update the lockfile with your package manager before merging');
   if (result.unresolved.length && !dry) io.out('unresolved sites are queued in .apimigrate/unresolved.json for an agent, then run agent-apply');
   for (const f of gate.findings) io.err(`gate: ${f.message}`);
   if (tests && tests.exitCode !== 0) io.err(`tests failed with exit code ${tests.exitCode}`);

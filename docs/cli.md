@@ -97,6 +97,6 @@ Runs only the gate. Settings come from `.apimigrate.yml` in the base directory.
 
 Unknown settings, wrong types and malformed pins are errors with exit code 2.
 
-Directories named `node_modules`, `.git`, `dist`, `build`, `coverage` and `.apimigrate` are skipped, symbolic links are not followed, and files over 2 MB are not scanned. A configured path that is a symbolic link, or is reached through one, is skipped and listed in the output. List items in `.apimigrate.yml` may be indented or sit at the same indent as their key. `tsconfig*.json` and `jsconfig*.json` files anywhere in the repository are also read, for path aliases. They are not scanned or edited. See [matching](matching.md).
+Directories named `node_modules`, `.git`, `dist`, `build`, `coverage` and `.apimigrate` are skipped, symbolic links are not followed, and files over 2 MB are not scanned. A configured path that is a symbolic link, or is reached through one, is skipped and listed in the output. List items in `.apimigrate.yml` may be indented or sit at the same indent as their key. `tsconfig*.json` and `jsconfig*.json` files anywhere in the repository are also read, for path aliases. They are not scanned or edited. Every `package.json` in the repository is read with the scanned files, so `rename-dependency` rules can edit it. See [matching](matching.md).
 
 Related docs are [rule format](rule-format.md), [gate](gate.md), [GitHub Action](github-action.md) and [security](security.md).

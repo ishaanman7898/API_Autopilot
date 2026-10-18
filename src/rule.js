@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
 export const SCHEMA = 'apimigrate/1';
-export const KINDS = ['rename-import', 'rename-method', 'rename-param', 'replace', 'manual'];
+export const KINDS = ['rename-import', 'rename-method', 'rename-param', 'rename-dependency', 'replace', 'manual'];
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}(T[\d:.]+(Z|[+-]\d{2}:\d{2}))?$/;
 
 // Sorted-key JSON. Throws on values JSON cannot carry so two different rules never share a hash.
@@ -48,6 +48,7 @@ export function validateRuleSet(rs) {
       if (!Array.isArray(r.match?.files) || r.match.files.length === 0) errors.push(`${at}: replace rules need match.files`);
     }
     if (r.kind === 'manual' && !(r.match?.call && r.fallback?.prompt)) errors.push(`${at}: needs match.call and fallback.prompt`);
+    if (r.kind === 'rename-dependency' && !(r.match?.dependency && (typeof r.transform?.to === 'string' || typeof r.transform?.version === 'string'))) errors.push(`${at}: needs match.dependency and transform.to or transform.version`);
   }
   return errors;
 }

@@ -78,3 +78,34 @@ test('unified diffs show only changed hunks', () => {
   assert.doesNotMatch(d, /line 3\n/);
   assert.equal(unifiedDiff('f.ts', a, a).split('\n').filter((l) => l.startsWith('@@')).length, 0);
 });
+
+test('rename-dependency renames the dependency and sets its range in every package.json, keeping formatting', () => {
+  const rule = { id: 'dep', kind: 'rename-dependency', match: { dependency: 'acme-sdk' }, transform: { to: '@acme/sdk', version: '^2.0.0' } };
+  const rootPkg = '{\n  "name": "app",\n  "dependencies": {\n    "acme-sdk": "^1.4.0",\n    "zod": "3.0.0"\n  },\n  "scripts": { "test": "node --test" }\n}\n';
+  const webPkg = '{"devDependencies":{"acme-sdk":"1.0.0"},"peerDependencies":{"acme-sdk":"*"}}';
+  const files = {
+    'package.json': rootPkg,
+    'packages/web/package.json': webPkg,
+    'packages/other/package.json': '{ "dependencies": { "zod": "3.0.0" } }\n',
+    'packages/both/package.json': '{ "dependencies": { "acme-sdk": "1.0.0", "@acme/sdk": "2.0.0" } }\n',
+    'packages/broken/package.json': '{ "dependencies": { "acme-sdk": "1.0.0", } oops',
+    'src/a.ts': "import Acme from 'acme-sdk';\n",
+    'notes/package.json.md': '"acme-sdk"',
+  };
+  const r = applyRuleSet(ruleSet([rule]), files);
+  assert.equal(r.files['package.json'], rootPkg.replace('"acme-sdk": "^1.4.0"', '"@acme/sdk": "^2.0.0"'));
+  assert.equal(r.files['packages/web/package.json'], '{"devDependencies":{"@acme/sdk":"^2.0.0"},"peerDependencies":{"@acme/sdk":"^2.0.0"}}');
+  for (const f of ['packages/other/package.json', 'packages/both/package.json', 'packages/broken/package.json', 'src/a.ts', 'notes/package.json.md']) assert.equal(r.files[f], files[f], f);
+  assert.deepEqual(r.changes.map((c) => [c.file, c.line, c.proven]), [['package.json', 4, true], ['packages/web/package.json', 1, true]]);
+  assert.deepEqual(r.unresolved.map((u) => [u.file, u.reason]), [
+    ['packages/both/package.json', 'dependencies already lists @acme/sdk'],
+    ['packages/broken/package.json', 'package.json is not valid JSON'],
+  ]);
+
+  const bump = applyRuleSet(ruleSet([{ id: 'v', kind: 'rename-dependency', match: { dependency: 'zod' }, transform: { version: '^4.0.0' } }]), files);
+  assert.match(bump.files['package.json'], /"zod": "\^4\.0\.0"/);
+  assert.match(bump.files['packages/other/package.json'], /"zod": "\^4\.0\.0"/);
+
+  assert.ok(validateRuleSet(ruleSet([{ id: 'x', kind: 'rename-dependency', match: { dependency: 'a' }, transform: {} }])).some((e) => /needs match\.dependency/.test(e)));
+  assert.deepEqual(validateRuleSet(ruleSet([rule])), []);
+});

@@ -1,3 +1,4 @@
+import ts from 'typescript';
 import { buildProgram } from './parse.js';
 import { createResolver } from './bindings.js';
 import { filesReachingPackage } from './match.js';
@@ -66,6 +67,46 @@ function runAstRule(rule, rs, files, configs, names, report) {
   return next;
 }
 
+const MANIFEST = /(?:^|\/)package\.json$/;
+const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'];
+const textSnippet = (text, line) => text.split('\n').slice(Math.max(0, line - 3), line + 2).join('\n');
+
+// Renames a dependency, sets its version range, or both, in every package.json that lists it. Edits go
+// through a JSON parse, so formatting and key order are kept. Lockfiles are left to the package manager.
+function runDependencyRule(rule, files, report) {
+  const next = { ...files };
+  const from = rule.match.dependency;
+  const to = rule.transform.to ?? from;
+  const { version } = rule.transform;
+  for (const [file, text] of Object.entries(files)) {
+    if (!MANIFEST.test(file)) continue;
+    const sf = ts.parseJsonText(file, text);
+    const root = sf.statements[0]?.expression;
+    if (sf.parseDiagnostics?.length || !root || !ts.isObjectLiteralExpression(root)) {
+      if (text.includes(JSON.stringify(from))) report.unresolved.push({ file, line: 1, ruleId: rule.id, call: from, reason: 'package.json is not valid JSON', snippet: textSnippet(text, 1) });
+      continue;
+    }
+    const edits = [];
+    for (const field of root.properties) {
+      if (!ts.isPropertyAssignment(field) || !DEPENDENCY_FIELDS.includes(field.name.text) || !ts.isObjectLiteralExpression(field.initializer)) continue;
+      const deps = field.initializer.properties.filter(ts.isPropertyAssignment);
+      const entry = deps.find((p) => p.name.text === from);
+      if (!entry) continue;
+      const line = sf.getLineAndCharacterOfPosition(entry.name.getStart(sf)).line + 1;
+      if (to !== from && deps.some((p) => p.name.text === to)) {
+        report.unresolved.push({ file, line, ruleId: rule.id, call: from, reason: `${field.name.text} already lists ${to}`, snippet: textSnippet(text, line) });
+        continue;
+      }
+      if (to !== from) edits.push({ start: entry.name.getStart(sf), end: entry.name.end, text: JSON.stringify(to), line });
+      if (version !== undefined && ts.isStringLiteral(entry.initializer)) edits.push({ start: entry.initializer.getStart(sf), end: entry.initializer.end, text: JSON.stringify(version), line });
+    }
+    if (!edits.length) continue;
+    next[file] = applyEdits(text, edits);
+    for (const line of new Set(edits.map((e) => e.line))) report.changes.push({ file, line, ruleId: rule.id, proven: true });
+  }
+  return next;
+}
+
 // Regex rewrite for non-code files. These changes are not proven by a parse and are labelled as such.
 function runReplaceRule(rule, files, report) {
   const next = { ...files };
@@ -89,7 +130,9 @@ export function applyRuleSet(rs, files, configs = {}) {
   const names = packageNames(rs);
   let current = { ...files };
   for (const rule of rs.rules) {
-    current = rule.kind === 'replace' ? runReplaceRule(rule, current, report) : runAstRule(rule, rs, current, configs, names, report);
+    if (rule.kind === 'replace') current = runReplaceRule(rule, current, report);
+    else if (rule.kind === 'rename-dependency') current = runDependencyRule(rule, current, report);
+    else current = runAstRule(rule, rs, current, configs, names, report);
   }
   const seen = new Set();
   const unresolved = report.unresolved.filter((u) => {

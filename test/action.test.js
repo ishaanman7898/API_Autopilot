@@ -36,6 +36,9 @@ test('the pull request body states what happened and how to verify, and flattens
   assert.match(body, /`src\/xy\.ts:9`/);
   assert.doesNotMatch(body, /receiver\ncannot/);
   assert.ok(body.length < 65000);
+  assert.doesNotMatch(body, /Regenerate the lockfile/);
+  const manifest = prBody({ ...evidence, files: [...evidence.files, { path: 'packages/web/package.json', before: 'x', after: 'y' }] });
+  assert.match(manifest, /`package\.json` dependencies changed\. Regenerate the lockfile/);
 });
 
 test('very large evidence is truncated to fit a pull request body', () => {

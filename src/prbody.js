@@ -34,6 +34,9 @@ export function prBody(evidence, { rulesPath = 'rules.json' } = {}) {
     '| --- | --- |',
     ...rows.map(([k, v]) => `| ${k} | ${v} |`),
   ];
+  if (changedPaths(evidence).some((p) => /(?:^|\/)package\.json$/.test(p))) {
+    lines.push('', '`package.json` dependencies changed. Regenerate the lockfile with your package manager, for example `npm install`, and commit it before marking this ready.');
+  }
   if (evidence.unresolved.length) {
     lines.push('', '### Unresolved call sites', '', 'These were not rewritten because the tool could not prove them.', '');
     for (const u of evidence.unresolved.slice(0, 50)) lines.push(`- ${code(`${u.file}:${u.line}`)} ${code(u.ruleId)}: ${String(u.reason).replace(/[\r\n]+/g, ' ')}`);
