@@ -3,11 +3,12 @@ import { join, relative, resolve, sep } from 'node:path';
 import { NPM_REGISTRY, findUpgrades, lineOf } from '../registry.js';
 import { parseSources, signedRulesFor } from '../sources.js';
 import { readTree } from '../tree.js';
+import { draftedRulesFor } from '../upstream.js';
 import { loadConfig } from './common.js';
 
 export const spec = {
   name: 'watch',
-  summary: 'find dependencies with a new major version on npm and write a migration plan',
+  summary: 'find dependencies with a new major version on npm, then fetch signed rules or draft unsigned ones',
   usage: 'watch [--root dir] [--out dir] [--registry url] [--dry-run]',
   value: ['root', 'out', 'registry'],
   bool: ['dry-run'],
@@ -37,22 +38,37 @@ export async function run({ flags }, io) {
   const files = new Map();
 
   const plan = { schema: PLAN_SCHEMA, upgrades: [], skipped };
+  const write = (name, value) => {
+    const path = join(out, name);
+    files.set(path, value);
+    return rel(path);
+  };
   for (const u of upgrades) {
-    const entry = { ...u, source: 'none', rules: null, reason: 'no rule source is configured for this package' };
+    const entry = { ...u, source: 'none', signed: false, rules: null, reason: null };
+    const notes = [];
     const domain = sources.get(u.package);
     if (domain) {
       const found = await signedRulesFor(u, domain, { fetchImpl: io.fetch, cfg });
       if (found.ok) {
-        const rules = join(out, `${slug(u)}.rules.json`);
-        const keys = join(out, `${slug(u)}.keys.json`);
-        files.set(rules, found.ruleSet);
-        files.set(keys, { keys: found.keys });
-        Object.assign(entry, { source: 'signed', rules: rel(rules), keys: rel(keys), domain, url: found.url, hash: found.hash, keyId: found.keyId, reason: null });
-      } else entry.reason = `no usable signed rules from ${domain}: ${found.reason}`;
+        Object.assign(entry, { source: 'signed', signed: true, rules: write(`${slug(u)}.rules.json`, found.ruleSet), keys: write(`${slug(u)}.keys.json`, { keys: found.keys }), domain, url: found.url, hash: found.hash, keyId: found.keyId });
+      } else notes.push(`no usable signed rules from ${domain}: ${found.reason}`);
     }
+    if (entry.source === 'none') {
+      const drafted = await draftedRulesFor(u, { registry, fetchImpl: io.fetch });
+      if (drafted.ok) {
+        const counts = { ruleCount: drafted.ruleSet.rules.length, likely: drafted.report.likely, needsReview: drafted.report.needsReview };
+        Object.assign(entry, { source: 'draft', rules: write(`${slug(u)}.draft.json`, drafted.ruleSet), report: write(`${slug(u)}.draft.report.json`, drafted.report), upstream: { from: drafted.from, to: drafted.to }, ...counts });
+      } else notes.push(`no draft: ${drafted.reason}`);
+    }
+    if (entry.source === 'none') entry.reason = notes.join('; ');
+    else if (notes.length) entry.notes = notes;
     plan.upgrades.push(entry);
-    const what = entry.source === 'signed' ? `signed rules from ${domain}` : entry.reason;
+    const at = (s) => `${s.repo}@${s.ref.slice(0, 12)}`;
+    const what = entry.source === 'signed' ? `signed rules from ${domain}`
+      : entry.source === 'draft' ? `${entry.ruleCount} unsigned draft rules from api.md at ${at(entry.upstream.from)} and ${at(entry.upstream.to)}, ${entry.needsReview} need review`
+        : entry.reason;
     io.out(`${u.package}: ${u.from} -> ${u.to} in ${u.manifests.map((m) => m.file).join(', ')}: ${what}${u.deprecated ? ` (latest is deprecated: ${String(u.deprecated).replace(/[\r\n]+/g, ' ')})` : ''}`);
+    if (entry.source !== 'none') for (const n of notes) io.err(`${u.package}: ${n}`);
   }
   for (const s of skipped) io.err(`skipped ${s.package}: ${s.reason}`);
   if (!plan.upgrades.length) io.out('no dependency has a new major version');

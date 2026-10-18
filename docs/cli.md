@@ -95,7 +95,9 @@ For a package listed in the `sources` setting, `watch` asks that package's domai
 { "rules": [{ "package": "acme-sdk", "from": "1", "to": "2", "url": "https://acme.com/rules/acme-sdk-1-to-2.json" }] }
 ```
 
-Each plan entry has the package, the `from` and `to` releases, the `package.json` files and fields that name it, a `source` of `signed` or `none`, the paths of any rule and key files, the rule hash and key id, and a `reason` when no rules were found.
+When there are no usable signed rules, `watch` drafts rules from the two releases, as `draft` does from two SDK checkouts. It reads each release's `repository` and `gitHead` from npm and fetches its `api.md` files from `raw.githubusercontent.com`. It looks at the commit npm recorded, then the tags `v<version>`, `<version>`, `<name>-v<version>` and `<name>@<version>`. It follows the `repository.directory` of a monorepo, and redirects only within the same host. The draft is written as `<package>-<from>-to-<to>.draft.json` with its `.draft.report.json`. It keeps the `draft` mark and each rule's `confidence`, and it is not signed: `apply` runs it only with `--allow-unsigned`, which `pins` forbids. The `provider` is the GitHub owner. A new package name in the new release's `package.json` becomes a rename only when that name is published on npm at that version. Packages without `api.md`, npm aliases and repositories outside GitHub get no draft, and the plan says why.
+
+Each plan entry has the package, the `from` and `to` releases, the `package.json` files and fields that name it, a `source` of `signed`, `draft` or `none`, and `signed`. For signed rules it has the rule and key files, the rule hash and the key id. For a draft it has the rule and report files, the rule counts, and the GitHub repository, ref and file count of each release. It has a `reason` when nothing was found, and `notes` when signed rules were looked for and a draft was used instead.
 
 ## Configuration
 

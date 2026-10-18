@@ -30,6 +30,11 @@ The core is a set of small modules that work on plain maps of path to text. The 
 | `src/secrets.js`, `src/glob.js` | Secret patterns and glob matching. |
 | `src/sanitize.js`, `src/agent.js` | Context cleaning and fencing, the queue, and agent result validation. |
 | `src/diff.js` | OpenAPI 3.x diffing and rule drafting. |
+| `src/apimd.js` | Reads `api.md` surfaces from a checkout or by fetching, diffs them, and drafts rules. |
+| `src/net.js` | Bounded HTTPS reads for the watcher, with redirects only within a host when asked. |
+| `src/registry.js` | npm versions, version lines, and finding dependencies with a new major version. |
+| `src/sources.js` | The `sources` setting and signed rule files from a provider's rule index. |
+| `src/upstream.js` | Finds a release's source on GitHub and drafts rules from two releases. |
 | `src/config.js`, `src/args.js`, `src/errors.js`, `src/version.js` | Config parsing, flag parsing, exit codes, version. |
 | `src/diffview.js`, `src/prbody.js` | Unified diffs and pull request text. |
 | `src/commands/*.js` | One file per command. `common.js` holds the shared loaders. |

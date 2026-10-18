@@ -57,6 +57,10 @@ The package name and versions come from each checkout's `package.json` unless `-
 
 Added methods, changed return types and removed types are listed in the report. On Mux 14.1.1 to 15.0.0 this drafts 5 rules: the `resources/robots-preview` subpath move, the rename to `@mux/ts`, `robotsPreview` to `robots`, a manual rule for `data.filters.listValues` that suggests `data.dimensions.listValues`, and the dependency.
 
+## From npm releases
+
+`apimigrate watch` makes the same draft without checkouts when it finds a new major version and the provider publishes no signed rules. It fetches each release's `api.md` files from GitHub, at the commit npm recorded when the release was published or at its release tag. On `@mux/mux-node` 14.1.1 to 15.5.0 it drafts the same 5 rules as above. On `cloudflare` 6.5.0 to 7.3.0 it drafts 280, 21 of them `needs-review`. These drafts are never signed. They reach a repository only as draft pull requests marked unsigned. See [CLI reference](cli.md#watch).
+
 ## Before signing
 
 `sign` refuses a file with `draft: true` or any `confidence` field. The publisher reads each rule, checks it against the real SDK, fixes it, and removes the marks. `lint` reports what still blocks signing.

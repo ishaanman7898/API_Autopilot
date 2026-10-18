@@ -11,29 +11,54 @@ const LINK = /\]\((?:\.\/)?(src\/[^)]*?api\.md)\)/g;
 // The import path of a source file inside the package: src/resources/a/b.ts becomes resources/a/b.
 const modulePath = (file) => file.replace(/^src\//, '').replace(/\.[cm]?[jt]sx?$/, '').replace(/\/index$/, '');
 
+// One api.md file: its methods and types go into the surface, and the api.md files it links to are returned.
+function scanApiFile(surface, text) {
+  for (const m of text.matchAll(METHOD)) {
+    const endpoint = `${m[1].toUpperCase()} ${m[2]}`;
+    const call = [...m[3].split('.').filter(Boolean), m[5]].join('.');
+    surface.methods.set(endpoint, [...(surface.methods.get(endpoint) ?? []), { call, file: m[4], args: m[6].trim(), returns: (m[7] ?? '').trim() }]);
+  }
+  for (const m of text.matchAll(TYPE)) surface.types.set(m[2], new Set([...(surface.types.get(m[2]) ?? []), m[1]]));
+  return [...text.matchAll(LINK)].map((m) => m[1]).filter((rel) => !rel.split('/').includes('..'));
+}
+
+const surfaceOf = (pkg, methods, types, seen) => ({ name: pkg?.name ?? null, version: pkg?.version ?? null, methods, types, files: [...seen] });
+
 // Reads an SDK checkout: { name, version, methods: Map endpoint -> [{ call, file, args, returns }], types: Map name -> files }.
 export function readApiSurface(dir) {
   if (!existsSync(join(dir, 'api.md'))) throw new Error(`${dir} has no api.md`);
   let pkg = {};
   try { pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')); } catch { /* the name and version are then unknown */ }
-  const methods = new Map();
-  const types = new Map();
+  const surface = { methods: new Map(), types: new Map() };
   const seen = new Set();
   const queue = ['api.md'];
   while (queue.length) {
     const rel = queue.shift();
     if (seen.has(rel) || !existsSync(join(dir, rel))) continue;
     seen.add(rel);
-    const text = readFileSync(join(dir, rel), 'utf8');
-    for (const m of text.matchAll(LINK)) queue.push(m[1]);
-    for (const m of text.matchAll(METHOD)) {
-      const endpoint = `${m[1].toUpperCase()} ${m[2]}`;
-      const call = [...m[3].split('.').filter(Boolean), m[5]].join('.');
-      methods.set(endpoint, [...(methods.get(endpoint) ?? []), { call, file: m[4], args: m[6].trim(), returns: (m[7] ?? '').trim() }]);
-    }
-    for (const m of text.matchAll(TYPE)) types.set(m[2], new Set([...(types.get(m[2]) ?? []), m[1]]));
+    queue.push(...scanApiFile(surface, readFileSync(join(dir, rel), 'utf8')));
   }
-  return { name: pkg.name ?? null, version: pkg.version ?? null, methods, types, files: [...seen] };
+  return surfaceOf(pkg, surface.methods, surface.types, seen);
+}
+
+// The same walk over files that are fetched: read(rel) resolves to the text, or null when the file does not exist.
+// Files are fetched a few at a time and scanned in the order readApiSurface would scan them.
+export async function fetchApiSurface(read, pkg, { maxFiles = 2000, parallel = 8 } = {}) {
+  const surface = { methods: new Map(), types: new Map() };
+  const seen = new Set();
+  const queue = ['api.md'];
+  while (queue.length) {
+    const wave = [...new Set(queue.splice(0, parallel))].filter((rel) => !seen.has(rel));
+    if (seen.size + wave.length > maxFiles) throw new Error(`api.md links more than ${maxFiles} files`);
+    const texts = await Promise.all(wave.map((rel) => read(rel)));
+    wave.forEach((rel, i) => {
+      if (texts[i] == null) return;
+      seen.add(rel);
+      queue.push(...scanApiFile(surface, texts[i]));
+    });
+    if (!seen.has('api.md')) throw new Error('there is no api.md');
+  }
+  return surfaceOf(pkg, surface.methods, surface.types, seen);
 }
 
 const segments = (s) => s.split('.');

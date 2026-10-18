@@ -8,6 +8,8 @@ import { withDefaults } from '../src/config.js';
 import { findUpgrades, lineOf, rangeLine } from '../src/registry.js';
 import { generateKeys, signRuleSet } from '../src/signing.js';
 import { parseSources, signedRulesFor } from '../src/sources.js';
+import { RAW, githubRepo, releaseRefs } from '../src/upstream.js';
+import { fetchText } from '../src/net.js';
 
 // A fake fetch that serves a fixed map of URL to JSON or text, and 404 for anything else.
 export function fakeFetch(routes, seen = []) {
@@ -155,4 +157,95 @@ test('signedRulesFor needs an index entry for the same lines and a rule file bef
   assert.match((await signedRulesFor(upgrade, DOMAIN, { fetchImpl: fakeFetch(http), cfg })).reason, /gives no https url/);
   assert.deepEqual([...parseSources(['@mux/mux-node  mux.com'])], [['@mux/mux-node', 'mux.com']]);
   assert.throws(() => parseSources(['acme-sdk https://acme.com']), /must be a package name and a domain/);
+});
+
+// Two releases of acme-sdk on GitHub in the Stainless api.md layout. 1.4.1 is found by the commit npm recorded,
+// 2.1.0 by its tag, and 2.1.0 renamed the package to @acme/sdk and the jobsPreview resource to jobs.
+const HEAD = 'a'.repeat(40);
+const md = (verb, path, call, args = '') => `- <code title="${verb} ${path}">client.${call.split('.').slice(0, -1).join('.')}.<a href="./src/resources/x.ts">${call.split('.').at(-1)}</a>(${args}) -> Thing</code>`;
+function upstreamRoutes({ renamedOnNpm = true } = {}) {
+  const tree = (base, ns) => ({
+    [`${base}/api.md`]: '# Shared\n\n# [Jobs](src/resources/jobs/api.md)\n# [Missing](src/resources/missing/api.md)\n',
+    [`${base}/src/resources/jobs/api.md`]: ['# Jobs', '', md('get', '/jobs', `${ns}.list`), md('post', '/jobs', `${ns}.create`, '{ ...params }'), md('get', '/jobs/{ID}', `${ns}.retrieve`, 'id')].join('\n'),
+  });
+  return {
+    ...registryRoutes,
+    [`${R}/acme-sdk/1.4.1`]: { name: 'acme-sdk', version: '1.4.1', gitHead: HEAD, repository: { type: 'git', url: 'git+https://github.com/acme/acme-node.git' } },
+    [`${R}/acme-sdk/2.1.0`]: { name: 'acme-sdk', version: '2.1.0', repository: 'github:acme/acme-node' },
+    ...(renamedOnNpm ? { [`${R}/@acme%2Fsdk`]: doc('2.1.0', ['2.1.0']) } : {}),
+    ...tree(`${RAW}/acme/acme-node/${HEAD}`, 'jobsPreview'),
+    [`${RAW}/acme/acme-node/${HEAD}/package.json`]: { name: 'acme-sdk', version: '1.4.1' },
+    ...tree(`${RAW}/acme/acme-node/v2.1.0`, 'jobs'),
+    [`${RAW}/acme/acme-node/v2.1.0/package.json`]: { name: '@acme/sdk', version: '2.1.0' },
+  };
+}
+const usesAcme = () => repoWith({
+  'package.json': JSON.stringify({ dependencies: { 'acme-sdk': '^1.4.0' } }),
+  'src/app.ts': "import Acme from 'acme-sdk';\nconst client = new Acme();\nexport const jobs = () => client.jobsPreview.list();\n",
+});
+
+test('watch drafts unsigned rules from the api.md of both releases on GitHub when no signed rules exist', async () => {
+  const dir = usesAcme();
+  const seen = [];
+  const r = await cli(['watch', '--root', dir], fakeFetch(upstreamRoutes(), seen));
+  assert.equal(r.code, 0, r.err);
+  assert.match(r.out, /acme-sdk: 1\.4\.1 -> 2\.1\.0 in package\.json: 3 unsigned draft rules from api\.md at github\.com\/acme\/acme-node@aaaaaaaaaaaa and github\.com\/acme\/acme-node@v2\.1\.0, 0 need review/);
+  assert.ok(seen.includes(`${RAW}/acme/acme-node/${HEAD}/src/resources/missing/api.md`), 'a linked file that is missing is skipped');
+  const [entry] = JSON.parse(readFileSync(join(dir, '.apimigrate/watch/plan.json'), 'utf8')).upgrades;
+  assert.deepEqual([entry.source, entry.signed, entry.rules, entry.ruleCount], ['draft', false, '.apimigrate/watch/acme-sdk-1-to-2.draft.json', 3]);
+  assert.deepEqual([entry.upstream.from.ref, entry.upstream.to.ref, entry.upstream.to.files], [HEAD, 'v2.1.0', 2]);
+  const drafted = JSON.parse(readFileSync(join(dir, entry.rules), 'utf8'));
+  assert.equal(drafted.draft, true);
+  assert.equal(drafted.provider, 'acme');
+  assert.deepEqual(drafted.rules.map((x) => [x.kind, x.match, x.transform]), [
+    ['rename-import', { module: 'acme-sdk' }, { to: '@acme/sdk' }],
+    ['rename-namespace', { path: 'jobsPreview' }, { to: 'jobs' }],
+    ['rename-dependency', { dependency: 'acme-sdk' }, { to: '@acme/sdk', version: '^2.1.0' }],
+  ]);
+  const applied = await cli(['apply', '--root', dir, '--rules', join(dir, entry.rules), '--allow-unsigned']);
+  assert.equal(applied.code, 0, applied.err);
+  assert.equal(readFileSync(join(dir, 'src/app.ts'), 'utf8'), "import Acme from '@acme/sdk';\nconst client = new Acme();\nexport const jobs = () => client.jobs.list();\n");
+  assert.equal(JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).dependencies['@acme/sdk'], '^2.1.0');
+});
+
+test('a drafted upgrade keeps the package name unless the new name is published, and says why a draft is missing', async () => {
+  const dir = usesAcme();
+  await cli(['watch', '--root', dir], fakeFetch(upstreamRoutes({ renamedOnNpm: false })));
+  const [entry] = JSON.parse(readFileSync(join(dir, '.apimigrate/watch/plan.json'), 'utf8')).upgrades;
+  const drafted = JSON.parse(readFileSync(join(dir, entry.rules), 'utf8'));
+  assert.deepEqual(drafted.rules.map((x) => x.kind), ['rename-namespace', 'rename-dependency']);
+  assert.deepEqual(drafted.rules[1].transform, { version: '^2.1.0' });
+
+  const routes = upstreamRoutes();
+  const without = (drop) => fakeFetch(Object.fromEntries(Object.entries(routes).filter(([u]) => !drop(u))));
+  const reason = async (fetchImpl) => (await cli(['watch', '--root', usesAcme(), '--dry-run'], fetchImpl)).out;
+  assert.match(await reason(without((u) => u.startsWith(`${RAW}/acme/acme-node/v2.1.0/`))), /no draft: github\.com\/acme\/acme-node has no api\.md for acme-sdk@2\.1\.0 at v2\.1\.0, 2\.1\.0, acme-sdk-v2\.1\.0, acme-sdk@2\.1\.0/);
+  routes[`${R}/acme-sdk/1.4.1`] = { name: 'acme-sdk', version: '1.4.1', repository: 'https://gitlab.com/acme/acme-node' };
+  assert.match(await reason(fakeFetch(routes)), /no draft: acme-sdk@1\.4\.1 names no GitHub repository/);
+});
+
+test('GitHub repositories and release refs are read from npm manifests', () => {
+  const cases = [
+    ['git+https://github.com/muxinc/mux-node-sdk.git', 'muxinc/mux-node-sdk'], ['https://github.com/openai/openai-node', 'openai/openai-node'],
+    ['git@github.com:o/r.git', 'o/r'], ['git+ssh://git@github.com/o/r.git', 'o/r'], ['github:o/r', 'o/r'], ['o/r', 'o/r'],
+    ['https://github.com/o/r/tree/main/packages/x', 'o/r'], ['https://gitlab.com/o/r', null], ['github:o/..', null], [42, null],
+  ];
+  for (const [url, want] of cases) {
+    const got = githubRepo({ repository: { url } });
+    assert.equal(got ? `${got.owner}/${got.repo}` : null, want, String(url));
+  }
+  assert.deepEqual(githubRepo({ repository: { url: 'github:o/r', directory: './packages/sdk/' } }), { owner: 'o', repo: 'r', dir: 'packages/sdk' });
+  assert.equal(githubRepo({ repository: { url: 'github:o/r', directory: 'packages/../..' } }), null);
+  assert.deepEqual(releaseRefs({ gitHead: HEAD }, '@scope/tool', '2.0.0'), [HEAD, 'v2.0.0', '2.0.0', 'tool-v2.0.0', 'tool@2.0.0']);
+  assert.deepEqual(releaseRefs({ gitHead: 'not-a-sha' }, 'x', '1.0.0')[0], 'v1.0.0');
+});
+
+test('fetchText follows redirects only on the same https host and only when asked', async () => {
+  const hop = (location) => async (url) => (url.endsWith('/old')
+    ? { ok: false, status: 301, headers: { get: (h) => (h === 'location' ? location : null) }, text: async () => '' }
+    : { ok: true, status: 200, headers: { get: () => null }, text: async () => `at ${url}` });
+  assert.equal(await fetchText('https://raw.example/old', { fetchImpl: hop('/new'), sameHostRedirects: 1 }), 'at https://raw.example/new');
+  await assert.rejects(fetchText('https://raw.example/old', { fetchImpl: hop('https://evil.example/new'), sameHostRedirects: 1 }), /to another host/);
+  await assert.rejects(fetchText('https://raw.example/old', { fetchImpl: hop('/old'), sameHostRedirects: 2 }), /redirects more than 2 times/);
+  await assert.rejects(fetchText('https://raw.example/old', { fetchImpl: hop('/new') }), /HTTP 301/);
 });
