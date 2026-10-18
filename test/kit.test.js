@@ -11,6 +11,7 @@ const BIN = join(ROOT, 'bin', 'apimigrate.js');
 const KITS = [
   ['mux', 'mux-node-14-to-15.rules.json', [['@mux/mux-node', '14', '15']]],
   ['cloudflare', 'cloudflare-6-to-7.rules.json', [['cloudflare', '6', '7']]],
+  ['orb', 'orb-billing-5-to-6.rules.json', [['orb-billing', '5', '6']]],
 ];
 const run = (...args) => spawnSync(process.execPath, [BIN, ...args], { encoding: 'utf8' });
 
