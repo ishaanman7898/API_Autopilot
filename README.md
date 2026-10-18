@@ -110,7 +110,7 @@ Related docs are [GitHub Action](docs/github-action.md).
 - The gate recognizes common JavaScript test styles. It counts per file, so it can flag legitimate test rewrites. The `allow` setting exists for that.
 - Replay reproduces only the deterministic pass. Agent edits are checked by the head digests, the gate and your tests, not reproduced.
 - Regex `replace` rules are not parse-verified and are labelled that way in the evidence.
-- The tool was run and tested on Windows. A CI matrix for Linux and macOS is defined but its results have not been checked.
+- The test suite passes in CI on Linux, macOS and Windows with Node 20 and 22.
 - The GitHub Action has not been run on a real runner.
 - Keys are fetched from a well-known URL on each run. There is no transparency log. Consumers who want stronger guarantees should pin rule hashes or commit the key set.
 - Secret detection is a list of patterns, not an entropy check. Prompt-injection stripping is a heuristic.

@@ -20,11 +20,10 @@ Work in order of priority.
 
 ## Verified
 
-The test suite runs with the Node test runner and covers each item above, including the end to end flows for apply, verify, drift, trust failures, usage errors, dry run, the gate and agent-apply. It passed on Windows with Node 25 when this was written. One test is skipped on systems that cannot create symbolic links.
+The test suite runs with the Node test runner and covers each item above, including the end to end flows for apply, verify, drift, trust failures, usage errors, dry run, the gate and agent-apply. It passed on Windows with Node 25 when this was written, and now passes in CI on Linux, macOS and Windows with Node 20 and 22. One test is skipped on systems that cannot create symbolic links.
 
 ## Not verified
 
-- Linux and macOS runs. A CI workflow is defined for Linux, macOS and Windows on Node 20 and 22, and its results have not been checked.
 - The GitHub Action on a real runner.
 - The well-known fetch against a live domain. It is tested with injected fetch functions.
 - Performance on large repositories.
