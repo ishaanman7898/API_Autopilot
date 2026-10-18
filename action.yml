@@ -1,0 +1,26 @@
+name: API Autopilot
+description: Apply a signed provider migration rule and open a draft PR with an evidence bundle. Code stays on your runner.
+inputs:
+  rules:
+    description: Path to the signed rule file
+    required: true
+  well-known:
+    description: Provider domain that publishes /.well-known/apimigrate-keys.json
+    required: true
+  test-cmd:
+    description: Command that runs your tests
+    default: npm test
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: node "${{ github.action_path }}/bin/apimigrate.js" apply --rules "${{ inputs.rules }}" --well-known "${{ inputs.well-known }}" --test-cmd "${{ inputs.test-cmd }}"
+    - shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git switch -c "apimigrate/${{ github.run_id }}"
+        git add -A ':!.apimigrate'
+        git -c user.name=apimigrate -c user.email=apimigrate@users.noreply.github.com commit -m "apply signed API migration"
+        git push origin HEAD
+        gh pr create --draft --title "API migration" --body-file .apimigrate/evidence.json
