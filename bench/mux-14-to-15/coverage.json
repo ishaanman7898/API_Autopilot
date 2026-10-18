@@ -1,23 +1,18 @@
 {
  "totals": {
   "text": 156,
-  "proven": 25,
+  "proven": 56,
   "queued": 44,
-  "invisible": 87
+  "invisible": 56
  },
  "rows": [
   {
    "repo": "19leva89/react-ts-next-newtube",
    "text": 4,
-   "proven": 0,
+   "proven": 4,
    "queued": 0,
-   "invisible": 4,
-   "invisibleSites": [
-    "src/modules/videos/server/procedures.ts:337 video.uploads.retrieve",
-    "src/modules/videos/server/procedures.ts:346 video.assets.retrieve",
-    "src/modules/videos/server/procedures.ts:431 video.uploads.create",
-    "src/modules/videos/server/procedures.ts:528 video.assets.delete"
-   ]
+   "invisible": 0,
+   "invisibleSites": []
   },
   {
    "repo": "1outsyde/outsyde-backend",
@@ -41,12 +36,10 @@
   {
    "repo": "BestOlumese/tyims-lms",
    "text": 1,
-   "proven": 0,
+   "proven": 1,
    "queued": 0,
-   "invisible": 1,
-   "invisibleSites": [
-    "lib/inngest/functions.ts:22 video.assets.create"
-   ]
+   "invisible": 0,
+   "invisibleSites": []
   },
   {
    "repo": "Docaari/GrindfyManager",
@@ -112,12 +105,10 @@
   {
    "repo": "MeetMajh/v0-majh-events-ecosystem",
    "text": 5,
-   "proven": 4,
+   "proven": 5,
    "queued": 0,
-   "invisible": 1,
-   "invisibleSites": [
-    "app/api/admin/import-mux-assets/route.ts:31 video.assets.list"
-   ]
+   "invisible": 0,
+   "invisibleSites": []
   },
   {
    "repo": "Mohammad-Ali-Soomro/CourseForge",
@@ -228,12 +219,11 @@
   {
    "repo": "byjasonz/sponsor-tracker",
    "text": 2,
-   "proven": 0,
+   "proven": 1,
    "queued": 0,
-   "invisible": 2,
+   "invisible": 1,
    "invisibleSites": [
-    "app/actions/files.ts:48 video.assets.delete",
-    "app/api/video/upload-url/route.ts:24 video.uploads.create"
+    "app/actions/files.ts:48 video.assets.delete"
    ]
   },
   {
@@ -317,35 +307,10 @@
   {
    "repo": "reno99sonu-eng/inplayer",
    "text": 24,
-   "proven": 0,
+   "proven": 24,
    "queued": 0,
-   "invisible": 24,
-   "invisibleSites": [
-    "app/api/admin/midroll-ads/create-upload/route.ts:56 video.uploads.create",
-    "app/api/admin/recaption/route.ts:86 video.assets.retrieve",
-    "app/api/admin/recaption/route.ts:97 video.assets.deleteTrack",
-    "app/api/admin/recaption/route.ts:204 video.assets.retrieve",
-    "app/api/admin/recaption/route.ts:208 video.assets.generateSubtitles",
-    "app/api/admin/recaption/route.ts:275 video.assets.createTrack",
-    "app/api/creators/studio/[videoId]/localization/route.ts:60 video.assets.retrieve",
-    "app/api/creators/studio/[videoId]/localization/route.ts:64 video.assets.deleteTrack",
-    "app/api/creators/studio/[videoId]/localization/route.ts:68 video.assets.createTrack",
-    "app/api/upload/create/route.ts:330 video.uploads.create",
-    "app/api/videos/[videoId]/playback-token/route.ts:69 video.assets.createPlaybackId",
-    "app/api/videos/[videoId]/prepare-download/route.ts:127 video.assets.retrieve",
-    "app/api/videos/[videoId]/prepare-download/route.ts:180 video.assets.createStaticRendition",
-    "app/api/videos/[videoId]/status/route.ts:31 video.uploads.retrieve",
-    "app/api/videos/[videoId]/status/route.ts:33 video.assets.retrieve",
-    "app/api/webhooks/ivs-recording/route.ts:121 video.assets.create",
-    "app/api/webhooks/mux/route.ts:432 video.assets.generateSubtitles",
-    "app/api/webhooks/mux/route.ts:528 video.assets.createTrack",
-    "app/api/webhooks/mux/route.ts:551 video.assets.deleteTrack",
-    "app/lib/cascadeDelete.ts:147 video.assets.delete",
-    "app/lib/selfHealVideo.ts:12 video.uploads.retrieve",
-    "app/lib/selfHealVideo.ts:14 video.assets.retrieve",
-    "app/lib/videoAdsHealer.ts:21 video.uploads.retrieve",
-    "app/lib/videoAdsHealer.ts:23 video.assets.retrieve"
-   ]
+   "invisible": 0,
+   "invisibleSites": []
   },
   {
    "repo": "ssquaremarketings/ssquaremarketings",

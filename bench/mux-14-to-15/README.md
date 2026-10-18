@@ -4,7 +4,7 @@
 
 [rules.json](rules.json) encodes it as 16 rules: one `rename-import` to `@mux/ts`, 14 `rename-method` rules for the `robotsPreview` methods (there is no rule kind for renaming a whole namespace), and one `manual` rule for `data.filters.listValues`. Moved types cannot be expressed as rules.
 
-The 32 repositories are every public GitHub repository that code search found pinning `@mux/mux-node` 14 in October 2026, out of 391 it found importing the package. They are listed with their commits in [repos.json](repos.json). Raw output is in [results.json](results.json) and [coverage.json](coverage.json). See [how a benchmark runs](../README.md) for the method.
+The 32 repositories are every public GitHub repository that code search found pinning `@mux/mux-node` 14 in October 2026, out of 391 it found importing the package. They are listed with their commits in [repos.json](repos.json). Raw output from the latest run is in [results.json](results.json) and [coverage.json](coverage.json). See [how a benchmark runs](../README.md) for the method.
 
 ## Findings
 
@@ -12,19 +12,28 @@ The 32 repositories are every public GitHub repository that code search found pi
 2. **The rename breaks every build unless `package.json` changes too.** The tool rewrites imports to `@mux/ts` but cannot touch dependencies, so in all 32 repositories the migrated code fails to resolve (67 errors) until someone runs `npm uninstall @mux/mux-node && npm install @mux/ts`.
 3. **Package names in plain strings were queued correctly.** Two sites a rename would otherwise break silently: `vi.mock('@mux/mux-node', ...)` in a test, and `serverExternalPackages` in a Next.js config. A third, a JSDoc `import("@mux/mux-node/...")` type in a comment, was left unchanged and not queued.
 4. **Upgrading broke the type-check in 1 repository of 32, and the tool fixed none of it.** XAct1HP/10kp calls `mux.robotsPreview.jobs.*` on a client returned by `getMuxClient()` from another file. The tool neither rewrote nor queued those calls, so its output said 0 unresolved while the upgrade broke 4 lines.
-5. **Most call sites are invisible to the tool.** A probe with one `manual` rule per Mux method found 156 Mux calls by text search. The tool proved 25 (16%), queued 44 (28%) and did not report 87 (56%). Among the 87, 56 get their client through a `tsconfig` path alias such as `@/lib/mux`, which the tool treats as a different package, and 44 call a factory such as `getMux()` whose return value it cannot trace (some do both). Only 5 are parameters, class fields or reassigned variables, the cases the README already lists.
+5. **Many call sites were invisible to the tool, and two fixes recovered more than half of those that were provable.** A probe with one `manual` rule per Mux method found 156 Mux calls by text search.
+
+   | Version | Proven | Queued | Invisible |
+   | --- | ---: | ---: | ---: |
+   | 0.2 | 25 (16%) | 44 (28%) | 87 (56%) |
+   | with `tsconfig` path aliases | 32 (21%) | 44 (28%) | 80 (51%) |
+   | with `export default <name>` followed | 56 (36%) | 44 (28%) | 56 (36%) |
+
+   Path aliases such as `@/lib/mux` now resolve to the scanned file. Most aliased clients were then still unproven because their module ended with `export default mux`, which the resolver did not follow even for relative imports. Of the 56 sites still invisible, 44 call a factory such as `getMux()` (12 repositories), 9 import a client built as `globalThis.__mux ?? makeMux()` (1 repository), and 3 are parameters or reassigned variables.
 6. **Many rules are slow.** The program is rebuilt once per rule. The 114-rule probe took about 0.1 s per rule on a 265-file repository, roughly 12 s for that repository and longer on monorepos.
 
 ## What to build next
 
 In order of how many call sites each would recover in this sample:
 
-- Resolve `tsconfig.json` `paths` and `baseUrl`, so `@/lib/mux` is followed like a relative import.
-- Trace a function whose return value is provably a package instance, such as `return new Mux()` or a cached singleton.
+- Trace a function whose return value is provably a package instance, such as `return new Mux()` or a lazily cached client. This covers 53 of the 56 invisible sites, including the one repository the upgrade breaks.
 - Report lookalike calls in files that reach the package through a local import, not only in files that import it directly, so nothing is dropped without a trace.
 - A dependency step for package renames that updates `package.json` in the same pull request.
 - A `rename-namespace` rule kind, so `robotsPreview.*` to `robots.*` is one rule instead of 14.
 - Build the program once per run instead of once per rule.
+
+Done: `tsconfig.json` and `jsconfig.json` path aliases, and clients exported with `export default <name>`.
 
 ## Results
 
@@ -46,7 +55,7 @@ Rule file `bench/mux-14-to-15/rules.json`, old SDK `@mux/mux-node@14.1.1`, new S
 | Repos whose migrated code breaks if package.json is not updated | 32 of 32 (67 errors) |
 | Repos where the SDK resolved in the baseline type-check | 32 of 32 |
 | Old package names left in code after migration | 3 files |
-| Median apply time | 1866 ms |
+| Median apply time | 1912 ms |
 
 ### Per repository
 

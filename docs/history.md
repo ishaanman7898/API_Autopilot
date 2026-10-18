@@ -27,6 +27,6 @@ The test suite runs with the Node test runner and covers each item above, includ
 - The GitHub Action on a real runner.
 - The well-known fetch against a live domain. It is tested with injected fetch functions.
 - Performance on large repositories.
-- Real third party SDK migrations beyond one. The [Mux 14 to 15 benchmark](../bench/mux-14-to-15/README.md) ran the tool on 32 public repositories: no new type errors, but 56% of call sites were invisible to it because of path aliases and factory functions. It type-checks only, and runs no tests.
+- Real third party SDK migrations beyond one. The [Mux 14 to 15 benchmark](../bench/mux-14-to-15/README.md) ran the tool on 32 public repositories: no new type errors. With path aliases and `export default <name>` now followed, 36% of call sites are still invisible to it, almost all through client factory functions, down from 56%. It type-checks only, and runs no tests.
 
 Related docs are [architecture](architecture.md) and [security](security.md).
