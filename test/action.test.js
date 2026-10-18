@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 import { branchName, changedPaths, prBody } from '../src/prbody.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+// Git on Windows can check files out with CRLF line endings, so compare as LF.
+const readRepoFile = (f) => readFileSync(join(ROOT, f), 'utf8').replace(/\r\n/g, '\n');
 const evidence = {
   rule: { id: 'acme sdk/1 to 2', provider: 'acme', contentHash: 'a'.repeat(64), signed: true, keyId: 'k1' },
   callSites: [{ file: 'a.ts', line: 1, ruleId: 'm', proven: true }, { file: 'b.json', line: 2, ruleId: 'r', proven: false }],
@@ -55,16 +57,16 @@ test('the helper script prints the same values', () => {
 });
 
 test('the action opens draft pull requests only and never merges', () => {
-  const action = readFileSync(join(ROOT, 'action.yml'), 'utf8');
+  const action = readRepoFile('action.yml');
   assert.match(action, /gh pr create --draft/);
   assert.doesNotMatch(action, /gh pr merge|--auto|--admin|enable-auto-merge/);
   assert.doesNotMatch(action, /git add -A|git add \./, 'only files named by the evidence are staged');
   const scripts = action.split(/\n\s+run: /).slice(1).map((s) => s.split(/\n\s+- name|\n\s+-\s+uses/)[0]).join('\n');
   assert.doesNotMatch(scripts, /\$\{\{/, 'no expression is interpolated into a shell script');
   for (const f of ['examples/workflow.yml', '.github/workflows/ci.yml']) {
-    const text = readFileSync(join(ROOT, f), 'utf8');
+    const text = readRepoFile(f);
     assert.doesNotMatch(text, /uses: [^@\n]+@v\d/, `${f} pins actions by commit`);
   }
-  const workflow = readFileSync(join(ROOT, 'examples/workflow.yml'), 'utf8');
+  const workflow = readRepoFile('examples/workflow.yml');
   assert.match(workflow, /permissions:\n  contents: write\n  pull-requests: write/);
 });
