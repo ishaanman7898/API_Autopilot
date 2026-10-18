@@ -1,14 +1,21 @@
-import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, sign, verify } from 'node:crypto';
+import { createHash } from 'node:crypto';
 
 export const SCHEMA = 'apimigrate/1';
 export const KINDS = ['rename-import', 'rename-method', 'rename-param', 'replace', 'manual'];
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}(T[\d:.]+(Z|[+-]\d{2}:\d{2}))?$/;
 
+// Sorted-key JSON. Throws on values JSON cannot carry so two different rules never share a hash.
 export function canonical(v) {
+  if (v === null || typeof v === 'string' || typeof v === 'boolean') return JSON.stringify(v);
+  if (typeof v === 'number') {
+    if (!Number.isFinite(v)) throw new Error('non-finite number in rule');
+    return JSON.stringify(v);
+  }
   if (Array.isArray(v)) return '[' + v.map(canonical).join(',') + ']';
-  if (v && typeof v === 'object') {
+  if (typeof v === 'object') {
     return '{' + Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonical(v[k])).join(',') + '}';
   }
-  return JSON.stringify(v);
+  throw new Error(`cannot canonicalize ${typeof v}`);
 }
 
 export function hashRuleSet(ruleSet) {
@@ -18,11 +25,13 @@ export function hashRuleSet(ruleSet) {
 
 export function validateRuleSet(rs) {
   const errors = [];
+  if (!rs || typeof rs !== 'object') return ['rule file is not an object'];
   if (rs.schema !== SCHEMA) errors.push(`schema must be ${SCHEMA}`);
   for (const f of ['provider', 'id', 'from', 'to', ...(rs.scope === 'any' ? [] : ['package'])]) {
     if (typeof rs[f] !== 'string' || !rs[f]) errors.push(`missing ${f}`);
   }
-  if (!rs.sunset || Number.isNaN(Date.parse(rs.sunset))) errors.push('sunset must be an ISO date');
+  if (rs.scope !== undefined && rs.scope !== 'any') errors.push('scope must be "any" or omitted');
+  if (typeof rs.sunset !== 'string' || !ISO_DATE.test(rs.sunset) || Number.isNaN(Date.parse(rs.sunset))) errors.push('sunset must be an ISO date');
   if (!Array.isArray(rs.rules) || rs.rules.length === 0) errors.push('rules must be a non-empty array');
   const ids = new Set();
   for (const [i, r] of (rs.rules ?? []).entries()) {
@@ -43,34 +52,8 @@ export function validateRuleSet(rs) {
   return errors;
 }
 
+// A missing or unreadable sunset counts as expired.
 export function isSunset(rs, now = new Date()) {
-  return Date.parse(rs.sunset) < now.getTime();
-}
-
-export function generateKeys() {
-  const { publicKey, privateKey } = generateKeyPairSync('ed25519');
-  return {
-    publicPem: publicKey.export({ type: 'spki', format: 'pem' }),
-    privatePem: privateKey.export({ type: 'pkcs8', format: 'pem' }),
-  };
-}
-
-export function signRuleSet(rs, privatePem, keyId) {
-  const { signature, ...body } = rs;
-  const hash = hashRuleSet(body);
-  const sig = sign(null, Buffer.from(hash, 'hex'), createPrivateKey(privatePem)).toString('base64');
-  return { ...body, signature: { alg: 'ed25519', keyId, hash, sig } };
-}
-
-// keys: [{ keyId, publicKey }] as published at /.well-known/apimigrate-keys.json
-export function verifyRuleSet(rs, keys) {
-  const s = rs.signature;
-  if (!s) return { ok: false, reason: 'unsigned' };
-  if (s.alg !== 'ed25519') return { ok: false, reason: `unsupported alg ${s.alg}` };
-  const hash = hashRuleSet(rs);
-  if (hash !== s.hash) return { ok: false, reason: 'rule content does not match signed hash' };
-  const key = keys.find((k) => k.keyId === s.keyId);
-  if (!key) return { ok: false, reason: `no published key ${s.keyId}` };
-  const ok = verify(null, Buffer.from(hash, 'hex'), createPublicKey(key.publicKey), Buffer.from(s.sig, 'base64'));
-  return ok ? { ok, hash } : { ok: false, reason: 'bad signature' };
+  const t = Date.parse(rs?.sunset);
+  return Number.isNaN(t) || t <= now.getTime();
 }
