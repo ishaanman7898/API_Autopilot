@@ -1,0 +1,115 @@
+name: provider-selftest
+
+# Runs the action's watch mode on a real runner against a consumer whose .apimigrate.yml lists a live
+# rule provider in sources. https://atomicayush.github.io, from the AtomicAyush/AtomicAyush.github.io
+# repository, serves a rule index built with `apimigrate index`, its key set, and a signed rule file
+# for @mux/mux-node 14 to 15. The rule file's sunset is 2027-12-31. As in action-selftest, branches go
+# to a local bare repository and `gh` is a stand-in that records its arguments.
+on:
+  push:
+    branches: [main]
+    paths: [action.yml, scripts/**, src/**, bin/**, .github/workflows/provider-selftest.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  signed-watch:
+    runs-on: ubuntu-latest
+    env:
+      DOMAIN: atomicayush.github.io
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: tool
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+
+      - name: Make a consumer repository that uses Mux 14 and lists the provider in sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p src test
+          printf '%s\n' '{ "name": "consumer", "private": true, "type": "module", "scripts": { "test": "node --test test/video.test.mjs" }, "dependencies": { "@mux/mux-node": "^14.1.1" } }' > package.json
+          printf '%s\n' \
+            "import Mux from '@mux/mux-node';" \
+            "export const mux = new Mux({ tokenId: 'id', tokenSecret: 'secret', baseURL: 'http://127.0.0.1:9', maxRetries: 0 });" \
+            "export const summarize = (id: string) => mux.robotsPreview.jobs.summarize.create({ parameters: { asset_id: id } });" \
+            "export const browsers = () => mux.data.filters.listValues('browser');" > src/video.ts
+          printf '%s\n' \
+            "import test from 'node:test';" \
+            "import assert from 'node:assert/strict';" \
+            "import { summarize } from '../src/video.ts';" \
+            "test('summarize reaches the API through the installed SDK', async () => {" \
+            "  const error = await summarize('asset').then(() => null, (e) => e);" \
+            "  assert.ok(error && !(error instanceof TypeError), String(error));" \
+            "});" > test/video.test.mjs
+          npm install --ignore-scripts --no-audit --no-fund
+          npm test
+          printf 'tool/\nnode_modules/\n.apimigrate/\n' > .gitignore
+          printf 'watch:\n- "@mux/mux-node"\nsources:\n- "@mux/mux-node %s"\n' "$DOMAIN" > .apimigrate.yml
+          git init -q -b main
+          git add -A
+          git -c user.name=t -c user.email=t@example.com commit -q -m base
+          git init -q --bare "$RUNNER_TEMP/remote.git"
+          git remote add origin "$RUNNER_TEMP/remote.git"
+          git push -q origin main
+          mkdir -p "$RUNNER_TEMP/bin"
+          printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >> "$RUNNER_TEMP/gh-calls.log"\n' > "$RUNNER_TEMP/bin/gh"
+          chmod +x "$RUNNER_TEMP/bin/gh"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Watch npm, fetch the provider's signed rules and open draft pull requests
+        uses: ./tool
+        with:
+          mode: watch
+          test-cmd: npm test
+
+      - name: Check that the signed rules from the live domain were used
+        shell: bash
+        run: |
+          set -euo pipefail
+          plan="$RUNNER_TEMP/apimigrate-watch/plan.json"
+          node -e '
+            const [u] = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).upgrades;
+            const want = { source: "signed", signed: true, domain: process.env.DOMAIN, url: `https://${process.env.DOMAIN}/rules/mux-mux-node-14-to-15.json`, keyId: "k1" };
+            for (const [k, v] of Object.entries(want)) if (u[k] !== v) throw new Error(`plan ${k} is ${u[k]}, expected ${v}`);
+            console.log(u.hash);
+          ' "$plan" > "$RUNNER_TEMP/plan-hash"
+          curl -sSf --proto '=https' "https://$DOMAIN/rules/mux-mux-node-14-to-15.json" | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).signature.hash' > "$RUNNER_TEMP/live-hash"
+          diff "$RUNNER_TEMP/plan-hash" "$RUNNER_TEMP/live-hash"
+          branch=apimigrate/mux-mux-node-14-to-15
+          remote="$RUNNER_TEMP/remote.git"
+          git --git-dir="$remote" show "$branch:src/video.ts"
+          git --git-dir="$remote" show "$branch:src/video.ts" | grep -q "from '@mux/ts'"
+          git --git-dir="$remote" show "$branch:src/video.ts" | grep -q 'mux.robots.jobs.summarize.create'
+          git --git-dir="$remote" show "$branch:src/video.ts" | grep -q 'mux.data.filters.listValues'
+          git --git-dir="$remote" show "$branch:package.json" | grep -q '"@mux/ts": "^15.5.0"'
+          git --git-dir="$remote" show "$branch:package-lock.json" | grep -q '"node_modules/@mux/ts"'
+          test "$(git --git-dir="$remote" diff --name-only main "$branch" | tr '\n' ' ')" = "package-lock.json package.json src/video.ts "
+          ! git --git-dir="$remote" rev-parse -q --verify "refs/heads/$branch-unsigned"
+          test "$(git rev-parse --abbrev-ref HEAD)" = main
+          cat "$RUNNER_TEMP/gh-calls.log"
+          test "$(grep -c '^pr create' "$RUNNER_TEMP/gh-calls.log")" -eq 1
+          grep -q "^pr create --draft --base main --head $branch --title API migration: @mux/mux-node 14.1.1 to 15.5.0 --body-file " "$RUNNER_TEMP/gh-calls.log"
+          body="$(sed -n 's/.* --body-file //p' "$RUNNER_TEMP/gh-calls.log")"
+          grep -qF "signed by \`$DOMAIN\` with key \`k1\` and fetched from \`https://$DOMAIN/rules/mux-mux-node-14-to-15.json\`" "$body"
+          grep -qF '| Signed | yes, key `k1` |' "$body"
+          grep -qF '| `namespace-robotsPreview` | `rename-namespace` | signed |' "$body"
+          grep -qF -- '--well-known <provider domain>' "$body"
+          ! grep -qF '**Unsigned.**' "$body"
+          grep -q 'removed-data.filters.listValues' "$body"
+          grep -q '| Tests | exit code 0 |' "$body"
+          ! grep -q 'merge' "$RUNNER_TEMP/gh-calls.log"
+
+      - name: Check that the pull request installs and passes its tests as it would in CI
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q -b apimigrate/mux-mux-node-14-to-15 "$RUNNER_TEMP/remote.git" "$RUNNER_TEMP/pr"
+          cd "$RUNNER_TEMP/pr"
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm test
+          echo "watch mode ran on a real runner, fetched signed rules from https://$DOMAIN and asked for one signed draft pull request"
