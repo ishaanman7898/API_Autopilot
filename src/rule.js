@@ -57,3 +57,11 @@ export function isSunset(rs, now = new Date()) {
   const t = Date.parse(rs?.sunset);
   return Number.isNaN(t) || t <= now.getTime();
 }
+
+// Drafts and unreviewed rules cannot be signed. The publisher removes the marks after reading each rule.
+export function signingBlockers(rs) {
+  const blockers = [];
+  if (rs.draft) blockers.push('file is marked draft');
+  for (const r of rs.rules ?? []) if (r.confidence) blockers.push(`rule ${r.id} still has confidence "${r.confidence}"`);
+  return blockers;
+}
