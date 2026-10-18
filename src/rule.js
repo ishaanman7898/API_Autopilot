@@ -36,6 +36,7 @@ export function validateRuleSet(rs) {
     if (r.kind === 'replace') {
       try { new RegExp(r.match?.pattern); } catch { errors.push(`${at}: match.pattern must be a valid regex`); }
       if (typeof r.transform?.to !== 'string') errors.push(`${at}: needs transform.to`);
+      if (!Array.isArray(r.match?.files) || r.match.files.length === 0) errors.push(`${at}: replace rules need match.files`);
     }
     if (r.kind === 'manual' && !(r.match?.call && r.fallback?.prompt)) errors.push(`${at}: needs match.call and fallback.prompt`);
   }
