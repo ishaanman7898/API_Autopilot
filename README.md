@@ -1,6 +1,8 @@
 # API Autopilot
 
-When an API provider ships a breaking change, its customers rewrite code by hand. API Autopilot lets the provider publish a **signed migration rule** and lets the customer apply it with an engine that proves what it did.
+When anyone ships a breaking change (an API, SDK, library, framework, config format or CLI), everyone downstream rewrites code by hand. Autopilot lets the publisher ship a **signed migration rule** and lets each consumer apply it with an engine that proves what it did. Built for API changes, works for any of them.
+
+Docs: [overview](docs/overview.md), [rule format](docs/rule-format.md), [CLI](docs/cli.md), [security](docs/security.md), [architecture](docs/architecture.md), [build log](docs/history.md).
 
 - **Signed rules.** A rule file holds matchers, deterministic transforms, an agent fallback prompt and a sunset date. It is signed with ed25519; the key is published at `/.well-known/apimigrate-keys.json`.
 - **Deterministic first.** The engine rewrites imports, method calls and parameter names. Only call sites it cannot prove it handled go to an agent, fenced as untrusted text (`.apimigrate/unresolved.json`).
@@ -20,7 +22,7 @@ node bin/apimigrate.js verify --rules rules.json --evidence .apimigrate/evidence
 
 Per-repo settings live in `.apimigrate.yml`: `providers`, `paths`, `pins` (allowed rule hashes), `draft`, `reviewers`, `model`. Nothing auto merges; the GitHub Action opens a draft PR.
 
-See `examples/` for a rule file and a sample app. Zero dependencies, Node 20+. Run `npm test`.
+See `examples/` for an API rule file, a sample app, and a non-API webpack config rule (`"scope": "any"`). Zero dependencies, Node 20+. Run `npm test`.
 
 ## Scope
 
