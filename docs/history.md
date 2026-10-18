@@ -1,21 +1,33 @@
 # Build log
 
-What was built, in order, from the research and build plan.
+## Version 0.1
 
-1. Scaffold, MIT license, `.gitignore`
-2. Signed rule format and ed25519 signing (`src/rule.js`)
-3. Untrusted-text and secret scanners (`src/sanitize.js`)
-4. Deterministic rewrite engine with agent fallback queue (`src/engine.js`)
-5. Assertion, coverage and secret gate (`src/gate.js`)
-6. Evidence bundle and replay (`src/evidence.js`)
-7. Draft rules from OpenAPI diffs (`src/diff.js`)
-8. `.apimigrate.yml` parser (`src/config.js`)
-9. CLI (`src/cli.js`, `bin/apimigrate.js`)
-10. Tests, example app and rule file, GitHub Action, README
-11. Generalised beyond APIs: `scope: any`, `replace` rules, configurable `extensions`, webpack example, this documentation
+A first prototype. It had a signed rule format, a regex based engine, a gate, an evidence bundle, a draft command and a CLI. Matching was by text, which produced false positives and false negatives, so it was not safe on a real repository.
+
+## Version 0.2, the hardening branch
+
+Work in order of priority.
+
+1. Matching. Replaced regex with a TypeScript program and symbol resolution. Added fixtures for aliases, defaults, namespaces, destructuring, requires, re-exports, shadowing and more.
+2. Trust. Split signing and key handling, added key windows and revocation, a bounded well-known fetch, hash pinning and fail closed behavior, with adversarial tests.
+3. Evidence. Made the bundle deterministic and added replay and head checks.
+4. Gate. Added skipped, weakened, commented and tautological test detection, protected file checks, and findings with file and line.
+5. Agent. Added the sanitized queue, and `agent-apply` with the same gate.
+6. Draft. Rewrote the OpenAPI diff for 3.x with confidence labels.
+7. CLI. Split into one file per command, strict flags, exit codes, dry run and diffs.
+8. Action. Draft pull requests only, safe input handling, evidence attached, sample workflow.
+9. Docs and project files.
 
 ## Verified
-Unit tests cover signing and tamper detection, validation, engine rewrites and fallback queue, the gate, evidence replay, spec diffing, config parsing, and the universal replace rule. The CLI was run end to end on the sample app (keygen, sign, check, apply, verify).
 
-## Not built or not checked
-GitHub App, provider dashboard, benchmark of real breaking changes, an agent runner, the `--well-known` fetch against a live domain, and the GitHub Action in a real workflow. Claims in the original brief that need sourcing (the AWS downtime statistic, the Stainless customer list, whether SDK regeneration changes public surface) were not investigated.
+The test suite runs with the Node test runner and covers each item above, including the end to end flows for apply, verify, drift, trust failures, usage errors, dry run, the gate and agent-apply. It passed on Windows with Node 25 when this was written. One test is skipped on systems that cannot create symbolic links.
+
+## Not verified
+
+- Linux and macOS runs. A CI workflow is defined for Linux, macOS and Windows on Node 20 and 22, and its results have not been checked.
+- The GitHub Action on a real runner.
+- The well-known fetch against a live domain. It is tested with injected fetch functions.
+- Performance on large repositories.
+- The tool on real third party SDK migrations. The fixtures are small and written for the tests.
+
+Related docs are [architecture](architecture.md) and [security](security.md).
