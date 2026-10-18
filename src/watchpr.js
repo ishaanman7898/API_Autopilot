@@ -23,7 +23,8 @@ export async function openWatchPullRequests({ root, planPath, testCmd = null, in
   const plan = JSON.parse(readFileSync(planPath, 'utf8'));
   const baseSha = must('rev-parse', 'HEAD');
   const baseBranch = must('rev-parse', '--abbrev-ref', 'HEAD');
-  const pinned = loadConfig(root).pins.length > 0;
+  const cfg = loadConfig(root);
+  const pinned = cfg.pins.length > 0;
   const evidencePath = join(root, '.apimigrate', 'evidence.json');
   let failed = 0;
   const installFlags = install === 'none' ? [] : install === 'auto' ? ['--install'] : ['--install-cmd', install];
@@ -43,6 +44,10 @@ export async function openWatchPullRequests({ root, planPath, testCmd = null, in
     const name = `${entry.package} ${entry.from} -> ${entry.to}`;
     if (entry.source !== 'signed' && entry.source !== 'draft') { out(`${name}: no rules, ${entry.reason}`); continue; }
     if (entry.source === 'draft' && pinned) { out(`${name}: skipped, the draft is unsigned and .apimigrate.yml sets pins`); continue; }
+    // apply refuses a provider that is not listed, so a draft from one is skipped rather than failing the run.
+    // Signed rules were already checked against the list when watch fetched them.
+    const provider = entry.source === 'draft' && cfg.providers.length ? JSON.parse(readFileSync(resolve(root, entry.rules), 'utf8')).provider : null;
+    if (provider !== null && !cfg.providers.includes(provider)) { out(`${name}: skipped, the draft's provider ${provider} is not in the providers list of .apimigrate.yml`); continue; }
     const branch = watchBranch(entry);
     const remote = git('ls-remote', '--exit-code', '--heads', 'origin', `refs/heads/${branch}`);
     if (remote.status === 0) { out(`${name}: skipped, ${branch} already exists`); continue; }

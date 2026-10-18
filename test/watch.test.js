@@ -336,6 +336,20 @@ test('watch mode skips unsigned drafts when pins are set, and deletes the branch
   assert.equal(git(failing.dir, 'rev-parse', '--abbrev-ref', 'HEAD'), 'main');
 });
 
+test('watch mode skips drafts whose provider is not in the providers list, and runs them when it is', async () => {
+  const other = consumer('providers: [mux]\n');
+  const skipped = await other.watchAndOpen(upstreamRoutes());
+  assert.equal(skipped.code, 0, skipped.log);
+  assert.match(skipped.log, /acme-sdk 1\.4\.1 -> 2\.1\.0: skipped, the draft's provider acme is not in the providers list of \.apimigrate\.yml/);
+  assert.equal(other.calls.length, 0);
+  assert.equal(git(other.dir, 'rev-parse', '--abbrev-ref', 'HEAD'), 'main');
+
+  const listed = consumer('providers: [acme]\n');
+  const opened = await listed.watchAndOpen(upstreamRoutes());
+  assert.equal(opened.code, 0, opened.log);
+  assert.deepEqual(listed.calls.map((c) => c[6]), ['apimigrate/acme-sdk-1-to-2-unsigned']);
+});
+
 test('watch branches depend only on the package, the lines and whether the rules are signed', () => {
   const e = { package: '@mux/mux-node', line: '14', from: '14.1.1', to: '15.5.0', source: 'draft' };
   assert.equal(watchBranch(e), 'apimigrate/mux-mux-node-14-to-15-unsigned');

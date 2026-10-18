@@ -29,7 +29,7 @@ If nothing changed, no branch or pull request is created.
 `examples/watch-workflow.yml` runs the action with `mode: watch` every week.
 
 1. Runs `apimigrate watch` with the repository's `.apimigrate.yml`. It writes the plan and rule files to the runner's temp directory, not to the repository. See [CLI reference](cli.md#watch).
-2. For each upgrade that has rules, starts a branch from the checked out commit and runs `apply`, installing the new versions before your tests as in apply mode. After an upgrade that installed, the base versions are installed again, so each upgrade is tested on its own. Signed rules are checked against the key set they were verified with. Drafted rules run with `--allow-unsigned`. When `.apimigrate.yml` sets `pins`, drafts are skipped, since `pins` forbids unsigned rules.
+2. For each upgrade that has rules, starts a branch from the checked out commit and runs `apply`, installing the new versions before your tests as in apply mode. After an upgrade that installed, the base versions are installed again, so each upgrade is tested on its own. Signed rules are checked against the key set they were verified with. Drafted rules run with `--allow-unsigned`. When `.apimigrate.yml` sets `pins`, drafts are skipped, since `pins` forbids unsigned rules. When it sets `providers`, a draft is skipped unless its provider, the GitHub owner of the SDK, is listed.
 3. If files changed, the install, gate and tests passed, and the branch does not already exist on the remote, it stages only the files named in the evidence and the updated lockfiles, commits, pushes, and runs `gh pr create --draft`.
 4. Uploads the plan, rule files, reports, evidence and pull request bodies as the `apimigrate-watch` artifact.
 
