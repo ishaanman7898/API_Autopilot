@@ -1,0 +1,17 @@
+{
+  "schema": "apimigrate/1",
+  "provider": "webpack",
+  "scope": "any",
+  "id": "webpack-4-to-5",
+  "from": "4.x",
+  "to": "5.x",
+  "sunset": "2027-12-31",
+  "rules": [
+    {
+      "id": "node-fs-empty",
+      "kind": "replace",
+      "match": { "pattern": "node: \\{ fs: \"empty\" \\}", "files": ["webpack.config.js"] },
+      "transform": { "to": "resolve: { fallback: { fs: false } }" }
+    }
+  ]
+}
