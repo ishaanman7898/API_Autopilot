@@ -74,21 +74,30 @@ function tailMatches(callee, segs) {
   return segs.every((s, i) => chain.names[chain.names.length - segs.length + i].text === s);
 }
 
+const callsCache = new WeakMap();
+const callsOf = (sf) => {
+  if (!callsCache.has(sf)) {
+    const calls = [];
+    walk(sf, (n) => { if (ts.isCallExpression(n)) calls.push(n); });
+    callsCache.set(sf, calls);
+  }
+  return callsCache.get(sf);
+};
+
 // Calls whose receiver is proven to come from the package, plus lookalike calls in files that reach it.
 export function findCalls(ctx, sf, call) {
   const segs = call.split('.');
   const importsPackage = ctx.reaches ? ctx.reaches.has(sf.fileName) : moduleRefs(sf, ctx).some((r) => ctx.isPackage(r.spec));
   const found = [];
-  walk(sf, (n) => {
-    if (!ts.isCallExpression(n)) return;
+  for (const n of callsOf(sf)) {
     const callee = unwrap(n.expression);
     const origin = ctx.originOf(callee);
     if (origin?.module && ctx.isPackage(origin.module) && fullPath(origin).join('.') === call) {
       found.push({ node: n, callee, origin, proven: true });
     } else if (tailMatches(callee, segs)) {
-      if (origin?.module && !ctx.isPackage(origin.module)) return;
+      if (origin?.module && !ctx.isPackage(origin.module)) continue;
       if (importsPackage) found.push({ node: n, callee, origin, proven: false, reason: `receiver of ${call} cannot be traced to ${ctx.packageName}` });
     }
-  });
+  }
   return found;
 }

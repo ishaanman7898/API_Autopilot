@@ -109,3 +109,27 @@ test('rename-dependency renames the dependency and sets its range in every packa
   assert.ok(validateRuleSet(ruleSet([{ id: 'x', kind: 'rename-dependency', match: { dependency: 'a' }, transform: {} }])).some((e) => /needs match\.dependency/.test(e)));
   assert.deepEqual(validateRuleSet(ruleSet([rule])), []);
 });
+
+test('reusing the program between rules gives the same result as rebuilding it for every rule', () => {
+  const files = {
+    'lib/client.ts': "import Acme from 'acme-sdk';\nlet cached: Acme | null = null;\nexport function getClient() {\n  if (!cached) cached = new Acme();\n  return cached;\n}\n",
+    'src/a.ts': "import { getClient } from '../lib/client';\nimport type { Job } from 'acme-sdk/jobs';\ngetClient().charges.create({ amount_cents: 1 });\ngetClient().charges.capture('x');\n",
+    'src/b.js': "const { getClient } = require('../lib/client');\nmodule.exports = () => getClient().charges.create({ amount_cents: 2 });\n",
+    'package.json': '{ "dependencies": { "acme-sdk": "1.0.0" } }\n',
+  };
+  const rules = [
+    { id: 'noop-1', kind: 'manual', match: { call: 'refunds.list' }, fallback: { prompt: 'p' } },
+    { id: 'imp', kind: 'rename-import', match: { module: 'acme-sdk' }, transform: { to: '@acme/sdk' } },
+    { id: 'noop-2', kind: 'rename-method', match: { call: 'refunds.create' }, transform: { to: 'refunds.make' } },
+    { id: 'm', kind: 'rename-method', match: { call: 'charges.create' }, transform: { to: 'payments.create' } },
+    { id: 'dep', kind: 'rename-dependency', match: { dependency: 'acme-sdk' }, transform: { to: '@acme/sdk', version: '^2.0.0' } },
+    { id: 'p', kind: 'rename-param', match: { call: 'payments.create', param: 'amount_cents' }, transform: { to: 'amount' } },
+    { id: 'cap', kind: 'manual', match: { call: 'charges.capture' }, fallback: { prompt: 'p' } },
+  ];
+  const cached = applyRuleSet(ruleSet(rules), files);
+  const fresh = applyRuleSet(ruleSet(rules), files, {}, { reuseProgram: false });
+  assert.deepEqual(cached, fresh);
+  assert.match(cached.files['src/a.ts'], /getClient\(\)\.payments\.create\(\{ amount: 1 \}\)/);
+  assert.match(cached.files['src/b.js'], /getClient\(\)\.payments\.create\(\{ amount: 2 \}\)/);
+  assert.deepEqual(cached.unresolved.map((u) => [u.file, u.line, u.ruleId]), [['src/a.ts', 4, 'cap']]);
+});

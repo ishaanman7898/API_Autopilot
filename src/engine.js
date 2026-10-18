@@ -28,12 +28,23 @@ function snippet(sf, line) {
   return lines.slice(Math.max(0, line - 3), line + 2).join('\n');
 }
 
-function runAstRule(rule, rs, files, configs, names, report) {
-  const built = buildProgram(files, configs);
-  const isPackage = (spec) => names.some((n) => spec === n || spec.startsWith(n + '/'));
-  const resolver = createResolver(built.checker, isPackage);
-  const ctx = { ...resolver, isPackage, packageName: rs.package ?? names[0] };
-  ctx.reaches = filesReachingPackage(built.sourceFiles, built.checker, ctx);
+// The program, resolver and reach set for one version of the files. A rule that changes nothing leaves
+// the files object as it was, so the next rule reuses all of it. When files did change, unchanged source
+// files are carried over from the previous program instead of being parsed again.
+function analysisFor(files, configs, rs, names, cache) {
+  if (cache.files !== files) {
+    const built = buildProgram(files, configs, cache.built?.program);
+    const isPackage = (spec) => names.some((n) => spec === n || spec.startsWith(n + '/'));
+    const resolver = createResolver(built.checker, isPackage);
+    const ctx = { ...resolver, isPackage, packageName: rs.package ?? names[0] };
+    ctx.reaches = filesReachingPackage(built.sourceFiles, built.checker, ctx);
+    Object.assign(cache, { files, built, ctx });
+  }
+  return cache;
+}
+
+function runAstRule(rule, rs, files, configs, names, report, cache) {
+  const { built, ctx } = analysisFor(files, configs, rs, names, cache);
   const edits = new Map();
   const seen = new Set();
   const out = {
@@ -58,9 +69,10 @@ function runAstRule(rule, rs, files, configs, names, report) {
     }
     TRANSFORMS[rule.kind](ctx, sf, rule, out);
   }
+  const writable = [...edits].filter(([file]) => !report.skipped.some((s) => s.file === file));
+  if (!writable.length) return files;
   const next = { ...files };
-  for (const [file, list] of edits) {
-    if (report.skipped.some((s) => s.file === file)) continue;
+  for (const [file, list] of writable) {
     next[file] = applyEdits(files[file], list);
     for (const e of list) report.changes.push({ file, line: e.line, ruleId: rule.id, proven: true });
   }
@@ -104,7 +116,7 @@ function runDependencyRule(rule, files, report) {
     next[file] = applyEdits(text, edits);
     for (const line of new Set(edits.map((e) => e.line))) report.changes.push({ file, line, ruleId: rule.id, proven: true });
   }
-  return next;
+  return Object.keys(next).some((f) => next[f] !== files[f]) ? next : files;
 }
 
 // Regex rewrite for non-code files. These changes are not proven by a parse and are labelled as such.
@@ -120,19 +132,21 @@ function runReplaceRule(rule, files, report) {
       return m.replace(new RegExp(rule.match.pattern, flags.replace('g', '')), rule.transform.to);
     });
   }
-  return next;
+  return Object.keys(next).some((f) => next[f] !== files[f]) ? next : files;
 }
 
 // Deterministic pass. Rules run in order and each sees the output of the one before. Anything not proven goes to unresolved.
 // configs maps paths of tsconfig.json and jsconfig.json files to their text. They are read for path aliases and never edited.
-export function applyRuleSet(rs, files, configs = {}) {
+// reuseProgram false rebuilds the program for every rule. It exists to check that reuse changes nothing.
+export function applyRuleSet(rs, files, configs = {}, { reuseProgram = true } = {}) {
   const report = { changes: [], unresolved: [], skipped: [] };
   const names = packageNames(rs);
   let current = { ...files };
+  const cache = {};
   for (const rule of rs.rules) {
     if (rule.kind === 'replace') current = runReplaceRule(rule, current, report);
     else if (rule.kind === 'rename-dependency') current = runDependencyRule(rule, current, report);
-    else current = runAstRule(rule, rs, current, configs, names, report);
+    else current = runAstRule(rule, rs, current, configs, names, report, reuseProgram ? cache : {});
   }
   const seen = new Set();
   const unresolved = report.unresolved.filter((u) => {

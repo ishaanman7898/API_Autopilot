@@ -80,7 +80,9 @@ function aliasTargets(spec, conf) {
 // Builds an in-memory program over { path: text } so the checker can resolve imports between repo files.
 // configs are tsconfig.json and jsconfig.json texts. Their paths and baseUrl let a bare specifier such as
 // '@/lib/client' resolve to a scanned file, using the config nearest to the importing file.
-export function buildProgram(files, configs = {}) {
+// oldProgram, when given, is the program for the previous version of the files: source files whose text
+// did not change are reused instead of being parsed again.
+export function buildProgram(files, configs = {}, oldProgram = undefined) {
   const texts = new Map(Object.entries(files).map(([p, t]) => ['/' + p, t]));
   const isCode = (p) => AST_FILE.test(p) && texts.has('/' + p);
   const findFile = (candidate) => {
@@ -100,7 +102,11 @@ export function buildProgram(files, configs = {}) {
   };
 
   const host = {
-    getSourceFile: (name, lang) => (texts.has(name) ? ts.createSourceFile(name, texts.get(name), lang, true) : undefined),
+    getSourceFile: (name, lang) => {
+      if (!texts.has(name)) return undefined;
+      const previous = oldProgram?.getSourceFile(name);
+      return previous && previous.text === texts.get(name) ? previous : ts.createSourceFile(name, texts.get(name), lang, true);
+    },
     getDefaultLibFileName: () => '/lib.d.ts',
     writeFile() {},
     getCurrentDirectory: () => '/',
@@ -123,7 +129,7 @@ export function buildProgram(files, configs = {}) {
     }),
   };
   const roots = [...texts.keys()].filter((f) => AST_FILE.test(f));
-  const program = ts.createProgram({ rootNames: roots, options: OPTIONS, host });
+  const program = ts.createProgram({ rootNames: roots, options: OPTIONS, host, oldProgram });
   const sourceFiles = roots.map((r) => program.getSourceFile(r)).filter(Boolean);
   const syntaxErrors = (sf) => program.getSyntacticDiagnostics(sf).length > 0;
   return { program, checker: program.getTypeChecker(), sourceFiles, syntaxErrors, rel: (sf) => sf.fileName.slice(1) };

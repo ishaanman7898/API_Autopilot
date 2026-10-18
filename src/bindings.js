@@ -303,9 +303,14 @@ export function createResolver(checker, isPackage) {
   }
 
   // Callers only ever see a package origin, a function, a local module or null, never the internal markers.
+  // The program does not change while a resolver lives, so each node's answer is computed once.
+  const memo = new WeakMap();
   const publicOrigin = (n) => {
-    const o = originOf(n, 0);
-    return o === PENDING || o === NULLISH ? null : o;
+    if (!memo.has(n)) {
+      const o = originOf(n, 0);
+      memo.set(n, o === PENDING || o === NULLISH ? null : o);
+    }
+    return memo.get(n);
   };
   return { originOf: publicOrigin, moduleArg };
 }

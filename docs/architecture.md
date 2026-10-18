@@ -38,7 +38,7 @@ The core is a set of small modules that work on plain maps of path to text. The 
 
 ## Design choices
 
-- Rules run in order and each sees the previous output. The program is rebuilt per rule. That is simple and correct, and it costs time on large repositories.
+- Rules run in order and each sees the previous output. A rule that changes nothing keeps the program, the resolver and its answers for the next rule. A rule that changes files gets a new program that reuses every unchanged source file. A test checks this gives the same result as rebuilding for every rule.
 - Unproven means unchanged. The engine returns a reason for every site it declines.
 - The gate and the evidence are separate from the engine so agent edits can go through them too.
 - Exit codes separate a failed check from a trust failure, so automation can tell them apart.
