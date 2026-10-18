@@ -67,6 +67,16 @@ A publisher serves a key set at `https://<domain>/.well-known/apimigrate-keys.js
 
 A consumer can also pass `--keys` with a key set file they committed, or `--pubkey` with a single PEM file.
 
+## Rule index
+
+A publisher can also list its rule files at `https://<domain>/.well-known/apimigrate-rules.json`, so `apimigrate watch` finds them when a new major version comes out. `from` and `to` are version lines: the major, or `0.minor` below 1.0.
+
+```json
+{ "rules": [{ "package": "acme-sdk", "from": "1", "to": "2", "url": "https://acme.com/rules/acme-sdk-1-to-2.json" }] }
+```
+
+The index is not signed. Each rule file it points to must be signed by a key in the same domain's key set. See [CLI reference](cli.md#watch).
+
 ## Draft marks
 
 `apimigrate draft` adds `draft: true` and gives each rule a `confidence` of `likely` or `needs-review` plus an `evidence` sentence. `sign` refuses a file that still has them. The publisher reads each rule, then removes the marks. See [drafting rules](draft.md).

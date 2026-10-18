@@ -89,6 +89,14 @@ Reads every `package.json` in the repository and asks the npm registry, by defau
 
 It writes `.apimigrate/watch/plan.json`, unless `--dry-run` is given. The `watch` setting limits it to the packages listed.
 
+For a package listed in the `sources` setting, `watch` asks that package's domain for a signed rule file. It reads `https://<domain>/.well-known/apimigrate-rules.json`, finds the entry for the package with the same `from` and `to` lines, and fetches its `url`. The file is kept only when it is a valid rule file for that package, signed by a key in the same domain's `/.well-known/apimigrate-keys.json`, not past its sunset date, and allowed by `providers` and `pins`. Otherwise the plan records why. A kept file is written next to the plan as `<package>-<from>-to-<to>.rules.json`, with the key set it was checked against as `.keys.json`, so `check` and `apply` can use it with `--keys`. All fetches use HTTPS only and do not follow redirects.
+
+```json
+{ "rules": [{ "package": "acme-sdk", "from": "1", "to": "2", "url": "https://acme.com/rules/acme-sdk-1-to-2.json" }] }
+```
+
+Each plan entry has the package, the `from` and `to` releases, the `package.json` files and fields that name it, a `source` of `signed` or `none`, the paths of any rule and key files, the rule hash and key id, and a `reason` when no rules were found.
+
 ## Configuration
 
 `.apimigrate.yml` in the repository root.
@@ -104,6 +112,7 @@ It writes `.apimigrate/watch/plan.json`, unless `--dry-run` is given. The `watch
 | `coverageTolerance` | Allowed drop in line coverage, in points. Default 0. |
 | `draft` | Must be true or omitted. Pull requests are always drafts. |
 | `watch` | Packages `watch` checks. Default every dependency. |
+| `sources` | `"package domain"` pairs. `watch` looks for signed rules for that package at that domain. |
 | `reviewers`, `model` | Accepted so a shared config file can carry them. The tool does not use them. |
 
 Unknown settings, wrong types and malformed pins are errors with exit code 2.
