@@ -1,7 +1,8 @@
 name: action-selftest
 
-# Runs the composite action in action.yml on a real runner against a copy of examples/app.
-# The pushed branch goes to a local bare repository and `gh` is a stand-in that records its
+# Runs the composite action in action.yml on a real runner against a copy of examples/app, and in
+# watch mode against a repository that depends on Mux 14, using the real npm registry and GitHub.
+# Pushed branches go to a local bare repository and `gh` is a stand-in that records its
 # arguments, so the test checks everything up to the pull request without opening one.
 on:
   push:
@@ -68,3 +69,77 @@ jobs:
           grep -q '^pr create --draft --title API migration: acme-sdk-1-to-2 --body-file ' "$RUNNER_TEMP/gh-calls.log"
           ! grep -q 'merge' "$RUNNER_TEMP/gh-calls.log"
           echo "action ran on a real runner and asked for a draft pull request only"
+
+  watch-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: tool
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+
+      # @mux/mux-node 15.5.0 is the last release under that name, so this upgrade stays the same.
+      - name: Make a consumer repository that uses Mux 14
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p src
+          printf '%s\n' '{ "name": "consumer", "private": true, "dependencies": { "@mux/mux-node": "^14.1.1" } }' > package.json
+          printf '%s\n' \
+            "import Mux from '@mux/mux-node';" \
+            "const mux = new Mux();" \
+            "export const summarize = (id: string) => mux.robotsPreview.jobs.summarize.create({ parameters: { asset_id: id } });" \
+            "export const browsers = () => mux.data.filters.listValues('browser');" > src/video.ts
+          printf 'tool/\n' > .gitignore
+          # The action is checked out under tool/, so limit the watcher to the consumer's dependency.
+          printf 'watch:\n- "@mux/mux-node"\n' > .apimigrate.yml
+          git init -q -b main
+          git add -A
+          git -c user.name=t -c user.email=t@example.com commit -q -m base
+          git init -q --bare "$RUNNER_TEMP/remote.git"
+          git remote add origin "$RUNNER_TEMP/remote.git"
+          git push -q origin main
+          mkdir -p "$RUNNER_TEMP/bin"
+          printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >> "$RUNNER_TEMP/gh-calls.log"\n' > "$RUNNER_TEMP/bin/gh"
+          chmod +x "$RUNNER_TEMP/bin/gh"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Watch npm and open draft pull requests
+        uses: ./tool
+        with:
+          mode: watch
+          test-cmd: node -e "0"
+
+      - name: Check the unsigned draft pull request
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch=apimigrate/mux-mux-node-14-to-15-unsigned
+          remote="$RUNNER_TEMP/remote.git"
+          git --git-dir="$remote" show "$branch:src/video.ts"
+          git --git-dir="$remote" show "$branch:src/video.ts" | grep -q "from '@mux/ts'"
+          git --git-dir="$remote" show "$branch:src/video.ts" | grep -q 'mux.robots.jobs.summarize.create'
+          git --git-dir="$remote" show "$branch:src/video.ts" | grep -q 'mux.data.filters.listValues'
+          git --git-dir="$remote" show "$branch:package.json" | grep -q '"@mux/ts": "^15.5.0"'
+          test "$(git --git-dir="$remote" diff --name-only main "$branch" | tr '\n' ' ')" = "package.json src/video.ts "
+          test "$(git rev-parse --abbrev-ref HEAD)" = main
+          cat "$RUNNER_TEMP/gh-calls.log"
+          grep -q '^pr create --draft --base main --head apimigrate/mux-mux-node-14-to-15-unsigned --title \[unsigned draft\] API migration: @mux/mux-node 14.1.1 to 15.5.0 --body-file ' "$RUNNER_TEMP/gh-calls.log"
+          body="$(sed -n 's/.* --body-file //p' "$RUNNER_TEMP/gh-calls.log")"
+          grep -q '^> \*\*Unsigned\.\*\*' "$body"
+          grep -q 'removed-data.filters.listValues' "$body"
+          ! grep -q 'merge' "$RUNNER_TEMP/gh-calls.log"
+
+      - name: Watch again
+        uses: ./tool
+        with:
+          mode: watch
+
+      - name: Check that nothing was opened twice
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(grep -c '^pr create' "$RUNNER_TEMP/gh-calls.log")" -eq 1
+          echo "watch mode ran on a real runner against npm and GitHub and asked for one unsigned draft pull request"

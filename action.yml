@@ -104,3 +104,4 @@ runs:
         name: apimigrate-watch
         path: ${{ runner.temp }}/apimigrate-watch
         if-no-files-found: ignore
+        overwrite: true
