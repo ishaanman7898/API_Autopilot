@@ -20,6 +20,20 @@ export function moduleRefs(sf, ctx) {
   return refs;
 }
 
+// import("x") types inside JSDoc comments, such as @param {import('x').Job}. TypeScript parses them in
+// JavaScript and TypeScript files, so they are module names in syntax, not free text.
+export function jsDocModuleRefs(sf) {
+  const refs = [];
+  const inDoc = (n) => {
+    if (ts.isImportTypeNode(n) && ts.isLiteralTypeNode(n.argument) && ts.isStringLiteralLike(n.argument.literal)) refs.push({ node: n.argument.literal, spec: n.argument.literal.text });
+    ts.forEachChild(n, inDoc);
+  };
+  walk(sf, (n) => {
+    for (const doc of n.jsDoc ?? []) ts.forEachChild(doc, inDoc);
+  });
+  return refs;
+}
+
 // Files that import the package, or import other scanned files that do, at any depth.
 // A lookalike call in one of these files is queued, because its receiver may come from the package.
 export function filesReachingPackage(sourceFiles, checker, ctx) {

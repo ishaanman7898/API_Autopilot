@@ -1,5 +1,5 @@
 import ts from 'typescript';
-import { findCalls, moduleRefs, propertyChain } from './match.js';
+import { findCalls, jsDocModuleRefs, moduleRefs, propertyChain } from './match.js';
 import { walk } from './parse.js';
 
 const IDENT = /^[A-Za-z_$][\w$]*$/;
@@ -12,7 +12,7 @@ export function renameImport(ctx, sf, rule, out) {
   const to = rule.transform.to;
   const matches = (s) => s === from || s.startsWith(from + '/');
   const inSyntax = new Set();
-  for (const ref of moduleRefs(sf, ctx)) {
+  for (const ref of [...moduleRefs(sf, ctx), ...jsDocModuleRefs(sf)]) {
     inSyntax.add(ref.node);
     if (!matches(ref.spec)) continue;
     const start = ref.node.getStart(sf) + 1;

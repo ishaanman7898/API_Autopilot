@@ -147,6 +147,19 @@ export const cases = [
     unresolved: [['a.ts', 6, 'outside import syntax']],
   },
   {
+    name: 'rename-import covers JSDoc import() types and leaves plain comments alone',
+    rules: [{ id: 'i', kind: 'rename-import', match: { module: 'acme-sdk' }, transform: { to: '@acme/sdk' } }],
+    files: {
+      'a.js': "/**\n * @param {import(\"acme-sdk/resources/jobs\").Job} job\n * @returns {Promise<import('acme-sdk').Client>}\n */\nexport async function run(job) {}\n// acme-sdk is loaded lazily, see import(\"acme-sdk\") in docs\n",
+      'b.ts': "/** @type {import('acme-sdk').Client} */\nexport const c = null;\nimport type { Job } from 'acme-sdk/jobs';\n",
+    },
+    expect: {
+      'a.js': "/**\n * @param {import(\"@acme/sdk/resources/jobs\").Job} job\n * @returns {Promise<import('@acme/sdk').Client>}\n */\nexport async function run(job) {}\n// acme-sdk is loaded lazily, see import(\"acme-sdk\") in docs\n",
+      'b.ts': "/** @type {import('@acme/sdk').Client} */\nexport const c = null;\nimport type { Job } from '@acme/sdk/jobs';\n",
+    },
+    unresolved: [],
+  },
+  {
     name: 'top level function rename keeps local names',
     rules: [{ id: 'f', kind: 'rename-method', match: { call: 'createCharge' }, transform: { to: 'makeCharge' } }],
     files: {
