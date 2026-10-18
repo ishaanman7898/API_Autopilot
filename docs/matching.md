@@ -53,7 +53,7 @@ Edits are applied by source position, so formatting, comments and line endings o
 
 | Reason | When |
 | --- | --- |
-| receiver of `<call>` cannot be traced to `<package>` | The call looks right and the file imports the package, but the receiver is a parameter, a class field, a `let` that is also given other values, the result of a function that can return something else, or anything else the engine cannot follow. |
+| receiver of `<call>` cannot be traced to `<package>` | The call looks right and the file imports the package, directly or through other scanned files, but the receiver is a parameter, a class field, a `let` that is also given other values, the result of a function that can return something else, or anything else the engine cannot follow. |
 | call path crosses a variable binding or a named import | The proven path is split across bindings, such as `const { charges } = client` and then `charges.create()`, or `import { charges } from 'acme-sdk'`. Rewriting the call alone would break the binding. |
 | comments or optional chaining inside the call path | The text between the segments is not plain identifiers and dots. |
 | argument N of `<call>` is not an object literal | The argument is a variable or an expression. |

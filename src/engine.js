@@ -1,5 +1,6 @@
 import { buildProgram } from './parse.js';
 import { createResolver } from './bindings.js';
+import { filesReachingPackage } from './match.js';
 import { TRANSFORMS } from './transforms.js';
 
 const lineOf = (sf, pos) => sf.getLineAndCharacterOfPosition(pos).line + 1;
@@ -31,6 +32,7 @@ function runAstRule(rule, rs, files, configs, names, report) {
   const isPackage = (spec) => names.some((n) => spec === n || spec.startsWith(n + '/'));
   const resolver = createResolver(built.checker, isPackage);
   const ctx = { ...resolver, isPackage, packageName: rs.package ?? names[0] };
+  ctx.reaches = filesReachingPackage(built.sourceFiles, built.checker, ctx);
   const edits = new Map();
   const seen = new Set();
   const out = {

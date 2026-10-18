@@ -184,6 +184,20 @@ export const cases = [
   },
   ...factoryCases(),
   {
+    name: 'lookalikes in files that reach the package through local imports are queued, others are not',
+    rules: mp,
+    files: {
+      'lib/acme.ts': "import Acme from 'acme-sdk';\nconst g = globalThis as any;\nexport const client = g.acme ?? new Acme();\n",
+      'route.ts': "import { client } from './lib/acme';\nexport const pay = () => client.charges.create({ amount_cents: 1 });\n",
+      'page.ts': "import { pay } from './route';\npay();\nwindow.acme.charges.create({ amount_cents: 2 });\n",
+      'util.ts': 'export const noop = () => {};\n',
+      'other.ts': "import { noop } from './util';\nnoop();\nsomething.charges.create({ amount_cents: 3 });\n",
+    },
+    expect: {},
+    untouched: ['route.ts', 'page.ts', 'other.ts'],
+    unresolved: [['route.ts', 2, 'cannot be traced'], ['page.ts', 3, 'cannot be traced']],
+  },
+  {
     name: 'a binding exported as the default is followed',
     rules: mp,
     files: {
