@@ -58,7 +58,8 @@ function runAstRule(rule, rs, files, configs, names, report, cache) {
     },
     fail(sf, node, reason) {
       const line = lineOf(sf, node.getStart(sf));
-      report.unresolved.push({ file: built.rel(sf), line, ruleId: rule.id, call: rule.match.call ?? rule.match.module ?? rule.match.path, reason, snippet: snippet(sf, line) });
+      const call = rule.match.import ? `${rule.match.import} import of ${rule.match.module ?? ctx.packageName}` : rule.match.call ?? rule.match.module ?? rule.match.path;
+      report.unresolved.push({ file: built.rel(sf), line, ruleId: rule.id, call, reason, snippet: snippet(sf, line) });
     },
   };
   for (const sf of built.sourceFiles) {

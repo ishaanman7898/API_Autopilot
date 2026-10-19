@@ -20,6 +20,12 @@ test('validation catches bad rules', () => {
   assert.deepEqual(validateRuleSet({ ...good, rules: [null, 7, [], good.rules[0]] }), ['rules[0]: must be an object', 'rules[1]: must be an object', 'rules[2]: must be an object']);
   for (const rules of [{}, 'x']) assert.deepEqual(validateRuleSet({ ...good, rules }), ['rules must be a non-empty array']);
   assert.deepEqual(signingBlockers({ rules: [null, { id: 'a', confidence: 'likely' }] }), ['rule a still has confidence "likely"']);
+  const manual = (match, rs = good) => validateRuleSet({ ...rs, rules: [{ id: 'd', kind: 'manual', match, fallback: { prompt: 'p' } }] });
+  assert.deepEqual(manual({ import: 'default' }), []);
+  assert.deepEqual(manual({ import: 'default', module: 'acme-sdk/legacy', commonjs: true }), []);
+  for (const match of [{}, { import: 'named' }, { import: 'default', call: 'a.b' }]) assert.deepEqual(manual(match), ['rules[0]: needs fallback.prompt and either match.call or match.import "default"']);
+  assert.deepEqual(manual({ import: 'default', module: 'acme-sdk-extra', commonjs: 'yes' }), ['rules[0]: match.module must be acme-sdk or one of its subpaths', 'rules[0]: match.commonjs must be true or omitted']);
+  assert.deepEqual(manual({ import: 'default' }, { ...good, scope: 'any', package: undefined }), ['rules[0]: match.import needs match.module when the file has no package']);
 });
 
 test('scope any: replace rules migrate named files and nothing else', () => {

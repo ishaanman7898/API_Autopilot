@@ -68,7 +68,7 @@ Edits are applied by source position, so formatting, comments and line endings o
 | comments or optional chaining inside the call path | The text between the segments is not plain identifiers and dots. |
 | argument N of `<call>` is not an object literal | The argument is a variable or an expression. |
 | argument has spread or computed keys that may contain `<param>` | The literal might carry the key in a way the engine cannot see. |
-| manual rule | The rule is `manual`, so every match is queued. |
+| manual rule | The rule is `manual`, so every match is queued. A rule with `match.import: "default"` matches the imports of the package's default export instead of calls, and its sites are queued as `manual rule: default import needs a migration`. |
 | module name appears outside import syntax | A string equal to the module name, such as in `jest.mock`, is not touched. |
 | module specifier uses escape sequences | The literal is not plain text. |
 

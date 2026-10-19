@@ -49,7 +49,13 @@ export function validateRuleSet(rs) {
       if (typeof r.transform?.to !== 'string') errors.push(`${at}: needs transform.to`);
       if (!Array.isArray(r.match?.files) || r.match.files.length === 0) errors.push(`${at}: replace rules need match.files`);
     }
-    if (r.kind === 'manual' && !(r.match?.call && r.fallback?.prompt)) errors.push(`${at}: needs match.call and fallback.prompt`);
+    if (r.kind === 'manual') {
+      const m = r.match ?? {};
+      if (!((m.import === undefined ? m.call : m.import === 'default' && m.call === undefined) && r.fallback?.prompt)) errors.push(`${at}: needs fallback.prompt and either match.call or match.import "default"`);
+      if (m.module !== undefined && !(typeof m.module === 'string' && (rs.package ? m.module === rs.package || m.module.startsWith(rs.package + '/') : m.module))) errors.push(`${at}: match.module must be ${rs.package ? `${rs.package} or one of its subpaths` : 'a module name'}`);
+      if (m.import !== undefined && m.module === undefined && !rs.package) errors.push(`${at}: match.import needs match.module when the file has no package`);
+      if (m.commonjs !== undefined && m.commonjs !== true) errors.push(`${at}: match.commonjs must be true or omitted`);
+    }
     if (r.kind === 'rename-namespace' && !(PROPERTY_PATH.test(r.match?.path ?? '') && PROPERTY_PATH.test(r.transform?.to ?? ''))) errors.push(`${at}: needs match.path and transform.to as property paths such as robotsPreview or data.filters`);
     if (r.kind === 'positional-to-named' && !(r.match?.call && Number.isInteger(r.match?.positional) && Array.isArray(r.transform?.names) && r.transform.names.length > 0 &&
       r.transform.names.length <= r.match.positional && r.transform.names.every((n) => typeof n === 'string' && n))) errors.push(`${at}: needs match.call, match.positional and transform.names, with no more names than positional arguments`);

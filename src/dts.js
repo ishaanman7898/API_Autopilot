@@ -233,7 +233,7 @@ export function declarationSurface(files, name) {
 // What a consumer of the old release would see break: functions, methods and static members that are gone, and
 // functions whose required arguments changed. Everything is compared per subpath. Classes, constants and types
 // that are gone are only listed, since a manual rule matches calls and they are used with new, instanceof or as types.
-// So is a removed default export, with what it was and whether the new release exports that name instead.
+// A removed default export is returned with what it was and whether the new release exports that name instead.
 export function diffDeclarations(a, b) {
   const removed = new Map();
   const changed = new Map();
@@ -411,6 +411,7 @@ export function draftFromDeclarations(diff, { provider, pkg, from, to, newVersio
     for (let n = 2; ids.has(id); n++) id = `${stem}-${n}`;
     ids.add(id);
     rules.push({ ...rule, id });
+    return id;
   };
   const at = `${pkg}@${from}`;
   const note = (r) => (r.deprecated === null ? '' : r.deprecated ? ` ${at} marked it @deprecated: "${r.deprecated}".` : ` ${at} marked it @deprecated.`);
@@ -427,7 +428,24 @@ export function draftFromDeclarations(diff, { provider, pkg, from, to, newVersio
   const rootless = !diff.old.entries.has('.');
   const main = kept.filter((r) => ['export', 'callable', 'method'].some((k) => r.kinds.has(k)) && (rootless || r.subs.has('.')));
   const grouped = groupRemovals(kept.filter((r) => !main.includes(r)), pkg);
-  // What a caller most likely hits comes first: changed arguments of what is still there, then removed methods, then removed functions.
+  // What a caller most likely hits comes first: a removed default export, which breaks every import of it, then changed
+  // arguments of what is still there, then removed methods, then removed functions. The default export's rule lists each
+  // import of it, and each require when the old release used `export =`. Its prompt names only identifiers and package paths.
+  const defaultRules = new Map();
+  for (const d of diff.defaultsRemoved) {
+    const spec = d.import;
+    if (!(spec === pkg || (spec.startsWith(pkg + '/') && /^[\w$.@/~-]+$/.test(spec)))) continue;
+    const was = IDENT.test(d.was ?? '') ? d.was : null;
+    const now = IDENT.test(d.replacement ?? '') ? d.replacement : null;
+    const how = now ? ` It was ${now}, which ${pkg} ${to} exports by name: import { ${now} } from '${spec}'${d.commonjs ? ` or const { ${now} } = require('${spec}')` : ''}.`
+      : was ? ` It was ${was}, and ${pkg} ${to} exports nothing by that name, so find what replaces it.` : ' Find what replaces it.';
+    defaultRules.set(d, add({
+      id: spec === pkg ? 'removed-default' : `removed-default-${spec.slice(pkg.length + 1)}`, kind: 'manual', confidence: 'needs-review',
+      evidence: `the type declarations of ${at} give ${spec} a default export${was ? `, ${was},` : ''}${d.commonjs ? ' through export =' : ''} and those of ${pkg}@${to} do not`,
+      match: { import: 'default', ...(spec === pkg ? {} : { module: spec }), ...(d.commonjs ? { commonjs: true } : {}) },
+      fallback: { prompt: `${spec} has no default export in ${pkg} ${to}.${how} Keep the behaviour identical.` },
+    }));
+  }
   for (const c of diff.changed) {
     const what = c.kinds.has('method') ? `the method ${c.path} of ${listed(c.owners)}` : c.path;
     add({ id: `args-${c.path}`, kind: 'manual', confidence: 'needs-review', evidence: `${at} declares ${arityText(c.from)} arguments and ${pkg}@${to} declares ${arityText(c.to)}`, match: { call: c.path }, fallback: { prompt: `In ${pkg} ${to}, ${what} takes ${arityText(c.to)} arguments, where it took ${arityText(c.from)}. Update each call.` } });
@@ -456,8 +474,8 @@ export function draftFromDeclarations(diff, { provider, pkg, from, to, newVersio
       optionalArgumentsDropped: diff.optionalDropped.slice(0, 200),
       deprecatedInNewVersion: diff.deprecatedNow.slice(0, 200),
       groupedRemovals: grouped.map((g) => ({ ...g, paths: g.paths.slice(0, 500) })),
-      // No rule kind can find an import, so these are for a person to fix.
-      defaultExportsRemoved: diff.defaultsRemoved.map((d) => ({ ...d, confidence: 'needs-review' })),
+      // Each also has a manual rule, named here, that lists its imports. The pull request shows these at the top.
+      defaultExportsRemoved: diff.defaultsRemoved.map((d) => ({ ...d, confidence: 'needs-review', ...(defaultRules.has(d) ? { rule: defaultRules.get(d) } : {}) })),
       notes: diff.notes,
       uncovered: [
         ...diff.notes,

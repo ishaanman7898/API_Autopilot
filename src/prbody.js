@@ -73,8 +73,9 @@ export const watchBranch = (entry) => `apimigrate/${slugOf(entry.package)}-${slu
 
 const testsFailing = (evidence) => Boolean(evidence?.tests && evidence.tests.exitCode !== 0);
 
-// A removed default export, from a d.ts draft: the imports that break and, when the new release exports the old
-// default's name, the import that replaces them. Names were checked as identifiers and package paths when drafted.
+// A removed default export, from a d.ts draft: the imports that break, when the new release exports the old default's
+// name the import that replaces them, and the manual rule that lists them. Names were checked as identifiers and package
+// paths when drafted.
 function defaultExportText(d, version) {
   const spec = String(d.import).replace(/[^\w$.@/~-]/g, '');
   const ident = (s) => (/^[A-Za-z_$][\w$]*$/.test(s ?? '') ? s : null);
@@ -84,7 +85,8 @@ function defaultExportText(d, version) {
   const broken = [`import ${local} from '${spec}'`, d.commonjs && `const ${local} = require('${spec}')`].filter(Boolean);
   const fix = now ? ` ${code(version)} exports ${code(now)} by name instead: ${[`import { ${now} } from '${spec}'`, d.commonjs && `const { ${now} } = require('${spec}')`].filter(Boolean).map(code).join(' or ')}.`
     : was ? ` It was ${code(was)}, and ${code(version)} exports nothing by that name, so what replaces it has to be found by hand.` : '';
-  return `${code(spec)} ${code(version)} has no default export, so ${broken.map(code).join(' and ')} no longer ${broken.length === 1 ? 'works' : 'work'}.${fix} No rule kind can find imports, so these are not listed under Unresolved call sites.`;
+  const listed = d.rule ? ` The rule ${code(d.rule)} lists each of these imports${d.commonjs ? ' and requires' : ''} in this repository under Unresolved call sites.` : '';
+  return `${code(spec)} ${code(version)} has no default export, so ${broken.map(code).join(' and ')} no longer ${broken.length === 1 ? 'works' : 'work'}.${fix}${listed}`;
 }
 
 export function watchTitle(entry, evidence = null) {
@@ -105,7 +107,7 @@ export function watchBody(entry, evidence, ruleSet, { rulesPath = 'rules.json', 
     lines.push(`Rules for ${code(entry.package)} ${code(entry.from)} to ${code(entry.to)}, signed by ${code(entry.domain)} with key ${code(entry.keyId)} and fetched from ${code(entry.url)}.`);
   } else {
     const basis = entry.draftedFrom === 'd.ts'
-      ? `the TypeScript declarations in the npm tarballs of the two releases, ${cell(`${entry.upstream.from.package}@${entry.upstream.from.version}`)} and ${cell(`${entry.upstream.to.package}@${entry.upstream.to.version}`)}, each checked against its sha512 integrity. Removed functions and methods of the package root and changed required arguments are manual rules, and a rename is drafted only from an @deprecated note that names the replacement`
+      ? `the TypeScript declarations in the npm tarballs of the two releases, ${cell(`${entry.upstream.from.package}@${entry.upstream.from.version}`)} and ${cell(`${entry.upstream.to.package}@${entry.upstream.to.version}`)}, each checked against its sha512 integrity. Removed functions and methods of the package root, removed default exports and changed required arguments are manual rules, and a rename is drafted only from an @deprecated note that names the replacement`
       : `the api.md files of the two releases, ${cell(at(entry.upstream.from))} and ${cell(at(entry.upstream.to))}`;
     lines.push(
       '> [!WARNING]',

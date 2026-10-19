@@ -34,6 +34,43 @@ export function jsDocModuleRefs(sf) {
   return refs;
 }
 
+const isDefaultKey = (k) => (ts.isIdentifier(k) || ts.isStringLiteralLike(k)) && k.text === 'default';
+
+// Places that take the default export of the module named exactly spec: import X from, import { default as X } from,
+// export { default } from, and .default or a default key read from the module, as in (await import(spec)).default.
+// With commonjs, for a module typed with `export =`, also require(spec), import X = require(spec) and import * as X
+// from spec, since each of those takes the assigned value.
+export function defaultImportSites(sf, ctx, spec, { commonjs = false } = {}) {
+  const sites = [];
+  const isDefault = (el) => (el.propertyName ?? el.name).text === 'default';
+  const fromSpec = (n) => n && ts.isStringLiteralLike(n) && n.text === spec;
+  const namespaceOf = (n) => {
+    const o = ctx.originOf(n);
+    return o?.module === spec && o.root === 'namespace' && o.props.length === 0;
+  };
+  walk(sf, (n) => {
+    if (ts.isImportDeclaration(n) && fromSpec(n.moduleSpecifier) && n.importClause) {
+      const { name, namedBindings } = n.importClause;
+      if (name) sites.push(name);
+      if (namedBindings && ts.isNamedImports(namedBindings)) sites.push(...namedBindings.elements.filter(isDefault));
+      if (commonjs && namedBindings && ts.isNamespaceImport(namedBindings)) sites.push(namedBindings);
+    } else if (ts.isExportDeclaration(n) && fromSpec(n.moduleSpecifier) && n.exportClause && ts.isNamedExports(n.exportClause)) {
+      sites.push(...n.exportClause.elements.filter(isDefault));
+    } else if (commonjs && ts.isImportEqualsDeclaration(n) && ts.isExternalModuleReference(n.moduleReference) && fromSpec(n.moduleReference.expression)) {
+      sites.push(n);
+    } else if (commonjs && ts.isCallExpression(n) && n.expression.kind !== ts.SyntaxKind.ImportKeyword && ctx.moduleArg(n) === spec) {
+      sites.push(n);
+    } else if ((ts.isPropertyAccessExpression(n) && n.name.text === 'default' && namespaceOf(n.expression)) ||
+      (ts.isElementAccessExpression(n) && isDefaultKey(n.argumentExpression) && namespaceOf(n.expression))) {
+      sites.push(n);
+    } else if (ts.isBindingElement(n) && ts.isObjectBindingPattern(n.parent) && !n.dotDotDotToken && n.propertyName && isDefaultKey(n.propertyName)) {
+      const holder = n.parent.parent;
+      if (ts.isVariableDeclaration(holder) && holder.initializer && namespaceOf(holder.initializer)) sites.push(n);
+    }
+  });
+  return sites;
+}
+
 // Files that import the package, or import other scanned files that do, at any depth.
 // A lookalike call in one of these files is queued, because its receiver may come from the package.
 export function filesReachingPackage(sourceFiles, checker, ctx) {

@@ -1,5 +1,5 @@
 import ts from 'typescript';
-import { findCalls, jsDocModuleRefs, moduleRefs, propertyChain } from './match.js';
+import { defaultImportSites, findCalls, jsDocModuleRefs, moduleRefs, propertyChain } from './match.js';
 import { importTypeOf } from './bindings.js';
 import { walk } from './parse.js';
 
@@ -224,7 +224,13 @@ export function positionalToNamed(ctx, sf, rule, out) {
   }
 }
 
+// Queues every call that matches, or with match.import 'default' every place that takes the default export of
+// match.module, which is the package root unless the rule names a subpath.
 export function flagManual(ctx, sf, rule, out) {
+  if (rule.match.import === 'default') {
+    for (const n of defaultImportSites(sf, ctx, rule.match.module ?? ctx.packageName, { commonjs: rule.match.commonjs === true })) out.fail(sf, n, 'manual rule: default import needs a migration');
+    return;
+  }
   for (const c of findCalls(ctx, sf, rule.match.call)) out.fail(sf, c.node, c.proven ? 'manual rule: call site needs a migration' : c.reason);
 }
 

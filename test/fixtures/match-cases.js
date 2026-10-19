@@ -228,6 +228,7 @@ export const cases = [
     unresolved: [],
   },
   ...aliasCases(),
+  ...defaultImportCases(),
 ];
 
 // Clients passed in as parameters: typed with the SDK class, or untyped in a local helper.
@@ -640,6 +641,59 @@ function aliasCases() {
       expect: {},
       untouched: ['src/app/route.ts'],
       unresolved: [],
+    },
+  ];
+}
+
+function defaultImportCases() {
+  const prompt = { prompt: 'Import the client by name.' };
+  const root = [{ id: 'd', kind: 'manual', match: { import: 'default' }, fallback: prompt }];
+  const legacy = [{ id: 'd', kind: 'manual', match: { import: 'default', module: 'acme-sdk/legacy', commonjs: true }, fallback: prompt }];
+  const reason = 'manual rule: default import needs a migration';
+  return [
+    {
+      name: 'a manual import rule queues each place that takes the default export of the package root',
+      rules: root,
+      files: {
+        'a.ts': [
+          "import Acme, { Jobs } from 'acme-sdk';",
+          "import { default as Client } from 'acme-sdk';",
+          "export { default } from 'acme-sdk';",
+          "export { default as Acme2, Jobs as J } from 'acme-sdk';",
+          "import * as acme from 'acme-sdk';",
+          'export const c = new acme.default();',
+          "export const lazy = (await import('acme-sdk')).default;",
+          "const { default: Picked } = await import('acme-sdk');",
+          "import type Typed from 'acme-sdk';",
+          'new Acme(); new Client(); new Picked(); export type T = Typed; export const j: Jobs = null!;',
+          '',
+        ].join('\n'),
+      },
+      expect: {},
+      untouched: ['a.ts'],
+      unresolved: [['a.ts', 1, reason], ['a.ts', 2, reason], ['a.ts', 3, reason], ['a.ts', 4, reason], ['a.ts', 6, reason], ['a.ts', 7, reason], ['a.ts', 8, reason], ['a.ts', 9, reason]],
+    },
+    {
+      name: 'a manual import rule leaves subpaths, other packages, named imports and require alone',
+      rules: root,
+      files: {
+        'a.ts': "import Sub from 'acme-sdk/legacy';\nimport Other from 'acme-sdk-extra';\nimport { Jobs, type Job } from 'acme-sdk';\nimport * as acme from 'acme-sdk';\nnew Sub(); new Other(); new acme.Client(); export const j: Job = Jobs;\n",
+        'b.js': "const Acme = require('acme-sdk');\nconst { Client } = require('acme-sdk');\nmodule.exports = { a: new Acme(), c: new Client() };\n",
+      },
+      expect: {},
+      untouched: ['a.ts', 'b.js'],
+      unresolved: [],
+    },
+    {
+      name: 'a manual import rule for an `export =` subpath also queues require, import = require and namespace imports',
+      rules: legacy,
+      files: {
+        'a.ts': "import Cache = require('acme-sdk/legacy');\nimport * as Legacy from 'acme-sdk/legacy';\nimport Plain from 'acme-sdk/legacy';\nimport Root from 'acme-sdk';\nnew Cache(); new Legacy(); new Plain(); new Root();\n",
+        'b.js': "const Cache = require('acme-sdk/legacy');\nconst Root = require('acme-sdk');\nconst { get } = require('acme-sdk/legacy');\nmodule.exports = { c: new Cache(), r: new Root(), get };\n",
+      },
+      expect: {},
+      untouched: ['a.ts', 'b.js'],
+      unresolved: [['a.ts', 1, reason], ['a.ts', 2, reason], ['a.ts', 3, reason], ['b.js', 1, reason], ['b.js', 3, reason]],
     },
   ];
 }
