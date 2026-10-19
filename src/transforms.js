@@ -1,10 +1,11 @@
 import ts from 'typescript';
 import { defaultImportSites, findCalls, jsDocModuleRefs, moduleRefs, propertyChain } from './match.js';
-import { importTypeOf } from './bindings.js';
+import { importTypeOf, unwrap } from './bindings.js';
 import { walk } from './parse.js';
 
 const IDENT = /^[A-Za-z_$][\w$]*$/;
 const keyText = (k) => (ts.isIdentifier(k) || ts.isStringLiteralLike(k) ? k.text : null);
+const keyFor = (name) => (IDENT.test(name) ? name : JSON.stringify(name));
 
 // Each transform receives an `out` with edit(sf, start, end, text, node) and fail(sf, node, reason).
 
@@ -81,6 +82,49 @@ export function renameParam(ctx, sf, rule, out) {
       else out.edit(sf, p.name.getStart(sf), p.name.getEnd(), to, c.node);
     }
     if (!hit && opaque) out.fail(sf, c.node, `${call} argument has spread or computed keys that may contain ${param}`);
+  }
+}
+
+// Values that cannot carry an options key: literals, templates and arrays.
+const keyless = (n) => ts.isLiteralExpression(n) || ts.isTemplateExpression(n) || ts.isArrayLiteralExpression(n) ||
+  [ts.SyntaxKind.TrueKeyword, ts.SyntaxKind.FalseKeyword, ts.SyntaxKind.NullKeyword].includes(n.kind) || (ts.isIdentifier(n) && n.text === 'undefined');
+
+// Renames a key of an options object, such as zod 4's { message } to { error }, or a client option in
+// new Client({ ... }) with match.call 'new Client', or 'new default' for the default export. Only a plain, quoted or
+// shorthand key in an object literal is renamed: { message } becomes { error: message }. An argument that may hold
+// the key where the engine cannot see it, or an object that already has the new key, is queued. A lookalike call
+// is queued only when its argument would have been rewritten or queued.
+export function renameOption(ctx, sf, rule, out) {
+  const { call, arg: index, key } = rule.match;
+  const { to } = rule.transform;
+  const where = `argument ${index} of ${call}`;
+  for (const c of findCalls(ctx, sf, call)) {
+    const arg = c.node.arguments?.[index];
+    const value = arg && unwrap(arg);
+    if (!value || keyless(value)) continue;
+    let problem = ts.isObjectLiteralExpression(value) ? null : `${where} is not an object literal`;
+    const hits = [];
+    let taken = false;
+    for (const p of problem ? [] : value.properties) {
+      if (ts.isSpreadAssignment(p)) problem ??= `${where} spreads an object that may hold ${key}`;
+      else if (ts.isComputedPropertyName(p.name)) problem ??= `${where} has a computed key that may be ${key}`;
+      else if (keyText(p.name) === to) taken = true;
+      else if (keyText(p.name) !== key) continue;
+      else if (ts.isPropertyAssignment(p) || ts.isShorthandPropertyAssignment(p)) hits.push(p);
+      else problem ??= `${key} in ${where} is a method or accessor`;
+    }
+    if (!problem && taken && hits.length) problem = `${where} already has ${to}`;
+    if (!problem && !hits.length) continue;
+    if (!c.proven) out.fail(sf, c.node, c.reason);
+    else if (problem) out.fail(sf, c.node, problem);
+    else {
+      for (const p of hits) {
+        const start = p.name.getStart(sf);
+        const q = sf.text[start];
+        const name = ts.isStringLiteral(p.name) && IDENT.test(to) ? q + to + q : keyFor(to);
+        out.edit(sf, start, p.name.getEnd(), ts.isShorthandPropertyAssignment(p) ? `${name}: ${p.name.text}` : name, c.node);
+      }
+    }
   }
 }
 
@@ -181,8 +225,6 @@ function isSimple(n) {
   return false;
 }
 
-const keyFor = (name) => (IDENT.test(name) ? name : JSON.stringify(name));
-
 // Moves the first positional arguments of a call into its params object, as when an SDK switches to named
 // path parameters: retrieve('p_123', 'c_456') becomes retrieve('c_456', { parent_id: 'p_123' }).
 // match.positional is how many positional arguments the old signature takes, and transform.names are the
@@ -238,6 +280,7 @@ export const TRANSFORMS = {
   'rename-import': renameImport,
   'rename-method': renameMethod,
   'rename-param': renameParam,
+  'rename-option': renameOption,
   'rename-namespace': renameNamespace,
   'positional-to-named': positionalToNamed,
   manual: flagManual,

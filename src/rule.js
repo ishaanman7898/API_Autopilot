@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto';
 
 export const SCHEMA = 'apimigrate/1';
-export const KINDS = ['rename-import', 'rename-method', 'rename-param', 'rename-namespace', 'positional-to-named', 'rename-dependency', 'replace', 'manual'];
+export const KINDS = ['rename-import', 'rename-method', 'rename-param', 'rename-option', 'rename-namespace', 'positional-to-named', 'rename-dependency', 'replace', 'manual'];
 const PROPERTY_PATH = /^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)*$/;
+const CALL_PATH = /^(?:new )?[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)*$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}(T[\d:.]+(Z|[+-]\d{2}:\d{2}))?$/;
 
 // Sorted-key JSON. Throws on values JSON cannot carry so two different rules never share a hash.
@@ -44,6 +45,9 @@ export function validateRuleSet(rs) {
     if (r.kind === 'rename-import' && !(r.match?.module && r.transform?.to)) errors.push(`${at}: needs match.module and transform.to`);
     if (r.kind === 'rename-method' && !(r.match?.call && r.transform?.to)) errors.push(`${at}: needs match.call and transform.to`);
     if (r.kind === 'rename-param' && !(r.match?.call && r.match?.param && r.transform?.to)) errors.push(`${at}: needs match.call, match.param and transform.to`);
+    if (r.kind === 'rename-option' && !(CALL_PATH.test(r.match?.call ?? '') && Number.isInteger(r.match?.arg) && r.match.arg >= 0 && typeof r.match?.key === 'string' && r.match.key &&
+      typeof r.transform?.to === 'string' && r.transform.to && r.transform.to !== r.match.key)) errors.push(`${at}: needs match.call, match.arg as an argument index from 0, match.key and a different transform.to`);
+    if (typeof r.match?.call === 'string' && /^(?:new |default$)/.test(r.match.call) && !['rename-option', 'manual'].includes(r.kind)) errors.push(`${at}: only rename-option and manual rules can match a new or default call path`);
     if (r.kind === 'replace') {
       try { new RegExp(r.match?.pattern); } catch { errors.push(`${at}: match.pattern must be a valid regex`); }
       if (typeof r.transform?.to !== 'string') errors.push(`${at}: needs transform.to`);

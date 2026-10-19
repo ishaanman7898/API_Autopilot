@@ -12,7 +12,8 @@ import { findUpgrades, lineOf, rangeLine } from '../src/registry.js';
 import { generateKeys, signRuleSet } from '../src/signing.js';
 import { parseSources, signedRulesFor } from '../src/sources.js';
 import { RAW, draftedRulesFor, githubRepo, releaseRefs } from '../src/upstream.js';
-import { readTar } from '../src/dts.js';
+import { declarationSurface, diffDeclarations, draftFromDeclarations, readTar } from '../src/dts.js';
+import { applyRuleSet } from '../src/engine.js';
 import { openWatchPullRequests, PR_PERMISSION_HINT } from '../src/watchpr.js';
 import { watchBody, watchBranch, watchTitle } from '../src/prbody.js';
 import { fetchText } from '../src/net.js';
@@ -752,6 +753,76 @@ test('the rule drafted for a removed default export queues each import of it, an
   assert.equal(queue.items.find((i) => i.ruleId === 'removed-default-legacy').task, drafted.rules[1].fallback.prompt);
   const table = watchBody(entry, evidence, drafted).split('\n').filter((l) => /^\| `removed-default/.test(l)).map((l) => l.split(' | ').slice(0, 4).join(' | '));
   assert.deepEqual(table, ['| `removed-default` | `manual` | `needs-review` | 4', '| `removed-default-legacy` | `manual` | `needs-review` | 3']);
+});
+
+// 1.2.0 deprecates the client option baseUrl and the format option caps in favour of keys 2.0.0 has. The note on timeout
+// says more than the new key, 2.0.0 still takes verbose, and pageSize is deprecated in Jobs.list but not in Files.list.
+const OPTIONS_1 = {
+  'package.json': { name: 'shapes', version: '1.2.0', types: './index.d.ts' },
+  'index.d.ts': [
+    'export interface ClientOptions {',
+    '  apiKey?: string;',
+    '  /** @deprecated Use `baseURL` instead. */',
+    '  baseUrl?: string;',
+    '  /** @deprecated Use timeoutMs, in milliseconds */',
+    '  timeout?: number;',
+    '  /** @deprecated Use debug */',
+    '  verbose?: boolean;',
+    '}',
+    'export interface ListParams {',
+    '  /** @deprecated Use limit */',
+    '  pageSize?: number;',
+    '}',
+    'export interface PageParams { pageSize?: number }',
+    'export interface FormatOptions {',
+    '  /** @deprecated Use upper */',
+    '  caps?: boolean;',
+    '}',
+    'export declare class Jobs { list(query?: ListParams): void; }',
+    'export declare class Files { list(params?: PageParams): void; }',
+    'export declare function format(value: string, opts?: FormatOptions | string): string;',
+    'export declare class Client { constructor(opts?: ClientOptions); jobs: Jobs; }',
+    'export default Client;',
+  ].join('\n'),
+};
+const OPTIONS_2 = {
+  'package.json': { name: 'shapes', version: '2.0.0', types: './index.d.ts' },
+  'index.d.ts': [
+    'export interface ClientOptions {',
+    '  apiKey?: string;',
+    '  baseURL?: string;',
+    '  timeoutMs?: number;',
+    '  debug?: boolean;',
+    '  /** @deprecated Use debug */',
+    '  verbose?: boolean;',
+    '}',
+    'export interface ListParams { limit?: number }',
+    'export interface PageParams { limit?: number }',
+    'export interface FormatOptions { upper?: boolean }',
+    'export declare class Jobs { list(query?: ListParams): void; }',
+    'export declare class Files { list(params?: PageParams): void; }',
+    'export declare function format(value: string, opts?: FormatOptions | string): string;',
+    'export declare class Client { constructor(opts?: ClientOptions); jobs: Jobs; }',
+    'export default Client;',
+  ].join('\n'),
+};
+
+test('a declaration draft renames an option that the old release deprecates in favour of a key the new release has', () => {
+  const surface = (files) => declarationSurface(new Map(Object.entries(files).map(([p, t]) => [p, typeof t === 'string' ? t : JSON.stringify(t)])), 'shapes');
+  const diff = diffDeclarations(surface(OPTIONS_1), surface(OPTIONS_2));
+  const { ruleSet } = draftFromDeclarations(diff, { provider: 'geo', pkg: 'shapes', from: '1.2.0', to: '2.0.0', newVersion: '2.0.0' });
+  const options = ruleSet.rules.filter((r) => r.kind === 'rename-option');
+  assert.deepEqual(options.map((r) => [r.id, r.confidence, r.match, r.transform]), [
+    ['option-new-default-baseUrl', 'likely', { call: 'new default', arg: 0, key: 'baseUrl' }, { to: 'baseURL' }],
+    ['option-format-caps', 'likely', { call: 'format', arg: 1, key: 'caps' }, { to: 'upper' }],
+    ['option-new-Client-baseUrl', 'likely', { call: 'new Client', arg: 0, key: 'baseUrl' }, { to: 'baseURL' }],
+  ], 'the default export first, and not timeout, whose note says more, verbose, which 2.0.0 still takes, or pageSize, which Files.list took without a note');
+  assert.equal(options[2].evidence, 'shapes@1.2.0 marks the baseUrl option of argument 0 of new Client @deprecated: "Use `baseURL` instead.". shapes@2.0.0 takes baseURL there and not baseUrl.');
+
+  const src = "import Client, { format } from 'shapes';\nexport const c = new Client({ baseUrl: 'u', timeout: 5, verbose: true });\nexport const a = format('x', { caps: true });\nexport const b = format('x', 'plain');\n";
+  const r = applyRuleSet(ruleSet, { 'a.ts': src });
+  assert.equal(r.files['a.ts'], "import Client, { format } from 'shapes';\nexport const c = new Client({ baseURL: 'u', timeout: 5, verbose: true });\nexport const a = format('x', { upper: true });\nexport const b = format('x', 'plain');\n");
+  assert.deepEqual(r.unresolved, [], 'the rule for new Client finds the default import already moved');
 });
 
 test('a declaration draft refuses a tarball that fails its integrity, is too large, or escapes the package', async () => {

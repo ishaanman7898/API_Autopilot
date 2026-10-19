@@ -179,14 +179,38 @@ export function declarationSurface(files, name) {
     }
     return { min, max, rest };
   };
+  // For each argument position, the keys an options object passed there can have and their @deprecated notes. A key
+  // that some overload declares without the note, or with another note, has none.
+  const optionsOf = (sigs) => {
+    const out = [];
+    for (const sig of sigs ?? []) {
+      const params = (sig.getDeclaration()?.parameters ?? []).filter((p) => !(ts.isIdentifier(p.name) && p.name.text === 'this'));
+      for (const [i, p] of params.entries()) {
+        if (p.dotDotDotToken) break;
+        let props = [];
+        try {
+          const type = checker.getTypeAtLocation(p);
+          props = (type.isUnion() ? type.types : [type]).filter((t) => t.flags & (ts.TypeFlags.Object | ts.TypeFlags.Intersection)).flatMap((t) => checker.getPropertiesOfType(t));
+        } catch { /* left out */ }
+        // Properties of interfaces and object types only. Methods, and members of a class an instance is passed for, are not options.
+        for (const prop of props.filter((x) => IDENT.test(x.name) && x.declarations?.length && x.declarations.every(ts.isPropertySignature))) {
+          const keys = (out[i] ??= new Map());
+          const note = deprecation(prop);
+          keys.set(prop.name, keys.has(prop.name) && keys.get(prop.name) !== note ? null : note);
+        }
+      }
+    }
+    return out.some(Boolean) ? out : null;
+  };
   const isPublic = (sym) => !(sym.declarations ?? []).some((d) => ts.getCombinedModifierFlags(d) & (ts.ModifierFlags.Private | ts.ModifierFlags.Protected));
   const callables = (props) => {
     const out = new Map();
     for (const p of props) {
       if (!IDENT.test(p.name) || p.name.startsWith('_') || p.name === 'prototype' || BUILTIN.has(p.name) || !isPublic(p)) continue;
+      let type = null;
       let arity = null;
-      try { arity = arityOf(checker.getTypeOfSymbol(p)); } catch { /* left out */ }
-      if (arity) out.set(p.name, { arity, deprecated: deprecation(p) });
+      try { type = checker.getTypeOfSymbol(p); arity = arityOf(type); } catch { /* left out */ }
+      if (arity) out.set(p.name, { arity, deprecated: deprecation(p), options: optionsOf(type.getCallSignatures()) });
     }
     return out;
   };
@@ -216,6 +240,8 @@ export function declarationSurface(files, name) {
         value,
         deprecated: deprecation(sym) ?? deprecation(target),
         arity: arityOf(type),
+        options: optionsOf(type?.getCallSignatures()),
+        construct: optionsOf(type?.getConstructSignatures()),
         // A namespace export such as zod's z mirrors the root exports, which are compared on their own.
         statics: type ? callables(checker.getPropertiesOfType(type).filter((p) => !targets.has(resolve(p)))) : null,
         // What the default export was, such as lru-cache 7's `export = LRUCache`, so its removal can name a replacement.
@@ -299,6 +325,7 @@ export function diffDeclarations(a, b) {
       }
     }
   }
+  const optionsRenamed = renamedOptions(a, b);
   const oldSubs = a.subpaths ?? ['.'];
   const newSubs = b.subpaths ?? ['.'];
   if (!a.subpaths && b.subpaths) notes.push(`${b.name} adds an exports map, so only its listed subpaths can be imported`);
@@ -334,8 +361,52 @@ export function diffDeclarations(a, b) {
     subpathsAdded: newSubs.filter((s) => !oldSubs.includes(s)),
     deprecatedNow,
     defaultsRemoved,
+    optionsRenamed,
     notes,
   };
+}
+
+// The options objects each call path takes, by argument position, across subpaths and classes. Paths are the ones the
+// engine matches calls by: an export, new and the export for a class, a static member, or a method.
+function optionsByPath(surface) {
+  const by = new Map();
+  const put = (path, options) => {
+    for (const [i, keys] of (options ?? []).entries()) {
+      if (!keys) continue;
+      if (!by.has(path)) by.set(path, []);
+      (by.get(path)[i] ??= []).push(keys);
+    }
+  };
+  for (const e of surface.entries.values()) {
+    for (const [n, x] of e.exports) {
+      if (!x.value) continue;
+      put(n, x.options);
+      put(`new ${n}`, x.construct);
+      for (const [s, xs] of x.statics ?? []) put(n === 'default' ? s : `${n}.${s}`, xs.options);
+    }
+    for (const methods of e.classes.values()) for (const [m, xm] of methods) put(m, xm.options);
+  }
+  return by;
+}
+
+// An option renamed in place: wherever the old release takes the key at that position it is @deprecated with a note
+// that names only the new key, and every options object the new release takes there has the new key and not the old.
+function renamedOptions(a, b) {
+  const after = optionsByPath(b);
+  const out = [];
+  for (const [path, args] of optionsByPath(a)) {
+    for (const [arg, olds] of args.entries()) {
+      const now = after.get(path)?.[arg] ?? [];
+      for (const key of new Set((olds ?? []).flatMap((m) => [...m.keys()]))) {
+        const notes = new Set(olds.filter((m) => m.has(key)).map((m) => m.get(key)));
+        const note = notes.size === 1 ? [...notes][0] : null;
+        const m = note && !note.includes('(') ? USE.exec(note) : null;
+        const to = m && IDENT.test(m[1]) ? m[1] : null;
+        if (to && to !== key && now.length && now.every((k) => k.has(to) && !k.has(key))) out.push({ path, arg, key, to, note });
+      }
+    }
+  }
+  return out;
 }
 
 // "Use X", "Use `.x()` instead", "since 7.0, use cache.delete()" or "Renamed to {@link X}", and nothing else.
@@ -421,6 +492,11 @@ export function draftFromDeclarations(diff, { provider, pkg, from, to, newVersio
     if (!target) { kept.push(r); continue; }
     const what = r.kinds.has('method') ? `The method ${r.path} of ${listed(r.owners)}` : `The export ${r.path}`;
     add({ id: `rename-${r.path}`, kind: 'rename-method', confidence: 'likely', evidence: `${what} is gone from ${pkg}@${to}, and ${target} takes the same arguments there.${note(r)}`, match: { call: r.path }, transform: { to: target } });
+  }
+  // The default export's rules come first, so that a rule for the same class by name sees those calls already moved.
+  const first = (o) => (o.path === 'default' || o.path === 'new default' ? 0 : 1);
+  for (const o of [...diff.optionsRenamed].sort((x, y) => first(x) - first(y))) {
+    add({ id: `option-${o.path}-${o.key}`, kind: 'rename-option', confidence: 'likely', evidence: `${at} marks the ${o.key} option of argument ${o.arg} of ${o.path} @deprecated: "${o.note}". ${pkg}@${to} takes ${o.to} there and not ${o.key}.`, match: { call: o.path, arg: o.arg, key: o.key }, transform: { to: o.to } });
   }
   // Removed functions and instance methods of the package root get a manual rule each. Static members, such as
   // zod 3's ZodString.create and the other *.create factories, and names only in other subpaths are listed in

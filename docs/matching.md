@@ -39,6 +39,10 @@ A function call is proven when every `return` in the function gives the same pac
 
 A call whose receiver comes from a different package is ignored on purpose, even if its shape matches.
 
+## Call paths
+
+A rule names a call by its path from the package, whatever the local names. `client.charges.create()`, `Acme.charges.create()` and `new Acme().charges.create()` are all `charges.create`, and a name imported by name starts the path, so `charges.create()` after `import { charges } from 'acme-sdk'` is `charges.create` too. Constructor calls are matched only by a path that starts with `new `. `new Client` matches `new Client()` after `import { Client } from 'acme-sdk'`, and `new acme.Client()`. `new default` matches the default export, after `import Acme from 'acme-sdk'`, `import { default as Acme } from 'acme-sdk'` or `const Acme = require('acme-sdk')`. `default` alone matches calls of the default export itself, such as `make({ verbose: true })` after `import make from 'acme-sdk'`. Only `rename-option` and `manual` rules take these paths.
+
 ## Path aliases
 
 Each file uses the `tsconfig.json` or `jsconfig.json` nearest to it, so a monorepo can have different aliases per package. The engine reads `compilerOptions.paths` and `baseUrl`, follows `extends` that point to a relative file, and in a solution-style config with only `references` it uses the first referenced config that declares aliases. The longest matching `paths` key wins, an exact key beats a wildcard, and `baseUrl` is tried after `paths`, as in TypeScript.
@@ -52,6 +56,8 @@ For `rename-method` with a dotted call, the last segments of the callee must be 
 For a single segment call such as `createCharge`, the edit renames the imported name and keeps the local name. `import { createCharge } from 'acme-sdk'` becomes `import { makeCharge as createCharge } from 'acme-sdk'`, and `const { createCharge } = require('acme-sdk')` becomes `const { makeCharge: createCharge } = require('acme-sdk')`. No reference changes.
 
 For `rename-param`, the engine renames the key in an object literal argument. Shorthand `{ amount_cents }` becomes `{ amount: amount_cents }`. A quoted key keeps its quotes.
+
+For `rename-option`, the engine renames a key of the object literal passed as argument `match.arg`. `z.string().min(2, { message })` becomes `z.string().min(2, { error: message })`, and `new Acme({ 'baseUrl': url })` becomes `new Acme({ 'baseURL': url })`. Parentheses, `as` and `satisfies` around the object are kept. A literal such as a string or number, a template, an array, `null` or `undefined` in that position cannot hold the key and is left alone, as is an object without the key or one already migrated. Anything else is queued, and nothing in that call is changed: a variable or other expression, a spread or computed key, the key as a getter, setter or method, or an object that has both keys. A call that cannot be traced is queued only when its argument would have been renamed or queued, so `Math.min(a, 0)` is not queued for a rule on `min` with `arg: 1`, and `Math.min(a, b)` is.
 
 For `rename-namespace`, the path is renamed wherever it directly follows a proven package value: in calls and reads such as `client.robotsPreview.jobs.list()`, and in type names. With `import Mux from '@mux/mux-node'`, a rule from `RobotsPreview` to `Robots` turns `Mux.RobotsPreview.JobStatus` into `Mux.Robots.JobStatus`, and the same in `class Jobs extends Mux.RobotsPreview`, `import Alias = Mux.RobotsPreview`, `import('@mux/mux-node/resources/robots-preview').RobotsPreview` and JSDoc types such as `@type {Mux.RobotsPreview.JobStatus}`. A rule names one spelling, so when both the property `robotsPreview` and the type namespace `RobotsPreview` change, as in Mux 15, each needs its own rule. A one-segment path that is imported by name from the package, or destructured from a proven value, is renamed with the local name kept: `import type { RobotsPreview } from '...'` becomes `import type { Robots as RobotsPreview } from '...'`, and no reference changes. A type the scanned files declare themselves, such as a local namespace with a member of the same name, is left alone. So is a JSDoc `@link`.
 
@@ -68,6 +74,10 @@ Edits are applied by source position, so formatting, comments and line endings o
 | comments or optional chaining inside the call path | The text between the segments is not plain identifiers and dots. |
 | argument N of `<call>` is not an object literal | The argument is a variable or an expression. |
 | argument has spread or computed keys that may contain `<param>` | The literal might carry the key in a way the engine cannot see. |
+| argument N of `<call>` spreads an object that may hold `<key>`, or has a computed key that may be `<key>` | The same for `rename-option`, which queues these even when the literal also has the key, since a spread after it could override the old key. |
+| argument N of `<call>` already has `<to>` | The object has both the old key and the new one, so a person decides which value stays. |
+| `<key>` in argument N of `<call>` is a method or accessor | The key is a getter, setter or method, not a plain property. |
+| `new <Name>` uses the default export of `<package>`, which may not be `<Name>` | A constructor call traced to another export of the package, such as `new Client()` after `import Client from 'acme-sdk'` for a rule on `new Client`. The engine cannot tell whether the two are the same class. A `new default` rule that runs first moves these calls. |
 | manual rule | The rule is `manual`, so every match is queued. A rule with `match.import: "default"` matches the imports of the package's default export instead of calls, and its sites are queued as `manual rule: default import needs a migration`. |
 | module name appears outside import syntax | A string equal to the module name, such as in `jest.mock`, is not touched. |
 | module specifier uses escape sequences | The literal is not plain text. |

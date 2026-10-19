@@ -114,26 +114,39 @@ function tailMatches(callee, segs) {
 const callsCache = new WeakMap();
 const callsOf = (sf) => {
   if (!callsCache.has(sf)) {
-    const calls = [];
-    walk(sf, (n) => { if (ts.isCallExpression(n)) calls.push(n); });
+    const calls = { call: [], new: [] };
+    walk(sf, (n) => {
+      if (ts.isCallExpression(n)) calls.call.push(n);
+      else if (ts.isNewExpression(n)) calls.new.push(n);
+    });
     callsCache.set(sf, calls);
   }
   return callsCache.get(sf);
 };
 
+// The path a call is matched by. default is the package's default export itself, which is also what require() gives
+// a CommonJS package, so the client of import Acme from 'acme-sdk' and of require('acme-sdk') is new default.
+const pathOf = (o) => (o.props.length === 0 && (o.root === 'default' || o.root === 'namespace') ? 'default' : fullPath(o).join('.'));
+
 // Calls whose receiver is proven to come from the package, plus lookalike calls in files that reach it.
+// A call path that starts with `new ` matches constructor calls instead, such as new Client({ ... }).
 export function findCalls(ctx, sf, call) {
-  const segs = call.split('.');
+  const ctor = call.startsWith('new ');
+  const path = ctor ? call.slice(4) : call;
+  const segs = path.split('.');
   const importsPackage = ctx.reaches ? ctx.reaches.has(sf.fileName) : moduleRefs(sf, ctx).some((r) => ctx.isPackage(r.spec));
   const found = [];
-  for (const n of callsOf(sf)) {
+  for (const n of callsOf(sf)[ctor ? 'new' : 'call']) {
     const callee = unwrap(n.expression);
     const origin = ctx.originOf(callee);
-    if (origin?.module && ctx.isPackage(origin.module) && fullPath(origin).join('.') === call) {
+    if (origin?.module && ctx.isPackage(origin.module) && pathOf(origin) === path) {
       found.push({ node: n, callee, origin, proven: true });
-    } else if (tailMatches(callee, segs)) {
+    } else if (path !== 'default' && tailMatches(callee, segs)) {
       if (origin?.module && !ctx.isPackage(origin.module)) continue;
-      if (importsPackage) found.push({ node: n, callee, origin, proven: false, reason: `receiver of ${call} cannot be traced to ${ctx.packageName}` });
+      // new Client() after import Client from 'acme-sdk' is traced, to an export that may or may not be Client.
+      const other = ctor && origin?.module ? pathOf(origin) : null;
+      const reason = other ? `${call} uses ${other === 'default' ? 'the default export' : other} of ${ctx.packageName}, which may not be ${path}` : `receiver of ${call} cannot be traced to ${ctx.packageName}`;
+      if (importsPackage) found.push({ node: n, callee, origin, proven: false, reason });
     }
   }
   return found;

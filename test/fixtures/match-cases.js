@@ -201,6 +201,7 @@ export const cases = [
   ...typeNameCases(),
   ...globalCacheCases(),
   ...positionalCases(),
+  ...optionCases(),
   ...parameterCases(),
   {
     name: 'lookalikes in files that reach the package through local imports are queued, others are not',
@@ -308,6 +309,169 @@ function positionalCases() {
       expect: {},
       untouched: ['a.ts'],
       unresolved: [['a.ts', 3, 'side effects'], ['a.ts', 4, 'spread argument'], ['a.ts', 5, 'already has one of parent_id'], ['a.ts', 6, 'not called with 2 positional arguments'], ['a.ts', 7, 'cannot be traced']],
+    },
+  ];
+}
+
+// rename-option, as in a client option renamed in new Acme({ ... }) or zod 4's { message } to { error }.
+function optionCases() {
+  const option = (id, call, arg, key, to) => ({ id, kind: 'rename-option', match: { call, arg, key }, transform: { to } });
+  const client = [option('url', 'new default', 0, 'baseUrl', 'baseURL'), option('url-named', 'new Client', 0, 'baseUrl', 'baseURL'), option('key', 'new default', 0, 'apiKey', 'api-key')];
+  return [
+    {
+      name: 'rename-option renames a client option however the client is constructed',
+      rules: client,
+      files: {
+        'a.ts': [
+          "import Acme, { Client } from 'acme-sdk';",
+          "import * as acme from 'acme-sdk';",
+          'const baseUrl = process.env.URL;',
+          "export const a = new Acme({ baseUrl, apiKey: 'k' });",
+          "export const b = new Client({ 'baseUrl': 'b' });",
+          "export const c = new acme.Client({ baseUrl: 'c' });",
+          'export const d = new acme.default({',
+          "  baseUrl: 'd',",
+          '});',
+          "export const e = new Acme(({ baseUrl: 'e' }) as const);",
+          'export const f = new Acme();',
+          "export const g = new Acme({ baseURL: 'g' });",
+          '',
+        ].join('\n'),
+        'b.js': "const Acme = require('acme-sdk');\nconst { Client } = require('acme-sdk');\nmodule.exports = { a: new Acme({ baseUrl: 'a' }), b: new Client({ baseUrl: 'b' }) };\n",
+      },
+      expect: {
+        'a.ts': [
+          "import Acme, { Client } from 'acme-sdk';",
+          "import * as acme from 'acme-sdk';",
+          'const baseUrl = process.env.URL;',
+          "export const a = new Acme({ baseURL: baseUrl, \"api-key\": 'k' });",
+          "export const b = new Client({ 'baseURL': 'b' });",
+          "export const c = new acme.Client({ baseURL: 'c' });",
+          'export const d = new acme.default({',
+          "  baseURL: 'd',",
+          '});',
+          "export const e = new Acme(({ baseURL: 'e' }) as const);",
+          'export const f = new Acme();',
+          "export const g = new Acme({ baseURL: 'g' });",
+          '',
+        ].join('\n'),
+        'b.js': "const Acme = require('acme-sdk');\nconst { Client } = require('acme-sdk');\nmodule.exports = { a: new Acme({ baseURL: 'a' }), b: new Client({ baseURL: 'b' }) };\n",
+      },
+      unresolved: [],
+    },
+    {
+      name: 'rename-option renames a key in a chained call and leaves strings, other methods and migrated objects alone',
+      rules: [option('min', 'min', 1, 'message', 'error'), option('string', 'z.string', 0, 'message', 'error')],
+      extra: { package: 'zod' },
+      files: {
+        'a.ts': [
+          "import { z } from 'zod';",
+          "const message = 'Too short';",
+          "export const name = z.string({ message: 'Required' }).min(2, { message });",
+          "export const code = z.string().min(4, { 'message': 'Four', inclusive: true }).max(8, { message: 'Eight' });",
+          "export const plain = z.string().min(1, 'Required');",
+          "export const done = z.string().min(1, { error: 'Required' });",
+          'export const bare = z.string().min(1);',
+          '',
+        ].join('\n'),
+      },
+      expect: {
+        'a.ts': [
+          "import { z } from 'zod';",
+          "const message = 'Too short';",
+          "export const name = z.string({ error: 'Required' }).min(2, { error: message });",
+          "export const code = z.string().min(4, { 'error': 'Four', inclusive: true }).max(8, { message: 'Eight' });",
+          "export const plain = z.string().min(1, 'Required');",
+          "export const done = z.string().min(1, { error: 'Required' });",
+          'export const bare = z.string().min(1);',
+          '',
+        ].join('\n'),
+      },
+      unresolved: [],
+    },
+    {
+      name: 'rename-option queues a variable, a spread, a computed key, an accessor and an object that already has the new key',
+      rules: [client[0]],
+      files: {
+        'a.ts': [
+          "import Acme from 'acme-sdk';",
+          "const opts = { baseUrl: 'x' };",
+          'export const a = new Acme(opts);',
+          "export const b = new Acme({ ...opts, apiKey: 'k' });",
+          "export const c = new Acme({ [key]: 'x' });",
+          "export const d = new Acme({ baseUrl: 'old', baseURL: 'new' });",
+          "export const e = new Acme({ get baseUrl() { return 'x'; } });",
+          'export const f = new Acme(load());',
+          '',
+        ].join('\n'),
+      },
+      expect: {},
+      untouched: ['a.ts'],
+      unresolved: [
+        ['a.ts', 3, 'argument 0 of new default is not an object literal'],
+        ['a.ts', 4, 'spreads an object that may hold baseUrl'],
+        ['a.ts', 5, 'has a computed key that may be baseUrl'],
+        ['a.ts', 6, 'already has baseURL'],
+        ['a.ts', 7, 'baseUrl in argument 0 of new default is a method or accessor'],
+        ['a.ts', 8, 'is not an object literal'],
+      ],
+    },
+    {
+      name: 'rename-option ignores lookalikes on another library, and queues an untraced call or another export only when its argument has the key',
+      rules: [client[1], option('idem', 'charges.create', 1, 'idempotency_key', 'idempotencyKey')],
+      files: {
+        'a.ts': [
+          "import { Client } from 'acme-sdk';",
+          "import Other from 'other-sdk';",
+          'const o = new Other();',
+          "export const a = new Other.Client({ baseUrl: 'a' });",
+          "o.charges.create({}, { idempotency_key: 'k' });",
+          "export function make(Client) { return new Client({ baseUrl: 'b' }); }",
+          "export function plain(Client) { return new Client({ apiKey: 'k' }); }",
+          "export function pay(x) { return x.charges.create({}, { idempotency_key: 'k' }); }",
+          'export function list(x) { return x.charges.create({}); }',
+          "export const c = new Client({ baseUrl: 'c' });",
+          "c.charges.create({ amount: 1 }, { idempotency_key: 'k' });",
+          '',
+        ].join('\n'),
+        'b.ts': "class Client { constructor(o: object) {} }\nexport const c = new Client({ baseUrl: 'local' });\n",
+        'c.ts': "import Client from 'acme-sdk';\nexport const d = new Client({ baseUrl: 'd' });\n",
+      },
+      expect: {
+        'a.ts': [
+          "import { Client } from 'acme-sdk';",
+          "import Other from 'other-sdk';",
+          'const o = new Other();',
+          "export const a = new Other.Client({ baseUrl: 'a' });",
+          "o.charges.create({}, { idempotency_key: 'k' });",
+          "export function make(Client) { return new Client({ baseUrl: 'b' }); }",
+          "export function plain(Client) { return new Client({ apiKey: 'k' }); }",
+          "export function pay(x) { return x.charges.create({}, { idempotency_key: 'k' }); }",
+          'export function list(x) { return x.charges.create({}); }',
+          "export const c = new Client({ baseURL: 'c' });",
+          "c.charges.create({ amount: 1 }, { idempotencyKey: 'k' });",
+          '',
+        ].join('\n'),
+      },
+      untouched: ['b.ts', 'c.ts'],
+      unresolved: [
+        ['a.ts', 6, 'receiver of new Client cannot be traced to acme-sdk'],
+        ['a.ts', 8, 'receiver of charges.create cannot be traced to acme-sdk'],
+        ['c.ts', 2, 'new Client uses the default export of acme-sdk, which may not be Client'],
+      ],
+    },
+    {
+      name: 'rename-option renames calls of the default export itself, and a manual rule queues constructor calls',
+      rules: [option('verbose', 'default', 0, 'verbose', 'debug'), { id: 'region', kind: 'manual', match: { call: 'new Client' }, fallback: { prompt: 'Pass the region.' } }],
+      files: {
+        'a.ts': "import make, { Client } from 'acme-sdk';\nexport const m = make({ verbose: true });\nexport const c = new Client();\nexport const l = Client.list({ verbose: true });\n",
+        'b.js': "const make = require('acme-sdk');\nmodule.exports = make({ verbose: false });\n",
+      },
+      expect: {
+        'a.ts': "import make, { Client } from 'acme-sdk';\nexport const m = make({ debug: true });\nexport const c = new Client();\nexport const l = Client.list({ verbose: true });\n",
+        'b.js': "const make = require('acme-sdk');\nmodule.exports = make({ debug: false });\n",
+      },
+      unresolved: [['a.ts', 3, 'manual rule: call site needs a migration']],
     },
   ];
 }
