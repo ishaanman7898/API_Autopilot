@@ -126,7 +126,7 @@ const callsOf = (sf) => {
 
 // The path a call is matched by. default is the package's default export itself, which is also what require() gives
 // a CommonJS package, so the client of import Acme from 'acme-sdk' and of require('acme-sdk') is new default.
-const pathOf = (o) => (o.props.length === 0 && (o.root === 'default' || o.root === 'namespace') ? 'default' : fullPath(o).join('.'));
+export const pathOf = (o) => (o.props.length === 0 && (o.root === 'default' || o.root === 'namespace') ? 'default' : fullPath(o).join('.'));
 
 // Calls whose receiver is proven to come from the package, plus lookalike calls in files that reach it.
 // A call path that starts with `new ` matches constructor calls instead, such as new Client({ ... }).

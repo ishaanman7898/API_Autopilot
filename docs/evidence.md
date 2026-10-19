@@ -47,7 +47,7 @@ A mismatch prints the files that differ and exits with code 1.
 ## Limits
 
 - Replay reproduces only the deterministic pass. Agent edits are not reproduced. They are checked by digest, by the gate and by your tests.
-- The tool and parser versions are recorded but not enforced. Replaying with a different TypeScript version may differ in rare cases.
+- The tool and parser versions are recorded but not enforced. Replaying with a different TypeScript version may differ in rare cases. A newer apimigrate that rewrites a rule kind differently reports "replay digest differs" for the files where its result differs.
 - The bundle is not signed by the consumer. It proves consistency, not who produced it. Anyone who can write the pull request can write a bundle, which is why `verify` recomputes it and does not trust it.
 - Determinism was tested on Windows. Tests simulate other line endings and orderings. Linux and macOS runs are defined in CI and have not been checked.
 

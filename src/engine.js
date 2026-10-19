@@ -36,7 +36,7 @@ function analysisFor(files, configs, rs, names, cache) {
     const built = buildProgram(files, configs, cache.built?.program);
     const isPackage = (spec) => names.some((n) => spec === n || spec.startsWith(n + '/'));
     const resolver = createResolver(built.checker, isPackage, built.sourceFiles);
-    const ctx = { ...resolver, isPackage, packageName: rs.package ?? names[0] };
+    const ctx = { ...resolver, checker: built.checker, isPackage, packageName: rs.package ?? names[0] };
     ctx.reaches = filesReachingPackage(built.sourceFiles, built.checker, ctx);
     Object.assign(cache, { files, built, ctx });
   }

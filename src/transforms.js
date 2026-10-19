@@ -1,5 +1,5 @@
 import ts from 'typescript';
-import { defaultImportSites, findCalls, jsDocModuleRefs, moduleRefs, propertyChain } from './match.js';
+import { defaultImportSites, findCalls, jsDocModuleRefs, moduleRefs, pathOf, propertyChain } from './match.js';
 import { importTypeOf, unwrap } from './bindings.js';
 import { walk } from './parse.js';
 
@@ -207,21 +207,198 @@ function isSimple(n) {
   return false;
 }
 
+const isAssertion = (n) => ts.isAsExpression(n) || ts.isSatisfiesExpression(n) || ts.isTypeAssertionExpression(n);
+const COMMENT = /\/[/*]/;
+
+// The expression inside parentheses and type assertions, and the assertions from the outermost in.
+function peel(n) {
+  const casts = [];
+  while (n && (ts.isParenthesizedExpression(n) || isAssertion(n))) {
+    if (isAssertion(n)) casts.push(n);
+    n = n.expression;
+  }
+  return { value: n, casts };
+}
+
+// A params argument that is a name, this, or a property read of them, so spreading it runs nothing.
+function isRead(n) {
+  while (ts.isParenthesizedExpression(n) || ts.isNonNullExpression(n)) n = n.expression;
+  if (ts.isIdentifier(n) || n.kind === ts.SyntaxKind.ThisKeyword) return true;
+  if (ts.isPropertyAccessExpression(n)) return isRead(n.expression);
+  if (ts.isElementAccessExpression(n)) return isRead(n.expression) && (ts.isLiteralExpression(n.argumentExpression) || ts.isIdentifier(n.argumentExpression));
+  return false;
+}
+
+const LOGICAL = [ts.SyntaxKind.AmpersandAmpersandToken, ts.SyntaxKind.BarBarToken, ts.SyntaxKind.QuestionQuestionToken];
+// An expression whose evaluation runs nothing: a simple argument, a read, a function, a choice between such
+// expressions, or object and array literals of them.
+function isPure(n) {
+  while (ts.isParenthesizedExpression(n) || ts.isNonNullExpression(n) || isAssertion(n)) n = n.expression;
+  if (isSimple(n) || isRead(n) || ts.isArrowFunction(n) || ts.isFunctionExpression(n)) return true;
+  if (ts.isConditionalExpression(n)) return isPure(n.condition) && isPure(n.whenTrue) && isPure(n.whenFalse);
+  if (ts.isBinaryExpression(n) && LOGICAL.includes(n.operatorToken.kind)) return isPure(n.left) && isPure(n.right);
+  if (ts.isArrayLiteralExpression(n)) return n.elements.every((e) => isPure(ts.isSpreadElement(e) ? e.expression : e));
+  if (ts.isObjectLiteralExpression(n)) return n.properties.every(isPureProperty);
+  return false;
+}
+const isPureProperty = (p) => (!p.name || !ts.isComputedPropertyName(p.name) || isPure(p.name.expression)) &&
+  (ts.isPropertyAssignment(p) ? isPure(p.initializer) : ts.isSpreadAssignment(p) ? isPure(p.expression) : true);
+
+// Parameters<typeof X> in code and in JSDoc, with the index literal of Parameters<typeof X>[N], or null when there is no number index.
+// Source files are reused between rules until a rule edits them, so each node's answer is kept.
+const refsOf = new WeakMap();
+function parametersRefs(root) {
+  if (refsOf.has(root)) return refsOf.get(root);
+  const refs = [];
+  const visit = (n) => {
+    if (ts.isTypeQueryNode(n)) {
+      let ref = n.parent;
+      while (ts.isParenthesizedTypeNode(ref)) ref = ref.parent;
+      if (ts.isTypeReferenceNode(ref) && ts.isIdentifier(ref.typeName) && ref.typeName.text === 'Parameters' && ref.typeArguments?.length === 1) {
+        const access = ref.parent;
+        const indexed = ts.isIndexedAccessTypeNode(access) && access.objectType === ref && ts.isLiteralTypeNode(access.indexType) && ts.isNumericLiteral(access.indexType.literal);
+        refs.push({ node: n, index: indexed ? access.indexType.literal : null });
+      }
+    }
+    ts.forEachChild(n, visit);
+    for (const doc of n.jsDoc ?? []) ts.forEachChild(doc, visit);
+  };
+  visit(root);
+  refsOf.set(root, refs);
+  return refs;
+}
+
+// Whether a file mentions Parameters< at all. Asked once per file, not once per rule.
+const mentionsOf = new WeakMap();
+const mentionsParameters = (sf) => {
+  if (!mentionsOf.has(sf)) mentionsOf.set(sf, /Parameters\s*</.test(sf.text));
+  return mentionsOf.get(sf);
+};
+
+// Whether the dotted name ends with the call's path, such as c.parents.children.retrieve for parents.children.retrieve.
+function endsWithPath(e, segs) {
+  let i = segs.length - 1;
+  for (; i > 0 && ts.isQualifiedName(e) && e.right.text === segs[i]; i--) e = e.left;
+  return i === 0 && (ts.isQualifiedName(e) ? e.right.text === segs[0] : ts.isIdentifier(e) && e.text === segs[0]);
+}
+
+const PRIMITIVE = ts.TypeFlags.StringLike | ts.TypeFlags.NumberLike | ts.TypeFlags.BooleanLike | ts.TypeFlags.BigIntLike | ts.TypeFlags.ESSymbolLike;
+const UNTYPED = [ts.SyntaxKind.AnyKeyword, ts.SyntaxKind.UnknownKeyword];
+
 // Moves the first positional arguments of a call into its params object, as when an SDK switches to named
 // path parameters: retrieve('p_123', 'c_456') becomes retrieve('c_456', { parent_id: 'p_123' }).
 // match.positional is how many positional arguments the old signature takes, and transform.names are the
-// keys the first of them move to. A call already in the new shape is left alone.
+// keys the first of them move to. A call already in the new shape is left alone. The moved values must still
+// win over a spread or a computed key, so the new keys go after the last one, and the call is queued when
+// anything before them could run code and a moved value could change. Another params argument is spread when
+// it is a name or a property read, and queued when it may not be an object. One with a type assertion keeps it
+// and is spread, and one with a satisfies check is queued. Parameters<typeof <call>>[N] in the call's arguments
+// is shifted to the new positions, and Parameters<typeof <call>> anywhere else in the file is queued, because
+// its positions changed too.
 export function positionalToNamed(ctx, sf, rule, out) {
   const { call, positional } = rule.match;
+  // Most files have no call of the method and no Parameters, so nothing below is set up for them.
+  const calls = findCalls(ctx, sf, call);
+  const hasRefs = mentionsParameters(sf);
+  if (!calls.length && !hasRefs) return;
   const { names } = rule.transform;
   const keep = positional - names.length;
-  for (const c of findCalls(ctx, sf, call)) {
+  const segs = call.split('.');
+  const { checker } = ctx;
+  const text = (n) => sf.text.slice(n.getStart(sf), n.getEnd());
+  const flat = (n) => text(n).replace(/\s+/g, '');
+  const lineOf = (pos) => sf.getLineAndCharacterOfPosition(pos).line;
+  const named = (p) => p.name && (names.includes(keyText(p.name)) || (ts.isComputedPropertyName(p.name) && ts.isStringLiteralLike(p.name.expression) && names.includes(p.name.expression.text)));
+  const hasName = (n) => n && ts.isObjectLiteralExpression(n) && n.properties.some(named);
+  const proven = (n) => {
+    const o = ctx.originOf(n);
+    return o?.module && ctx.isPackage(o.module) && pathOf(o) === call;
+  };
+  // A typeof that can name the method ends with its name, or is one name, such as a renamed import. Others are not traced.
+  const method = segs.at(-1);
+  const candidate = (e) => (ts.isQualifiedName(e) ? e.right.text === method : ts.isIdentifier(e));
+  const nothing = (n) => n.kind === ts.SyntaxKind.NullKeyword || (ts.isVoidExpression(n) && ts.isNumericLiteral(n.expression)) ||
+    (ts.isIdentifier(n) && n.text === 'undefined' && !checker.getSymbolAtLocation(n)?.declarations?.length);
+  const isPrimitive = (t) => {
+    if (t.flags & ts.TypeFlags.TypeParameter) t = checker.getBaseConstraintOfType(t) ?? t;
+    return t.isUnion() || t.isIntersection() ? t.types.some(isPrimitive) : (t.flags & PRIMITIVE) !== 0;
+  };
+  // A name may hold a string where the engine cannot see it, since it has no lib types. When the checker types it as
+  // any, its declaration decides: a call, a template or an operator may give a string, such as const body =
+  // JSON.stringify(data). Variables, parameter defaults, destructured names, imports and default exports are followed,
+  // and a name declared from another name too.
+  const mayBePrimitive = (n, depth = 0) => {
+    const t = checker.getTypeAtLocation(n);
+    if (isPrimitive(t)) return true;
+    if (!(t.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown))) return false;
+    while (ts.isParenthesizedExpression(n) || ts.isNonNullExpression(n)) n = n.expression;
+    let sym = ts.isIdentifier(n) ? checker.getSymbolAtLocation(n) : null;
+    if (sym && sym.flags & ts.SymbolFlags.Alias) sym = checker.getAliasedSymbol(sym);
+    const decl = sym?.valueDeclaration ?? sym?.declarations?.find(ts.isExportAssignment);
+    let source = null;
+    if (decl && ts.isExportAssignment(decl)) source = decl.expression;
+    else if (decl && (ts.isVariableDeclaration(decl) || ts.isParameter(decl) || ts.isBindingElement(decl))) {
+      if (decl.type && !UNTYPED.includes(decl.type.kind)) return false;
+      source = decl.initializer;
+      // const { body } = <source> reads body from the source, which may be a literal that names it.
+      if (!source && ts.isBindingElement(decl) && ts.isObjectBindingPattern(decl.parent) && ts.isVariableDeclaration(decl.parent.parent) && decl.parent.parent.initializer) {
+        const from = peel(decl.parent.parent.initializer).value;
+        const key = keyText(decl.propertyName ?? decl.name);
+        const prop = ts.isObjectLiteralExpression(from) ? from.properties.find((p) => p.name && keyText(p.name) === key) : null;
+        source = prop && ts.isPropertyAssignment(prop) ? prop.initializer : ts.isObjectLiteralExpression(from) ? null : from;
+        if (source === from && (isRead(from) || ts.isNewExpression(from))) return false;
+      }
+    }
+    if (!source) return false;
+    const init = peel(source);
+    if (init.casts.some((a) => !UNTYPED.includes(a.type.kind))) return false;
+    let value = init.value;
+    while (ts.isNonNullExpression(value) || ts.isParenthesizedExpression(value)) value = value.expression;
+    if (ts.isIdentifier(value)) return depth < 3 ? mayBePrimitive(value, depth + 1) : true;
+    return !ts.isObjectLiteralExpression(value) && !ts.isNewExpression(value) && !isRead(value);
+  };
+  // Edits that shift Parameters<typeof <call>>[N] in an argument to N - names.length, or the reason they cannot.
+  // typeof of the call's own callee, such as typeof this.client.x.get inside this.client.x.get(...), names the proven
+  // method. A ref inside a proven call of the method nested in this one belongs to that call.
+  const shifts = (node, c) => {
+    const edits = [];
+    for (const r of hasRefs ? parametersRefs(node) : []) {
+      if (!candidate(r.node.exprName)) continue;
+      const inside = (n, o) => n.pos >= o.node.pos && n.end <= o.node.end;
+      if (calls.some((o) => o !== c && o.proven && inside(o.node, c) && inside(r.node, o))) continue;
+      const same = flat(r.node.exprName) === flat(c.callee) || proven(r.node.exprName);
+      const other = ctx.originOf(r.node.exprName)?.module;
+      if (!same && (!endsWithPath(r.node.exprName, segs) || (other && !ctx.isPackage(other)))) continue;
+      if (!same) return { problem: `Parameters<typeof ${text(r.node.exprName)}> in the arguments of ${call} cannot be traced to ${ctx.packageName}` };
+      if (!r.index) return { problem: `Parameters<typeof ${call}> in the arguments of ${call} has no number index` };
+      const n = Number(r.index.text);
+      if (n < names.length) return { problem: `Parameters<typeof ${call}>[${n}] in the arguments of ${call} names an argument that moves into the params object` };
+      edits.push({ start: r.index.getStart(sf), end: r.index.getEnd(), text: String(n - names.length) });
+    }
+    return { edits };
+  };
+  const withEdits = (node, edits) => {
+    let t = text(node);
+    for (const e of [...edits].sort((a, b) => b.start - a.start)) t = t.slice(0, e.start - node.getStart(sf)) + e.text + t.slice(e.end - node.getStart(sf));
+    return t;
+  };
+  // A literal, or a name bound by const or an import, keeps its value whatever runs before it is read.
+  const isConstant = (n) => {
+    while (ts.isParenthesizedExpression(n) || ts.isNonNullExpression(n) || isAssertion(n)) n = n.expression;
+    if (ts.isLiteralExpression(n) || [ts.SyntaxKind.TrueKeyword, ts.SyntaxKind.FalseKeyword, ts.SyntaxKind.NullKeyword].includes(n.kind)) return true;
+    const decl = ts.isIdentifier(n) ? checker.getSymbolAtLocation(n)?.declarations?.[0] : null;
+    return Boolean(decl && (ts.isImportSpecifier(decl) || ts.isImportClause(decl) || ts.isNamespaceImport(decl) ||
+      ((ts.isVariableDeclaration(decl) || ts.isBindingElement(decl)) && ts.getCombinedNodeFlags(decl) & ts.NodeFlags.Const)));
+  };
+  // A read whose type, as far as the engine can see it, has one of the new keys may be the new shape's params.
+  const typedNew = (n) => n && isRead(n) && names.some((k) => checker.getTypeAtLocation(n).getProperty(k));
+  for (const c of calls) {
     if (!c.proven) { out.fail(sf, c.node, c.reason); continue; }
     const args = c.node.arguments;
     if (args.some(ts.isSpreadElement)) { out.fail(sf, c.node, `${call} is called with a spread argument`); continue; }
-    const migrated = args[keep] && ts.isObjectLiteralExpression(args[keep]) && args[keep].properties.some((p) => p.name && names.includes(keyText(p.name)));
-    if (migrated) continue;
-    if (args.length < positional || args.slice(0, positional).some(ts.isObjectLiteralExpression)) {
+    if (hasName(args[keep] && peel(args[keep]).value)) continue;
+    if (typedNew(args[keep] && peel(args[keep]).value)) { out.fail(sf, c.node, `argument ${keep} of ${call} is typed with one of ${names.join(', ')}, so the call may already be in the new shape`); continue; }
+    if (args.length < positional || args.slice(0, positional).some((a) => ts.isObjectLiteralExpression(peel(a).value))) {
       out.fail(sf, c.node, `${call} is not called with ${positional} positional arguments`);
       continue;
     }
@@ -229,22 +406,76 @@ export function positionalToNamed(ctx, sf, rule, out) {
     const kept = args.slice(names.length, positional);
     if (![...moved, ...kept].every(isSimple)) { out.fail(sf, c.node, `arguments of ${call} could have side effects and moving them would change their order`); continue; }
     const params = args[positional];
-    if (params && ts.isObjectLiteralExpression(params) && params.properties.some((p) => p.name && names.includes(keyText(p.name)))) {
-      out.fail(sf, c.node, `the params object of ${call} already has one of ${names.join(', ')}`);
+    const start = args[0].getStart(sf);
+    const end = (params ?? args[positional - 1]).getEnd();
+    let { value, casts } = params ? peel(params) : { value: null, casts: [] };
+    if (value && nothing(value)) {
+      value = null;
+      casts = [];
+    }
+    const spread = value && (casts.length > 0 || !ts.isObjectLiteralExpression(value));
+    // The arguments are rebuilt from their own text, so a comment before the first, between them, or around a params
+    // object that is merged or dropped would be lost or land on another argument.
+    const gaps = [sf.text.slice(args.pos, start), ...args.slice(1, positional + (params ? 1 : 0)).map((a, i) => sf.text.slice(args[i].getEnd(), a.getStart(sf)))];
+    if (params && !spread) gaps.push(value ? text(params).replace(text(value), '') : text(params));
+    if (gaps.some((g) => COMMENT.test(g))) { out.fail(sf, c.node, `comments around the arguments of ${call} would be lost`); continue; }
+    if (calls.some((o) => o !== c && o.node.getStart(sf) >= start && o.node.getEnd() <= end)) { out.fail(sf, c.node, `${call} is called again inside its own arguments`); continue; }
+    if (casts.some(ts.isSatisfiesExpression)) { out.fail(sf, c.node, `the params argument of ${call} has a satisfies check, which the moved keys would change`); continue; }
+    if (hasName(value)) { out.fail(sf, c.node, `the params object of ${call} already has one of ${names.join(', ')}`); continue; }
+    if (value && !ts.isObjectLiteralExpression(value)) {
+      if (!isRead(value)) { out.fail(sf, c.node, `the params argument of ${call} is not an object literal, a name or a property read, so it cannot be spread`); continue; }
+      if (mayBePrimitive(value)) { out.fail(sf, c.node, `the params argument of ${call} may not be an object, so it cannot be spread`); continue; }
+    }
+    // An asserted object is spread rather than merged, so its assertion still checks only what the caller wrote.
+    const props = value && !spread ? value.properties : [];
+    const last = props.findLastIndex((p) => ts.isSpreadAssignment(p) || (p.name && ts.isComputedPropertyName(p.name)));
+    // The moved values were read first, so anything that now runs before them must not run code, unless they cannot change.
+    if (!moved.every(isConstant) && (spread ? !isPure(value) : !props.slice(0, last + 1).every(isPureProperty))) { out.fail(sf, c.node, `arguments of ${call} could have side effects and moving them would change their order`); continue; }
+    if (moved.some((m) => { const s = shifts(m, c); return s.problem || s.edits.length; })) {
+      out.fail(sf, c.node, `Parameters<typeof ${call}> in an argument of ${call} that moves into the params object cannot be shifted`);
       continue;
     }
-    const text = (n) => sf.text.slice(n.getStart(sf), n.getEnd());
+    const shift = [...kept, ...(value ? [spread ? params : value] : []), ...args.slice(positional + 1)].map((a) => shifts(a, c));
+    const problem = shift.find((s) => s.problem)?.problem;
+    if (problem) { out.fail(sf, c.node, problem); continue; }
+    const paramEdits = value ? shift[kept.length].edits : [];
     const pairs = names.map((n, i) => `${keyFor(n)}: ${text(moved[i])}`).join(', ');
     let object;
-    if (!params) object = `{ ${pairs} }`;
-    else if (ts.isObjectLiteralExpression(params)) {
+    if (!value) object = `{ ${pairs} }`;
+    else if (spread) object = `{ ...${isAssertion(params) ? `(${withEdits(params, paramEdits)})` : withEdits(params, paramEdits)}, ${pairs} }`;
+    else if (last < 0) {
       // Keeps the object's own layout: a multi-line object gets the new keys on its first line.
-      const inner = sf.text.slice(params.getStart(sf) + 1, params.getEnd() - 1);
-      if (!inner.trim()) object = `{ ${pairs} }`;
-      else object = inner.includes('\n') ? `{ ${pairs},${inner}}` : `{ ${pairs}, ${inner.trim()} }`;
-    } else object = `{ ${pairs}, ...${text(params)} }`;
-    const end = (params ?? args[positional - 1]).getEnd();
-    out.edit(sf, args[0].getStart(sf), end, [...kept.map(text), object].join(', '), c.node);
+      const inner = withEdits(value, paramEdits).slice(1, -1);
+      object = !inner.trim() ? `{ ${pairs} }` : inner.includes('\n') ? `{ ${pairs},${inner}}` : `{ ${pairs}, ${inner.trim()} }`;
+    } else {
+      // The new keys go after the last spread or computed key, its comma, and a comment that ends its line, on a line
+      // of their own indented like the next property, or on the same line when the next property shares it.
+      const at = props[last];
+      const isLast = last === props.length - 1;
+      const comma = !isLast || props.hasTrailingComma;
+      const multi = text(value).includes('\n') && (isLast || lineOf(props[last + 1].getStart(sf)) !== lineOf(at.getEnd()));
+      const nl = text(value).includes('\r\n') ? '\r\n' : '\n';
+      const indent = sf.text.slice(sf.text.lastIndexOf('\n', (isLast ? at : props[last + 1]).getStart(sf)) + 1).match(/^[ \t]*/)[0];
+      const after = comma ? ts.skipTrivia(sf.text, at.getEnd()) + 1 : at.getEnd();
+      const comments = multi ? ts.getTrailingCommentRanges(sf.text, after) ?? [] : [];
+      const pos = comments.length ? comments.at(-1).end : after;
+      const added = multi ? `${nl}${indent}${pairs}${comma ? ',' : ''}` : ` ${pairs}${isLast ? '' : ','}`;
+      const edits = comma ? [{ start: pos, end: pos, text: added }]
+        : pos === after ? [{ start: pos, end: pos, text: `,${added}` }] : [{ start: after, end: after, text: ',' }, { start: pos, end: pos, text: added }];
+      object = withEdits(value, [...paramEdits, ...edits]);
+    }
+    out.edit(sf, start, end, [...kept.map((k, i) => withEdits(k, shift[i].edits)), object].join(', '), c.node);
+    for (const s of shift.slice(kept.length + (value ? 1 : 0))) for (const e of s.edits) out.edit(sf, e.start, e.end, e.text, c.node);
+  }
+  if (!hasRefs) return;
+  const reaches = ctx.reaches ? ctx.reaches.has(sf.fileName) : moduleRefs(sf, ctx).some((r) => ctx.isPackage(r.spec));
+  // Every call of the method was rewritten with its Parameters shifted, left alone in the new shape, or queued.
+  for (const r of parametersRefs(sf)) {
+    if (!candidate(r.node.exprName)) continue;
+    if (calls.some((c) => r.node.pos >= c.node.arguments.pos && r.node.end <= c.node.arguments.end)) continue;
+    const o = ctx.originOf(r.node.exprName);
+    const ours = o?.module && ctx.isPackage(o.module) && pathOf(o) === call;
+    if (ours || (endsWithPath(r.node.exprName, segs) && (o?.module ? ctx.isPackage(o.module) : reaches))) out.fail(sf, r.node, `Parameters<typeof ${call}> may use the old argument positions of ${call}`);
   }
 }
 
