@@ -60,31 +60,6 @@ export function renameMethod(ctx, sf, rule, out) {
   }
 }
 
-export function renameParam(ctx, sf, rule, out) {
-  const { call, param } = rule.match;
-  const argIndex = rule.match.arg ?? 0;
-  const to = rule.transform.to;
-  for (const c of findCalls(ctx, sf, call)) {
-    if (!c.proven) { out.fail(sf, c.node, c.reason); continue; }
-    const arg = c.node.arguments[argIndex];
-    if (!arg || !ts.isObjectLiteralExpression(arg)) {
-      if (arg) out.fail(sf, c.node, `argument ${argIndex} of ${call} is not an object literal`);
-      continue;
-    }
-    let hit = false;
-    let opaque = false;
-    for (const p of arg.properties) {
-      if (ts.isSpreadAssignment(p) || (p.name && ts.isComputedPropertyName(p.name))) { opaque = true; continue; }
-      if (!p.name || keyText(p.name) !== param) continue;
-      hit = true;
-      if (ts.isShorthandPropertyAssignment(p)) out.edit(sf, p.name.getStart(sf), p.name.getEnd(), `${to}: ${param}`, c.node);
-      else if (ts.isStringLiteralLike(p.name)) out.edit(sf, p.name.getStart(sf) + 1, p.name.getEnd() - 1, to, c.node);
-      else out.edit(sf, p.name.getStart(sf), p.name.getEnd(), to, c.node);
-    }
-    if (!hit && opaque) out.fail(sf, c.node, `${call} argument has spread or computed keys that may contain ${param}`);
-  }
-}
-
 // Values that cannot carry an options key: literals, templates and arrays.
 const keyless = (n) => ts.isLiteralExpression(n) || ts.isTemplateExpression(n) || ts.isArrayLiteralExpression(n) ||
   [ts.SyntaxKind.TrueKeyword, ts.SyntaxKind.FalseKeyword, ts.SyntaxKind.NullKeyword].includes(n.kind) || (ts.isIdentifier(n) && n.text === 'undefined');
@@ -126,6 +101,13 @@ export function renameOption(ctx, sf, rule, out) {
       }
     }
   }
+}
+
+// rename-param is rename-option on argument match.arg, 0 by default, with match.param as the key, so a spread
+// next to the key or an object that already has the new key is queued, not renamed.
+export function renameParam(ctx, sf, rule, out) {
+  const { call, param, arg = 0 } = rule.match;
+  renameOption(ctx, sf, { ...rule, match: { call, arg, key: param } }, out);
 }
 
 // One segment of a dotted name and what comes before it: a property access in code, a qualified name in a

@@ -125,7 +125,20 @@ export const cases = [
     expect: {
       'a.ts': "import Acme from 'acme-sdk';\nconst c = new Acme();\nconst amount_cents = 1;\nc.payments.create({ amount: amount_cents, currency: 'usd' });\nc.payments.create({ 'amount': 2 });\nconst args = { amount_cents: 3 };\nc.payments.create(args);\nc.payments.create({ ...args, currency: 'usd' });\n",
     },
-    unresolved: [['a.ts', 7, 'not an object literal'], ['a.ts', 8, 'spread or computed']],
+    unresolved: [['a.ts', 7, 'not an object literal'], ['a.ts', 8, 'spreads an object that may hold amount_cents']],
+  },
+  {
+    name: 'rename-param queues a spread next to the key and an object with both keys, and leaves literals and untraced calls without the key alone',
+    rules: [param],
+    files: {
+      'a.ts': "import Acme from 'acme-sdk';\nconst c = new Acme();\nconst rest = { currency: 'usd' };\nc.payments.create({ amount_cents: 1, ...rest });\nc.payments.create({ ...rest, amount_cents: 2 });\nc.payments.create({ amount_cents: 3, amount: 3 });\nc.payments.create({ amount: 4 });\nc.payments.create('pay_123');\nc.payments.create(({ amount_cents: 5 }) as const);\n",
+      'b.ts': "import Acme from 'acme-sdk';\nexport function f(client) {\n  client.payments.create({ currency: 'usd' });\n  client.payments.create('pay_123');\n  return client.payments.create({ amount_cents: 1 });\n}\n",
+    },
+    expect: {
+      'a.ts': "import Acme from 'acme-sdk';\nconst c = new Acme();\nconst rest = { currency: 'usd' };\nc.payments.create({ amount_cents: 1, ...rest });\nc.payments.create({ ...rest, amount_cents: 2 });\nc.payments.create({ amount_cents: 3, amount: 3 });\nc.payments.create({ amount: 4 });\nc.payments.create('pay_123');\nc.payments.create(({ amount: 5 }) as const);\n",
+    },
+    untouched: ['b.ts'],
+    unresolved: [['a.ts', 4, 'spreads an object that may hold amount_cents'], ['a.ts', 5, 'spreads an object that may hold amount_cents'], ['a.ts', 6, 'argument 0 of payments.create already has amount'], ['b.ts', 5, 'cannot be traced']],
   },
   {
     name: 'optional chaining in the call path needs the agent',
