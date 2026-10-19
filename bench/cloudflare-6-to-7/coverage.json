@@ -5,6 +5,14 @@
   "queued": 0,
   "invisible": 1
  },
+ "receivers": {
+  "types": {
+   "Cloudflare": 41
+  },
+  "other": [
+   "riddofftechnologies-hash/riddoff-launch scripts/setup-cf-dns.mjs:57 zones.list: cf is any"
+  ]
+ },
  "rows": [
   {
    "repo": "DTrombett/ms-bot",
@@ -12,7 +20,13 @@
    "proven": 3,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 4
+    },
+    "other": []
+   }
   },
   {
    "repo": "alessandroste/mercury",
@@ -20,7 +34,13 @@
    "proven": 3,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 3
+    },
+    "other": []
+   }
   },
   {
    "repo": "as-sites/boulder.best",
@@ -28,7 +48,13 @@
    "proven": 2,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 2
+    },
+    "other": []
+   }
   },
   {
    "repo": "axivo/website",
@@ -36,7 +62,13 @@
    "proven": 3,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 3
+    },
+    "other": []
+   }
   },
   {
    "repo": "discordjs/discord-api-types",
@@ -44,7 +76,13 @@
    "proven": 1,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 1
+    },
+    "other": []
+   }
   },
   {
    "repo": "fmunteanu/floren",
@@ -52,7 +90,13 @@
    "proven": 1,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 1
+    },
+    "other": []
+   }
   },
   {
    "repo": "itsneeku/Nookies-Pings",
@@ -60,7 +104,13 @@
    "proven": 2,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 2
+    },
+    "other": []
+   }
   },
   {
    "repo": "riddofftechnologies-hash/riddoff-launch",
@@ -70,7 +120,15 @@
    "invisible": 1,
    "invisibleSites": [
     "AI Course/scripts/gcp-setup.mjs:472 rulesets.create"
-   ]
+   ],
+   "receivers": {
+    "types": {
+     "Cloudflare": 3
+    },
+    "other": [
+     "scripts/setup-cf-dns.mjs:57 zones.list: cf is any"
+    ]
+   }
   },
   {
    "repo": "tarasovcad/tobira",
@@ -78,7 +136,13 @@
    "proven": 0,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 1
+    },
+    "other": []
+   }
   },
   {
    "repo": "tinkerindustries/mini-infra",
@@ -86,7 +150,13 @@
    "proven": 18,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 18
+    },
+    "other": []
+   }
   },
   {
    "repo": "ttoino/prism-gram",
@@ -94,7 +164,13 @@
    "proven": 1,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 1
+    },
+    "other": []
+   }
   },
   {
    "repo": "velolib/velolib.dev",
@@ -102,7 +178,13 @@
    "proven": 2,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 2
+    },
+    "other": []
+   }
   }
  ]
 }

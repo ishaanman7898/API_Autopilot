@@ -22,6 +22,10 @@ The repositories are untrusted. Nothing in them is installed or run, so no tests
 
 `coverage.mjs` dry-runs one `manual` rule per SDK method on the same clones and compares what the tool reports with a text search for each method, to count call sites the tool cannot see at all.
 
+With `--receiver-types`, `coverage.mjs` also compares each proof with the type the full TypeScript checker gives the call's root receiver. It opens every base checkout with `strict`, `allowJs`, `skipLibCheck` and `moduleResolution` `bundler`, the new SDK that `run.mjs` leaves in the shared `node_modules`, and the path aliases of the nearest `tsconfig.json` or `jsconfig.json`. The root receiver is what is left of the callee once the trailing segments of the method path are taken off, such as `client` in `client.video.assets.create()`, or `video` in `video.uploads.create()` when `video` was destructured from the client. Receivers whose type is a class the SDK package declares, such as the client or one of its resources, are counted, and the rest, such as `any`, `unknown` or a type from another package, are listed. The type-checks above only exercise calls that a rule rewrites, so a wrong proof for a method no rule changes would go unseen there. Where a proof comes from a type annotation, such as a parameter typed as the client, the checker reads the same annotation, so the two agree by construction.
+
+A listed call is not always a wrong proof, so each one is read by hand. The checker types an untyped JavaScript parameter as `any`, even where the tool follows the parameter through every call of a local function. It also types as `any` a client built with `new` on a CommonJS export that the SDK's type declarations give no construct signature. In [cloudflare-6-to-7](cloudflare-6-to-7/README.md) and [mux-14-to-15](mux-14-to-15/README.md) the tool proves 42 and 159 calls, 201 in all. The checker types 196 of their receivers as an SDK class and 5 as `any`, each for one of those two reasons, and reading the code shows those 5 proofs are right.
+
 ## Running one
 
 The clones and results go in a work folder outside the repository.
@@ -30,7 +34,7 @@ The clones and results go in a work folder outside the repository.
 node bench/run.mjs --rules bench/mux-14-to-15/rules.json --repos repos.json --work ../bench-work \
   --old @mux/mux-node@14.1.1 --new @mux/mux-node@15.5.0,@mux/ts@15.5.0
 node bench/report.mjs ../bench-work/results.json
-node bench/coverage.mjs --calls calls.json --package @mux/mux-node --work ../bench-work
+node bench/coverage.mjs --calls calls.json --package @mux/mux-node --work ../bench-work --receiver-types
 ```
 
 `repos.json` is a list of `{ "repo": "owner/name", "commit": "..." }`; the commit is optional and pins the checkout. `--types` names packages, such as `@types/node@22`, that are installed and loaded with both SDK versions. `calls.json` is a list of method paths such as `"video.assets.create"`.

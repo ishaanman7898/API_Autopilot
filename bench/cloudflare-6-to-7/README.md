@@ -18,7 +18,9 @@ The 12 repositories are every public GitHub repository that code search found pi
    | with parameters typed as the SDK class, untyped parameters of local helpers and class fields | 25 | 15 | 1 |
    | with methods, getters and object literal members, and callbacks a local method calls | 40 | 0 | 1 |
 
-   The 15 calls queued before are all in tinkerindustries/mini-infra, whose client comes from a method of a local class that returns `{ cf: new Cloudflare(...), ... }`. Six read it as `const { cf } = await this.runner.getAuthorizedClient()`, through a field typed with that class. Nine get it in a callback, `this.runner.run(ctx, async ({ cf }) => cf.zones.list())`, which `run` calls with the same object. The full TypeScript checker, with the SDK installed, types the receiver of all 18 mini-infra calls as `Cloudflare`. No rule in the kit changes these 18 methods, so the type-check below does not exercise them. The one call counted as missed is a Google Firebase call with the same method name, `rulesets.create`, so no Cloudflare call was missed.
+   The 15 calls queued before are all in tinkerindustries/mini-infra, whose client comes from a method of a local class that returns `{ cf: new Cloudflare(...), ... }`. Six read it as `const { cf } = await this.runner.getAuthorizedClient()`, through a field typed with that class. Nine get it in a callback, `this.runner.run(ctx, async ({ cf }) => cf.zones.list())`, which `run` calls with the same object. No rule in the kit changes any of the 10 methods behind mini-infra's 18 calls, so the type-check below does not exercise them. The one call counted as missed is a Google Firebase call with the same method name, `rulesets.create`, so no Cloudflare call the text search found was missed.
+
+   `coverage.mjs --receiver-types` compares each proof with the type the full TypeScript checker gives the call's root receiver, with 7.0.0 installed. The tool proves 42 calls: the 40 above and 2 whose method chain is split over two lines, which the line-by-line text search does not count, `src/commands/share.ts:442` in DTrombett/ms-bot and `app/src/lib/auth/auth.ts:80` in tarasovcad/tobira. A call in that form that the tool did not see would not be counted as invisible either. The checker types 41 of the 42 receivers as `Cloudflare`, including all 18 in mini-infra. The other is `cf` at `scripts/setup-cf-dns.mjs:57` in riddofftechnologies-hash/riddoff-launch, an untyped parameter of the local function `getZoneId(cf)`, which the checker types as `any`. The function's only call, in `run()`, passes the module's `const cf = new Cloudflare(creds)`, so the proof is right, but the checker cannot show it.
 4. **Large rule sets stay fast.** With 254 rules the median apply time is under a second.
 
 ## What to build next
@@ -78,7 +80,7 @@ Rule file `bench/cloudflare-6-to-7/rules.json`, old SDK `cloudflare@6.5.0`, new 
 node bench/run.mjs --rules bench/cloudflare-6-to-7/rules.json --repos bench/cloudflare-6-to-7/repos.json --work ../bench-work \
   --old cloudflare@6.5.0 --new cloudflare@7.0.0 --types @types/node@22
 node bench/report.mjs ../bench-work/results.json
-node bench/coverage.mjs --calls bench/cloudflare-6-to-7/calls-6.json --package cloudflare --work ../bench-work
+node bench/coverage.mjs --calls bench/cloudflare-6-to-7/calls-6.json --package cloudflare --work ../bench-work --receiver-types
 ```
 
 The rule file can be drafted again with `apimigrate draft` from two checkouts of [cloudflare-typescript](https://github.com/cloudflare/cloudflare-typescript) at `v6.5.0` and `v7.0.0`.

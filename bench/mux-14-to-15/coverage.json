@@ -5,6 +5,18 @@
   "queued": 3,
   "invisible": 0
  },
+ "receivers": {
+  "types": {
+   "Mux": 152,
+   "Video": 3
+  },
+  "other": [
+   "Pritam-Kundu/EduSmart controllers/lessonController.js:46 video.assets.retrieve: mux is any",
+   "Pritam-Kundu/EduSmart controllers/teacherController.js:1654 video.uploads.create: mux is any",
+   "Pritam-Kundu/EduSmart controllers/lessonController.js:44 video.uploads.retrieve: mux is any",
+   "XAct1HP/10kp app/api/webhooks/mux/route.js:91 video.assets.createPlaybackId: mux is any"
+  ]
+ },
  "rows": [
   {
    "repo": "19leva89/react-ts-next-newtube",
@@ -12,7 +24,13 @@
    "proven": 4,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 4
+    },
+    "other": []
+   }
   },
   {
    "repo": "1outsyde/outsyde-backend",
@@ -20,7 +38,13 @@
    "proven": 5,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 5
+    },
+    "other": []
+   }
   },
   {
    "repo": "Ali-Razahaider/lms",
@@ -28,7 +52,13 @@
    "proven": 3,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 3
+    },
+    "other": []
+   }
   },
   {
    "repo": "BestOlumese/tyims-lms",
@@ -36,7 +66,13 @@
    "proven": 1,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 1
+    },
+    "other": []
+   }
   },
   {
    "repo": "Docaari/GrindfyManager",
@@ -52,7 +88,13 @@
    "proven": 11,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 14
+    },
+    "other": []
+   }
   },
   {
    "repo": "Keats0206/retailtherapy",
@@ -60,7 +102,13 @@
    "proven": 11,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 11
+    },
+    "other": []
+   }
   },
   {
    "repo": "LetsChurch/lets.church",
@@ -68,7 +116,13 @@
    "proven": 7,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 7
+    },
+    "other": []
+   }
   },
   {
    "repo": "Luzzotica/partii",
@@ -76,7 +130,13 @@
    "proven": 1,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 1
+    },
+    "other": []
+   }
   },
   {
    "repo": "MeetMajh/v0-majh-events-ecosystem",
@@ -84,7 +144,13 @@
    "proven": 5,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 5
+    },
+    "other": []
+   }
   },
   {
    "repo": "Mohammad-Ali-Soomro/CourseForge",
@@ -92,7 +158,13 @@
    "proven": 3,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 3
+    },
+    "other": []
+   }
   },
   {
    "repo": "Pritam-Kundu/EduSmart",
@@ -100,7 +172,15 @@
    "proven": 3,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {},
+    "other": [
+     "controllers/lessonController.js:46 video.assets.retrieve: mux is any",
+     "controllers/teacherController.js:1654 video.uploads.create: mux is any",
+     "controllers/lessonController.js:44 video.uploads.retrieve: mux is any"
+    ]
+   }
   },
   {
    "repo": "QASchoolUSA/Alla-LMS",
@@ -108,7 +188,13 @@
    "proven": 3,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 3
+    },
+    "other": []
+   }
   },
   {
    "repo": "Schuchhardt/kefy",
@@ -116,7 +202,13 @@
    "proven": 5,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 5
+    },
+    "other": []
+   }
   },
   {
    "repo": "Shivanshu49/NEDC-Platform",
@@ -124,7 +216,13 @@
    "proven": 1,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 1
+    },
+    "other": []
+   }
   },
   {
    "repo": "XAct1HP/10kp",
@@ -132,7 +230,15 @@
    "proven": 12,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 11
+    },
+    "other": [
+     "app/api/webhooks/mux/route.js:91 video.assets.createPlaybackId: mux is any"
+    ]
+   }
   },
   {
    "repo": "abbnelhaj/wasl_academy",
@@ -140,7 +246,13 @@
    "proven": 3,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 3
+    },
+    "other": []
+   }
   },
   {
    "repo": "acvigue/fitness-backend",
@@ -148,7 +260,13 @@
    "proven": 4,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 4
+    },
+    "other": []
+   }
   },
   {
    "repo": "anaisbetts/atmospics",
@@ -156,7 +274,13 @@
    "proven": 4,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 4
+    },
+    "other": []
+   }
   },
   {
    "repo": "brightsolutions-tn/Bright-Abodes",
@@ -164,7 +288,13 @@
    "proven": 1,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 1
+    },
+    "other": []
+   }
   },
   {
    "repo": "byjasonz/sponsor-tracker",
@@ -172,7 +302,13 @@
    "proven": 2,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 2
+    },
+    "other": []
+   }
   },
   {
    "repo": "dittastudio/raw",
@@ -180,7 +316,13 @@
    "proven": 1,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 1
+    },
+    "other": []
+   }
   },
   {
    "repo": "divyansh2102t-dev/VertexHub",
@@ -188,7 +330,13 @@
    "proven": 4,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 4
+    },
+    "other": []
+   }
   },
   {
    "repo": "m3nd0zit4/dayana-pnl",
@@ -196,7 +344,13 @@
    "proven": 4,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 4
+    },
+    "other": []
+   }
   },
   {
    "repo": "manu-180/ponchospanish_next",
@@ -204,7 +358,13 @@
    "proven": 1,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 1
+    },
+    "other": []
+   }
   },
   {
    "repo": "music-city/music-city",
@@ -212,7 +372,13 @@
    "proven": 5,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 5
+    },
+    "other": []
+   }
   },
   {
    "repo": "nayyarsatwik30/CollabCut",
@@ -220,7 +386,13 @@
    "proven": 0,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Video": 3
+    },
+    "other": []
+   }
   },
   {
    "repo": "pontusab/behindthecode",
@@ -228,7 +400,13 @@
    "proven": 6,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 6
+    },
+    "other": []
+   }
   },
   {
    "repo": "pro-laico/payload-plugins",
@@ -236,7 +414,13 @@
    "proven": 12,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 12
+    },
+    "other": []
+   }
   },
   {
    "repo": "reno99sonu-eng/inplayer",
@@ -244,7 +428,13 @@
    "proven": 24,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 24
+    },
+    "other": []
+   }
   },
   {
    "repo": "ssquaremarketings/ssquaremarketings",
@@ -252,7 +442,13 @@
    "proven": 7,
    "queued": 0,
    "invisible": 0,
-   "invisibleSites": []
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Mux": 7
+    },
+    "other": []
+   }
   },
   {
    "repo": "ultrabconstructions-spec/playverse-app",
