@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 import { main } from '../src/cli.js';
 import { checkHead } from '../src/evidence.js';
 import { installDependencies, installTargets } from '../src/install.js';
-import { changedPaths, prBody } from '../src/prbody.js';
+import { changedPaths, prBody, watchBody, watchTitle } from '../src/prbody.js';
 import { openWatchPullRequests } from '../src/watchpr.js';
 
 function tree(files) {
@@ -97,7 +97,7 @@ function consumer() {
   }));
   const seen = join(tree({}), 'versions.txt');
   const check = join(dirname(seen), 'check.cjs');
-  writeFileSync(check, `const v = require(require.resolve('acme-sdk', { paths: [process.cwd()] })).version;\nrequire('fs').appendFileSync(${JSON.stringify(seen)}, v + '\\n');\nprocess.exit(v === Number(process.env.WANT ?? 2) ? 0 : 1);\n`);
+  writeFileSync(check, `const v = require(require.resolve('acme-sdk', { paths: [process.cwd()] })).version;\nrequire('fs').appendFileSync(${JSON.stringify(seen)}, v + '\\n');\nconsole.error('acme-sdk version ' + v);\nprocess.exit(v === Number(process.env.WANT ?? 2) ? 0 : 1);\n`);
   return { dir, rules, seen, testCmd: `node ${JSON.stringify(check)}` };
 }
 
@@ -142,8 +142,8 @@ test('a failed install fails apply before the tests, and without --install the l
   assert.equal(JSON.parse(readFileSync(join(plain.dir, '.apimigrate/evidence.json'), 'utf8')).install, null);
 });
 
-test('watch mode commits the updated lockfile, and installs the base versions again before the next upgrade', async () => {
-  const { dir, rules, seen, testCmd } = consumer();
+// Commits the consumer as main and pushes it to a new bare remote, which is returned.
+function withRemote(dir) {
   writeFileSync(join(dir, '.gitignore'), 'node_modules/\n.apimigrate/\n');
   const remote = mkdtempSync(join(tmpdir(), 'remote-'));
   git(remote, 'init', '-q', '--bare');
@@ -153,13 +153,23 @@ test('watch mode commits the updated lockfile, and installs the base versions ag
   git(dir, '-c', 'user.name=t', '-c', 'user.email=t@example.com', '-c', 'core.autocrlf=false', 'commit', '-q', '-m', 'base');
   git(dir, 'remote', 'add', 'origin', remote);
   git(dir, 'push', '-q', 'origin', 'main');
+  return remote;
+}
+const draftEntry = (rulesPath, pkg) => ({ name: pkg, package: pkg, line: '1', from: '1.0.0', to: '2.0.0', manifests: [], source: 'draft', signed: false, rules: rulesPath, ruleCount: 1, likely: 1, needsReview: 0, upstream: { from: { repo: 'github.com/acme/sdk', ref: 'v1.0.0', dir: '' }, to: { repo: 'github.com/acme/sdk', ref: 'v2.0.0', dir: '' } } });
+const writePlan = (rules, upgrades) => {
+  const planPath = join(dirname(rules), 'plan.json');
+  writeFileSync(planPath, JSON.stringify({ schema: 'apimigrate-watch/1', upgrades, skipped: [] }));
+  return planPath;
+};
+
+test('watch mode commits the updated lockfile, and installs the base versions again before the next upgrade', async () => {
+  const { dir, rules, seen, testCmd } = consumer();
+  const remote = withRemote(dir);
 
   // The second upgrade only renames a call, so it installs nothing and its tests must see version 1 again.
   const second = join(dirname(rules), 'second.json');
   writeFileSync(second, JSON.stringify({ ...JSON.parse(readFileSync(rules, 'utf8')), id: 'acme-sdk-1-to-2-calls', rules: [{ id: 'v', kind: 'rename-method', confidence: 'likely', evidence: 'test', match: { call: 'version' }, transform: { to: 'release' } }] }));
-  const entry = (rulesPath, pkg) => ({ name: pkg, package: pkg, line: '1', from: '1.0.0', to: '2.0.0', manifests: [], source: 'draft', signed: false, rules: rulesPath, ruleCount: 1, likely: 1, needsReview: 0, upstream: { from: { repo: 'github.com/acme/sdk', ref: 'v1.0.0', dir: '' }, to: { repo: 'github.com/acme/sdk', ref: 'v2.0.0', dir: '' } } });
-  const planPath = join(dirname(rules), 'plan.json');
-  writeFileSync(planPath, JSON.stringify({ schema: 'apimigrate-watch/1', upgrades: [entry(rules, 'acme-sdk'), entry(second, 'acme-sdk-calls')], skipped: [] }));
+  const planPath = writePlan(rules, [draftEntry(rules, 'acme-sdk'), draftEntry(second, 'acme-sdk-calls')]);
 
   const calls = [];
   const log = [];
@@ -174,4 +184,55 @@ test('watch mode commits the updated lockfile, and installs the base versions ag
   assert.match(log.join('\n'), /acme-sdk-calls 1\.0\.0 -> 2\.0\.0: nothing to migrate/);
   assert.equal(git(dir, 'status', '--porcelain'), '');
   assert.equal(installedVersion(dir), 1, 'the base version is installed at the end');
+});
+
+test('watch mode opens the pull request marked as failing when only the tests fail, and still stops when the install fails', async () => {
+  const { dir, rules, testCmd } = consumer();
+  const remote = withRemote(dir);
+  const planPath = writePlan(rules, [draftEntry(rules, 'acme-sdk')]);
+  const calls = [];
+  const log = [];
+  process.env.WANT = '3';
+  const code = await openWatchPullRequests({ root: dir, planPath, testCmd, runUrl: 'https://github.com/o/r/actions/runs/5', gh: (args) => calls.push(args), out: (x) => log.push(x), err: (x) => log.push(x) });
+  delete process.env.WANT;
+  const text = log.join('\n');
+  assert.equal(code, 0, text);
+  assert.match(text, /tests failed with exit code 1, the last lines of their output follow\nacme-sdk version 2/);
+  assert.match(text, /acme-sdk 1\.0\.0 -> 2\.0\.0: tests failed with exit code 1, the pull request is opened and marked as failing tests/);
+  assert.match(text, /opened a draft pull request from apimigrate\/acme-sdk-1-to-2-unsigned, marked unsigned and failing tests/);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0][8], '[tests failing] [unsigned draft] API migration: acme-sdk 1.0.0 to 2.0.0');
+  const body = readFileSync(calls[0][10], 'utf8');
+  assert.match(body, /^> \[!CAUTION\]\n> \*\*Tests failing\.\*\* After the migration, `node .*check\.cjs.*` exited with code 1\. This pull request was opened anyway/);
+  assert.match(body, /The test output is in the \[workflow run\]\(https:\/\/github\.com\/o\/r\/actions\/runs\/5\)\.\n\n> \[!WARNING\]\n> \*\*Unsigned\.\*\*/);
+  assert.match(body, /\| Tests \| exit code 1 \|/);
+  assert.equal(git(remote, 'log', '-1', '--format=%s', 'apimigrate/acme-sdk-1-to-2-unsigned'), '[tests failing] [unsigned draft] API migration: acme-sdk 1.0.0 to 2.0.0');
+  assert.equal(git(remote, 'diff', '--name-only', 'main', 'apimigrate/acme-sdk-1-to-2-unsigned'), 'package-lock.json\npackage.json');
+  const evidence = JSON.parse(readFileSync(join(dir, '.apimigrate/evidence.json'), 'utf8'));
+  assert.deepEqual(evidence.tests.exitCode, 1);
+  assert.equal(evidence.tests.output, undefined, 'test output is never stored in the evidence');
+
+  // A failed install is not a test failure: nothing is opened and the run fails.
+  const broken = consumer();
+  const brokenRemote = withRemote(broken.dir);
+  const brokenCalls = [];
+  const brokenLog = [];
+  const brokenCode = await openWatchPullRequests({ root: broken.dir, planPath: writePlan(broken.rules, [draftEntry(broken.rules, 'acme-sdk')]), testCmd: broken.testCmd, install: 'node -e "process.exit(3)"', gh: (args) => brokenCalls.push(args), out: (x) => brokenLog.push(x), err: (x) => brokenLog.push(x) });
+  assert.equal(brokenCode, 1);
+  assert.match(brokenLog.join('\n'), /install failed: .* exited with 3, tests were not run[\s\S]*apply exited with 1, no pull request opened/);
+  assert.equal(brokenCalls.length, 0);
+  assert.equal(spawnSync('git', ['ls-remote', '--exit-code', '--heads', brokenRemote, 'refs/heads/apimigrate/acme-sdk-1-to-2-unsigned']).status, 2);
+});
+
+test('watch titles and bodies mark failing tests, and only link a plain https run URL', () => {
+  const entry = { ...draftEntry('r.json', '@mux/mux-node'), from: '14.1.1', to: '15.5.0' };
+  const failing = { tests: { cmd: 'npm test', exitCode: 2 }, unresolved: [{ file: 'a.ts', line: 1, ruleId: 'm', reason: 'removed' }], callSites: [], files: [], gate: { ok: true, findings: [] }, rule: { id: 'r', provider: 'p', contentHash: 'h', signed: false }, deterministic: { replayDigest: 'd' } };
+  assert.equal(watchTitle(entry, failing), '[tests failing] [unsigned draft] API migration: @mux/mux-node 14.1.1 to 15.5.0');
+  assert.equal(watchTitle({ ...entry, source: 'signed' }, failing), '[tests failing] API migration: @mux/mux-node 14.1.1 to 15.5.0');
+  assert.equal(watchTitle(entry, { ...failing, tests: { cmd: 'npm test', exitCode: 0 } }), '[unsigned draft] API migration: @mux/mux-node 14.1.1 to 15.5.0');
+  assert.equal(watchTitle(entry, { ...failing, tests: null }), '[unsigned draft] API migration: @mux/mux-node 14.1.1 to 15.5.0');
+  const body = watchBody(entry, failing, { rules: [] }, { runUrl: 'javascript:alert(1)' });
+  assert.match(body, /`npm test` exited with code 2\..* 1 call site was not rewritten and is listed under Unresolved call sites, the first place to look\. The test output is in the workflow log\./);
+  assert.doesNotMatch(body, /javascript:/);
+  assert.doesNotMatch(watchBody(entry, { ...failing, tests: { cmd: 'npm test', exitCode: 0 } }, { rules: [] }), /Tests failing/);
 });

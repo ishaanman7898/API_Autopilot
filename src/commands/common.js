@@ -72,10 +72,14 @@ export function audit(root, event) {
   appendFileSync(join(dir, 'audit.log'), JSON.stringify({ at: new Date().toISOString(), ...event }) + '\n');
 }
 
+// The output is kept apart from the result, so it is printed when the tests fail but never stored in the evidence.
+// The buffer is large because a verbose suite over Node's 1 MB default would be killed and counted as a failure.
 export function runTests(cmd, root) {
-  const r = spawnSync(cmd, { cwd: root, shell: true, encoding: 'utf8', timeout: 10 * 60 * 1000 });
-  return { cmd, exitCode: r.status ?? 1 };
+  const r = spawnSync(cmd, { cwd: root, shell: true, encoding: 'utf8', timeout: 10 * 60 * 1000, maxBuffer: 64 * 1024 * 1024 });
+  return { result: { cmd, exitCode: r.status ?? 1 }, output: `${r.stdout ?? ''}${r.stderr ?? ''}${r.error ? `${r.error.message}\n` : ''}` };
 }
+
+export const outputTail = (output, lines = 60) => output.trimEnd().split('\n').slice(-lines).join('\n');
 
 export function readCoverage(path) {
   if (!path) return null;

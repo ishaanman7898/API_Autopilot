@@ -71,14 +71,22 @@ const slugOf = (s) => String(s).replace(/^@/, '').replace(/[^A-Za-z0-9._-]+/g, '
 
 export const watchBranch = (entry) => `apimigrate/${slugOf(entry.package)}-${slugOf(entry.line)}-to-${slugOf(lineOf(entry.to))}${entry.source === 'signed' ? '' : '-unsigned'}`;
 
-export function watchTitle(entry) {
+const testsFailing = (evidence) => Boolean(evidence?.tests && evidence.tests.exitCode !== 0);
+
+export function watchTitle(entry, evidence = null) {
   const what = `API migration: ${String(entry.package).replace(/[\r\n]/g, '')} ${entry.from} to ${entry.to}`;
-  return entry.source === 'signed' ? what : `[unsigned draft] ${what}`;
+  return [testsFailing(evidence) && '[tests failing]', entry.source !== 'signed' && '[unsigned draft]', what].filter(Boolean).join(' ');
 }
 
-export function watchBody(entry, evidence, ruleSet, { rulesPath = 'rules.json' } = {}) {
+export function watchBody(entry, evidence, ruleSet, { rulesPath = 'rules.json', runUrl = null } = {}) {
   const at = (u) => `${u.repo}@${u.ref}${u.dir ? ` in ${u.dir}` : ''}`;
   const lines = [];
+  if (testsFailing(evidence)) {
+    const n = evidence.unresolved.length;
+    const where = n ? ` ${n} call ${n === 1 ? 'site was' : 'sites were'} not rewritten and ${n === 1 ? 'is' : 'are'} listed under Unresolved call sites, the first place to look.` : '';
+    const log = /^https:\/\/[\w.-]+\/[\w./-]+$/.test(runUrl ?? '') ? ` The test output is in the [workflow run](${runUrl}).` : ' The test output is in the workflow log.';
+    lines.push('> [!CAUTION]', `> **Tests failing.** After the migration, ${code(evidence.tests.cmd)} exited with code ${evidence.tests.exitCode}. This pull request was opened anyway so the upgrade is visible. It is not ready: fix the failures or close it.${where}${log}`, '');
+  }
   if (entry.source === 'signed') {
     lines.push(`Rules for ${code(entry.package)} ${code(entry.from)} to ${code(entry.to)}, signed by ${code(entry.domain)} with key ${code(entry.keyId)} and fetched from ${code(entry.url)}.`);
   } else {

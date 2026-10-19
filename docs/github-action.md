@@ -30,7 +30,7 @@ If nothing changed, no branch or pull request is created.
 
 1. Runs `apimigrate watch` with the repository's `.apimigrate.yml`. It writes the plan and rule files to the runner's temp directory, not to the repository. See [CLI reference](cli.md#watch).
 2. For each upgrade that has rules, starts a branch from the checked out commit and runs `apply`, installing the new versions before your tests as in apply mode. After an upgrade that installed, the base versions are installed again, so each upgrade is tested on its own. Signed rules are checked against the key set they were verified with. Drafted rules run with `--allow-unsigned`. When `.apimigrate.yml` sets `pins`, drafts are skipped, since `pins` forbids unsigned rules. When it sets `providers`, a draft is skipped unless its provider, the GitHub owner of the SDK, is listed.
-3. If files changed, the install, gate and tests passed, and the branch does not already exist on the remote, it stages only the files named in the evidence and the updated lockfiles, commits, pushes, and runs `gh pr create --draft`.
+3. If files changed, the install and gate passed, and the branch does not already exist on the remote, it stages only the files named in the evidence and the updated lockfiles, commits, pushes, and runs `gh pr create --draft`. When only your tests failed, the pull request still opens, marked as failing, so an upgrade that breaks your code is not the one you never hear about. A failed install or gate still stops it.
 4. Uploads the plan, rule files, reports, evidence and pull request bodies as the `apimigrate-watch` artifact.
 
 | Rules | Branch | Title |
@@ -38,9 +38,11 @@ If nothing changed, no branch or pull request is created.
 | Signed by the provider | `apimigrate/<package>-<from line>-to-<to line>` | `API migration: <package> <from> to <to>` |
 | Drafted from the two releases | `apimigrate/<package>-<from line>-to-<to line>-unsigned` | `[unsigned draft] API migration: <package> <from> to <to>` |
 
+A pull request whose tests failed has `[tests failing]` at the start of its title and a caution at the top of its body. The caution names the test command and its exit code, points to the unresolved call sites when there are any, and links the workflow run, whose log has the last lines of the test output. The output never goes in the pull request or the evidence.
+
 An unsigned pull request starts with a warning saying the rules were drafted from `api.md`, or from the TypeScript declarations in the npm tarballs, and nobody has reviewed or signed them. It names the repository and ref of each release, or the version of each tarball, and lists every drafted rule with its confidence and evidence. A draft from declarations also lists the changes no rule can find, such as a removed default export. A signed one names the domain, key and URL its rules came from.
 
-Branch names hold only the version lines, so a scheduled run skips an upgrade whose branch already exists, and a newer release on the same line does not open a second pull request. Delete the branch to get a fresh one. Signed rules published after a draft was opened get their own pull request. If `gh` fails after the push, the branch is deleted again so the next run retries. One upgrade that fails does not stop the others, but the job fails at the end.
+Branch names hold only the version lines, so a scheduled run skips an upgrade whose branch already exists, and a newer release on the same line does not open a second pull request. Delete the branch to get a fresh one. Signed rules published after a draft was opened get their own pull request. If `gh` fails after the push, the branch is deleted again so the next run retries. A pull request opened with failing tests does not fail the job. Any other upgrade that fails does not stop the others, but the job fails at the end.
 
 ## Permissions
 

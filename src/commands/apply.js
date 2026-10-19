@@ -11,7 +11,7 @@ import { TrustError, verifyRuleSet } from '../signing.js';
 import { writeChanged } from '../tree.js';
 import { TOOL } from '../version.js';
 import { unifiedDiff } from '../diffview.js';
-import { audit, loadConfig, loadKeys, loadRules, loadTrees, protectList, readCoverage, runTests } from './common.js';
+import { audit, loadConfig, loadKeys, loadRules, loadTrees, outputTail, protectList, readCoverage, runTests } from './common.js';
 
 export const spec = {
   name: 'apply',
@@ -79,7 +79,8 @@ export async function run({ flags }, io) {
   const install = installed && { runs: installed.runs, lockfiles: installed.lockfiles };
 
   // Gate again after the tests run, because the test command can change files too.
-  const tests = flags['test-cmd'] && !dry && installed?.ok !== false ? runTests(flags['test-cmd'], root) : null;
+  const ran = flags['test-cmd'] && !dry && installed?.ok !== false ? runTests(flags['test-cmd'], root) : null;
+  const tests = ran?.result ?? null;
   const head = dry ? { files: preview } : loadTrees(root, cfg, scan);
   const gate = runGate({
     ...gateOptions,
@@ -112,7 +113,10 @@ export async function run({ flags }, io) {
   }
   if (result.unresolved.length && !dry) io.out('unresolved sites are queued in .apimigrate/unresolved.json for an agent, then run agent-apply');
   for (const f of gate.findings) io.err(`gate: ${f.message}`);
-  if (tests && tests.exitCode !== 0) io.err(`tests failed with exit code ${tests.exitCode}`);
+  if (tests && tests.exitCode !== 0) {
+    io.err(`tests failed with exit code ${tests.exitCode}, the last lines of their output follow`);
+    if (ran.output.trim()) io.err(outputTail(ran.output));
+  }
   if (flags.strict && result.unresolved.length) io.err('strict: unresolved call sites remain');
   const failed = !gate.ok || installed?.ok === false || (tests && tests.exitCode !== 0) || (flags.strict && result.unresolved.length > 0);
   return failed ? 1 : 0;

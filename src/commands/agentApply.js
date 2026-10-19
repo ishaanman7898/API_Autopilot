@@ -6,7 +6,7 @@ import { checkHead, fileDigests } from '../evidence.js';
 import { runGate } from '../gate.js';
 import { unifiedDiff } from '../diffview.js';
 import { writeChanged } from '../tree.js';
-import { audit, loadConfig, loadJson, loadTrees, protectList, runTests } from './common.js';
+import { audit, loadConfig, loadJson, loadTrees, outputTail, protectList, runTests } from './common.js';
 
 export const spec = {
   name: 'agent-apply',
@@ -58,7 +58,8 @@ export function run({ flags }, io) {
   }
 
   writeChanged(root, current.scanFiles, applied.files, current.styles);
-  const tests = flags['test-cmd'] ? runTests(flags['test-cmd'], root) : null;
+  const ran = flags['test-cmd'] ? runTests(flags['test-cmd'], root) : null;
+  const tests = ran?.result ?? null;
   evidence.agent = { edited: fileDigests(current.scanFiles, applied.files) };
   evidence.files = fileDigests(baseScan, applied.files);
   evidence.gate = gate;
@@ -66,6 +67,10 @@ export function run({ flags }, io) {
   writeFileSync(join(dir, 'evidence.json'), JSON.stringify(evidence, null, 2) + '\n');
   audit(root, { event: 'agent-apply', rule: evidence.rule.id, edited: applied.touched.length, gate: true, tests: tests?.exitCode ?? null });
   io.out(`applied agent edits to ${applied.touched.length} files, gate passed`);
-  if (tests && tests.exitCode !== 0) { io.err(`tests failed with exit code ${tests.exitCode}`); return 1; }
+  if (tests && tests.exitCode !== 0) {
+    io.err(`tests failed with exit code ${tests.exitCode}, the last lines of their output follow`);
+    if (ran.output.trim()) io.err(outputTail(ran.output));
+    return 1;
+  }
   return 0;
 }

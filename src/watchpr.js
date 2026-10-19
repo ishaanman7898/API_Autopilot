@@ -13,7 +13,7 @@ import { changedPaths, watchBody, watchBranch, watchTitle } from './prbody.js';
 // 'none', or a shell command. After an upgrade installed, the base versions are installed again, so the next
 // upgrade is tested against the base dependencies. git and gh get argument arrays, never a shell. gh can be
 // replaced in tests. Returns the exit code.
-export async function openWatchPullRequests({ root, planPath, testCmd = null, install = 'auto', gh, out = () => {}, err = () => {} }) {
+export async function openWatchPullRequests({ root, planPath, testCmd = null, install = 'auto', runUrl = null, gh, out = () => {}, err = () => {} }) {
   const git = (...args) => spawnSync('git', args, { cwd: root, encoding: 'utf8' });
   const must = (...args) => {
     const r = git(...args);
@@ -58,14 +58,18 @@ export async function openWatchPullRequests({ root, planPath, testCmd = null, in
     const rules = resolve(root, entry.rules);
     const args = ['apply', '--root', root, '--rules', rules, ...(entry.source === 'signed' ? ['--keys', resolve(root, entry.keys)] : ['--allow-unsigned']), ...installFlags, ...(testCmd ? ['--test-cmd', testCmd] : [])];
     const code = await main(args, { out, err });
-    if (code !== 0 || !existsSync(evidencePath)) {
+    const evidence = existsSync(evidencePath) ? JSON.parse(readFileSync(evidencePath, 'utf8')) : null;
+    // When only the tests failed, the pull request still opens, marked as failing, so the upgrades that break
+    // the most are not the ones nobody hears about. A failed gate or install still stops it.
+    const testsFailed = code === 1 && evidence?.gate?.ok === true && evidence.tests != null && evidence.tests.exitCode !== 0 && (evidence.install?.runs ?? []).every((r) => r.exitCode === 0);
+    if ((code !== 0 && !testsFailed) || !evidence) {
       err(`${name}: apply exited with ${code}, no pull request opened`);
       failed++;
       backToBase();
       must('branch', '-q', '-D', branch);
       continue;
     }
-    const evidence = JSON.parse(readFileSync(evidencePath, 'utf8'));
+    if (testsFailed) err(`${name}: tests failed with exit code ${evidence.tests.exitCode}, the pull request is opened and marked as failing tests`);
     const stem = rules.replace(/(\.rules)?\.json$/, '');
     copyFileSync(evidencePath, `${stem}.evidence.json`);
     const paths = changedPaths(evidence);
@@ -75,15 +79,16 @@ export async function openWatchPullRequests({ root, planPath, testCmd = null, in
       must('branch', '-q', '-D', branch);
       continue;
     }
-    const title = watchTitle(entry);
+    const title = watchTitle(entry, evidence);
     const bodyFile = `${stem}.pr.md`;
-    writeFileSync(bodyFile, watchBody(entry, evidence, JSON.parse(readFileSync(rules, 'utf8')), { rulesPath: basename(rules) }));
+    writeFileSync(bodyFile, watchBody(entry, evidence, JSON.parse(readFileSync(rules, 'utf8')), { rulesPath: basename(rules), runUrl }));
     must('add', '--', ...paths);
     must('-c', 'user.name=apimigrate', '-c', 'user.email=apimigrate@users.noreply.github.com', 'commit', '-q', '-m', title);
     must('push', '-q', 'origin', `${branch}:refs/heads/${branch}`);
     try {
       gh(['pr', 'create', '--draft', ...(baseBranch !== 'HEAD' ? ['--base', baseBranch] : []), '--head', branch, '--title', title, '--body-file', bodyFile]);
-      out(`${name}: opened a draft pull request from ${branch}${entry.source === 'signed' ? '' : ', marked unsigned'}`);
+      const marks = [entry.source !== 'signed' && 'unsigned', testsFailed && 'failing tests'].filter(Boolean);
+      out(`${name}: opened a draft pull request from ${branch}${marks.length ? `, marked ${marks.join(' and ')}` : ''}`);
     } catch (e) {
       // Without the pull request the branch would make every later run skip this upgrade.
       err(`${name}: ${e.message}`);

@@ -14,4 +14,6 @@ const gh = (args) => {
   const r = spawnSync('gh', args, { stdio: 'inherit' });
   if (r.status !== 0) throw new Error(`gh ${args.slice(0, 2).join(' ')} failed with exit code ${r.status ?? r.error?.message}`);
 };
-process.exitCode = await openWatchPullRequests({ root: process.cwd(), planPath, testCmd: process.env.TEST_CMD || null, install: process.env.INSTALL_CMD || 'auto', gh, out: (s) => console.log(s), err: (s) => console.error(s) });
+const { GITHUB_SERVER_URL: server, GITHUB_REPOSITORY: repo, GITHUB_RUN_ID: run } = process.env;
+const runUrl = server && repo && run ? `${server}/${repo}/actions/runs/${run}` : null;
+process.exitCode = await openWatchPullRequests({ root: process.cwd(), planPath, testCmd: process.env.TEST_CMD || null, install: process.env.INSTALL_CMD || 'auto', runUrl, gh, out: (s) => console.log(s), err: (s) => console.error(s) });
