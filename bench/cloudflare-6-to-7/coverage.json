@@ -1,8 +1,8 @@
 {
  "totals": {
   "text": 41,
-  "proven": 25,
-  "queued": 15,
+  "proven": 40,
+  "queued": 0,
   "invisible": 1
  },
  "rows": [
@@ -83,8 +83,8 @@
   {
    "repo": "tinkerindustries/mini-infra",
    "text": 18,
-   "proven": 3,
-   "queued": 15,
+   "proven": 18,
+   "queued": 0,
    "invisible": 0,
    "invisibleSites": []
   },

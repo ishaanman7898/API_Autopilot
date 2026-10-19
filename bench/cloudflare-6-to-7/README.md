@@ -10,17 +10,24 @@ The 12 repositories are every public GitHub repository that code search found pi
 
 1. **No repository in the sample breaks because of the SDK change.** None of the 12 calls any of the 240 methods whose arguments changed, or the 11 renamed ones. The one error in the table below is `Cannot find module 'form-data'` in tinkerindustries/mini-infra, a dependency that repository declares but the harness does not install. As with Mux, the breaking changes are in parts of the API that public code rarely uses. The tool updated `package.json` in all 12 and changed nothing else.
 2. **The first run reported 363 errors that were not real.** Version 6 depended on `@types/node` and `form-data`, so the harness got Node's types and `form-data` for free with version 6 and not with version 7. Real projects declare those themselves. The harness now installs `--types` with both versions, and the remaining `form-data` error comes from a dependency the repository declares, which the harness does not install.
-3. **The tool proves most Cloudflare calls and queues the rest.** A probe with one `manual` rule per method of version 6 (2,444 methods) found 41 calls. The first run proved 20 and queued 20. Following parameters typed as the SDK class (`client: Cloudflare`), untyped parameters of local helpers and class fields raised that to 25 proven and 15 queued. All 15 are in one repository that gets its client from a class method, `const { cf } = await this.runner.getAuthorizedClient()`. The one call counted as missed is a Google Firebase call with the same method name, `rulesets.create`, so no Cloudflare call was missed.
+3. **The tool now proves every Cloudflare call in the sample.** A probe with one `manual` rule per method of version 6 (2,444 methods) found 41 calls.
+
+   | Version | Proven | Queued | Invisible |
+   | --- | ---: | ---: | ---: |
+   | first run | 20 | 20 | 1 |
+   | with parameters typed as the SDK class, untyped parameters of local helpers and class fields | 25 | 15 | 1 |
+   | with methods, getters and object literal members, and callbacks a local method calls | 40 | 0 | 1 |
+
+   The 15 calls queued before are all in tinkerindustries/mini-infra, whose client comes from a method of a local class that returns `{ cf: new Cloudflare(...), ... }`. Six read it as `const { cf } = await this.runner.getAuthorizedClient()`, through a field typed with that class. Nine get it in a callback, `this.runner.run(ctx, async ({ cf }) => cf.zones.list())`, which `run` calls with the same object. The full TypeScript checker, with the SDK installed, types the receiver of all 18 mini-infra calls as `Cloudflare`. No rule in the kit changes these 18 methods, so the type-check below does not exercise them. The one call counted as missed is a Google Firebase call with the same method name, `rulesets.create`, so no Cloudflare call was missed.
 4. **Large rule sets stay fast.** With 254 rules the median apply time is under a second.
 
 ## What to build next
 
-- Follow clients returned by class methods.
 - A larger sample on versions 4 and 5, where most users are.
 
 ## Results
 
-Rule file `bench/cloudflare-6-to-7/rules.json`, old SDK `cloudflare@6.5.0`, new SDK `cloudflare@7.0.0`, also installed `@types/node@22`, run 2026-10-18.
+Rule file `bench/cloudflare-6-to-7/rules.json`, old SDK `cloudflare@6.5.0`, new SDK `cloudflare@7.0.0`, also installed `@types/node@22`, run 2026-10-19.
 
 | | |
 | --- | --- |
@@ -38,7 +45,7 @@ Rule file `bench/cloudflare-6-to-7/rules.json`, old SDK `cloudflare@6.5.0`, new 
 | package.json files updated | 12 in 12 repos |
 | Repos with an SDK import its package.json does not declare | 0 of 12 (0 files) |
 | Repos where the SDK resolved in the baseline type-check | 12 of 12 |
-| Median apply time | 691 ms |
+| Median apply time | 761 ms |
 
 ### Per repository
 

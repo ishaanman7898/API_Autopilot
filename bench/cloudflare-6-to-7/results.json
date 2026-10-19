@@ -9,7 +9,7 @@
  "types": [
   "@types/node@22"
  ],
- "ranAt": "2026-10-18T18:07:53.830Z",
+ "ranAt": "2026-10-19T09:02:22.654Z",
  "results": [
   {
    "repo": "DTrombett/ms-bot",
@@ -47,7 +47,7 @@
     "src/util/tournaments/unregister.ts",
     "worker-configuration.d.ts"
    ],
-   "applyMs": 1116,
+   "applyMs": 1107,
    "applyExit": 0,
    "changed": 1,
    "changedByRule": {
@@ -82,7 +82,7 @@
     "api/src/worker.ts",
     "common/dao/src/MailStorageFactory.ts"
    ],
-   "applyMs": 323,
+   "applyMs": 317,
    "applyExit": 0,
    "changed": 1,
    "changedByRule": {
@@ -120,7 +120,7 @@
     "scripts/secrets-sync-cloudflare.ts",
     "scripts/tests/cloudflare-create-api-token.test.ts"
    ],
-   "applyMs": 893,
+   "applyMs": 917,
    "applyExit": 0,
    "changed": 1,
    "changedByRule": {
@@ -161,7 +161,7 @@
     "src/components/mdx/utils.js",
     "src/config/global.js"
    ],
-   "applyMs": 580,
+   "applyMs": 593,
    "applyExit": 0,
    "changed": 1,
    "changedByRule": {
@@ -190,7 +190,7 @@
    "muxFiles": [
     "scripts/actions/documentation/uploadDocumentation.ts"
    ],
-   "applyMs": 691,
+   "applyMs": 761,
    "applyExit": 0,
    "changed": 1,
    "changedByRule": {
@@ -224,7 +224,7 @@
     "scripts/preview.js",
     "src/config/global.js"
    ],
-   "applyMs": 296,
+   "applyMs": 293,
    "applyExit": 0,
    "changed": 1,
    "changedByRule": {
@@ -256,7 +256,7 @@
     "server/ws.ts",
     "worker-configuration.d.ts"
    ],
-   "applyMs": 364,
+   "applyMs": 368,
    "applyExit": 0,
    "changed": 1,
    "changedByRule": {
@@ -285,7 +285,7 @@
    "muxFiles": [
     "scripts/setup-cf-dns.mjs"
    ],
-   "applyMs": 872,
+   "applyMs": 856,
    "applyExit": 0,
    "changed": 1,
    "changedByRule": {
@@ -318,7 +318,7 @@
     "workers/image-resizer/worker-configuration.d.ts",
     "workers/video-proxy/worker-configuration.d.ts"
    ],
-   "applyMs": 2225,
+   "applyMs": 2306,
    "applyExit": 0,
    "changed": 1,
    "changedByRule": {
@@ -426,7 +426,7 @@
     "server/src/services/stacks/stack-template-service.ts",
     "server/src/services/tls/dns-challenge-provider.ts"
    ],
-   "applyMs": 50937,
+   "applyMs": 51735,
    "applyExit": 0,
    "changed": 1,
    "changedByRule": {
@@ -506,7 +506,7 @@
     "app/api/tools/grid/share/route.tsx",
     "lib/grid.ts"
    ],
-   "applyMs": 454,
+   "applyMs": 423,
    "applyExit": 0,
    "changed": 1,
    "changedByRule": {
