@@ -1,0 +1,5 @@
+[
+ { "repo": "NangoHQ/nango", "commit": "8da524eae1a41ca3be1625b41d254a25fe34f3ca", "version": "5.48.0" },
+ { "repo": "ausdisau/mapableau-new", "commit": "5a41cddfc95bc4cbe1daab20fbf1f82411a6e061", "version": "5.46.0" },
+ { "repo": "supabase/orb-sync-engine", "commit": "e59b2a3e292b69aaa09b93fd7298f8c2b89fab40", "version": "^5.48.0" }
+]

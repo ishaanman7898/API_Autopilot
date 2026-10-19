@@ -2,15 +2,15 @@
 
 This folder is a ready to publish rule set for the `orb-billing` SDK 5 to 6 upgrade. It is unsigned on purpose. Only Orb can sign it, because the signature is what tells a consumer the change comes from Orb.
 
-[orb-billing-5-to-6.rules.json](orb-billing-5-to-6.rules.json) holds 23 rules drafted by `apimigrate draft` from the `api.md` files of 5.76.0 and 6.0.0, with the review marks removed. There are 11 `rename-method` rules for names such as `customers.fetchByExternalId` to `customers.fetchByExternalID`, 4 `rename-namespace` rules such as `beta.externalPlanId` to `beta.externalPlanID`, 7 `positional-to-named` rules for methods whose leading path parameter moved into the params object, and a `rename-dependency` to `^6.0.0`. The draft marked all 23 as `likely` and found no endpoint removals.
+[orb-billing-5-to-6.rules.json](orb-billing-5-to-6.rules.json) holds 23 rules drafted by `apimigrate draft` from the `api.md` files of 5.76.0 and 6.0.0, with the review marks and evidence notes removed and the id, version range and sunset set by hand. There are 11 `rename-method` rules for names such as `customers.fetchByExternalId` to `customers.fetchByExternalID`, 4 `rename-namespace` rules such as `beta.externalPlanId` to `beta.externalPlanID`, 7 `positional-to-named` rules for methods whose leading path parameter moved into the params object, and a `rename-dependency` to `^6.0.0`. The draft marked all 23 as `likely` and found no endpoint removals.
 
 The package gets about 87,000 downloads a week on npm.
 
 ## What Orb should check before signing
 
-1. This kit has not been benchmarked. Unlike the [Mux](../mux/README.md) and [Cloudflare](../cloudflare/README.md) kits, it has not run on any public repository, so nothing here shows it breaks nothing.
-2. The 6.0.0 changelog calls the release a migration to the Stainless v2 TypeScript SDK architecture. The rules only cover changes visible in `api.md`, which are method and path renames and moved path parameters. Client options, error classes, types, exports, pagination helpers and runtime requirements are not covered. Orb ships no migration guide, so say which of those break callers and add rules or notes.
-3. The 7 `positional-to-named` rules take the parameter names from the SDK diff. Check each one against the API.
+1. The [Orb benchmark](../../bench/orb-5-to-6/README.md) ran the kit on the 3 public codebases found calling the client on version 5. Upgrading to 6.28.0 breaks all 3 with 13 type errors. The rules fix 4, the renamed `customers.fetchByExternalId` and `customers.updateByExternalId` calls, and introduce none. Only 3 of the 23 rules fired, so the others are untested on real code.
+2. The 6.0.0 changelog calls the release a migration to the Stainless v2 TypeScript SDK architecture. The rules only cover changes visible in `api.md`, which are method and path renames and moved path parameters. Client options, error classes, types, exports, pagination helpers and runtime requirements are not covered. The benchmark hit three of these, and the tool queued none of them: error classes now take a Fetch `Headers` object, `HeadersLike` is no longer exported from `orb-billing/core`, and a later 6.x release changed the return type of `webhooks.unwrap`. Orb ships no migration guide, so say which of those break callers and add rules or notes.
+3. The 7 `positional-to-named` rules take the parameter names from the SDK diff. Check each one against the API. None of them fired in the benchmark.
 4. The sunset date is 2027-12-31. Pick the date after which you no longer want consumers to apply the rule.
 
 ## Publishing steps

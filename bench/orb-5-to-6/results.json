@@ -1,0 +1,261 @@
+{
+ "rules": "bench/orb-5-to-6/rules.json",
+ "oldSdk": [
+  "orb-billing@5.76.0"
+ ],
+ "newSdk": [
+  "orb-billing@6.28.0"
+ ],
+ "types": [
+  "@types/node@22"
+ ],
+ "ranAt": "2026-10-19T18:03:42.500Z",
+ "results": [
+  {
+   "repo": "NangoHQ/nango",
+   "version": "5.48.0",
+   "commit": "8da524eae1a41ca3be1625b41d254a25fe34f3ca",
+   "muxFiles": [
+    "packages/billing/lib/clients/orb/adapters.ts",
+    "packages/billing/lib/clients/orb/adapters.unit.test.ts",
+    "packages/billing/lib/clients/orb/client.ts",
+    "packages/billing/lib/clients/orb/client.unit.test.ts",
+    "scripts/one-off/schedule-payg-migrations/schedule.ts"
+   ],
+   "applyMs": 23497,
+   "applyExit": 0,
+   "changed": 5,
+   "changedByRule": {
+    "rename-customers.fetchByExternalId": 2,
+    "rename-customers.updateByExternalId": 2,
+    "dependency": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 2,
+   "leftoverImports": null,
+   "undeclaredImports": [
+    "scripts/one-off/schedule-payg-migrations/schedule.ts"
+   ],
+   "manifestsChanged": [
+    "packages/billing/package.json"
+   ],
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [
+    {
+     "file": "packages/billing/lib/clients/orb/client.ts",
+     "line": 45,
+     "code": "TS2551",
+     "message": "Property 'fetchByExternalId' does not exist on type 'Customers'. Did you mean 'fetchByExternalID'?"
+    },
+    {
+     "file": "packages/billing/lib/clients/orb/client.ts",
+     "line": 57,
+     "code": "TS2551",
+     "message": "Property 'fetchByExternalId' does not exist on type 'Customers'. Did you mean 'fetchByExternalID'?"
+    },
+    {
+     "file": "packages/billing/lib/clients/orb/client.ts",
+     "line": 85,
+     "code": "TS2551",
+     "message": "Property 'updateByExternalId' does not exist on type 'Customers'. Did you mean 'updateByExternalID'?"
+    },
+    {
+     "file": "packages/billing/lib/clients/orb/client.ts",
+     "line": 95,
+     "code": "TS2551",
+     "message": "Property 'updateByExternalId' does not exist on type 'Customers'. Did you mean 'updateByExternalID'?"
+    },
+    {
+     "file": "packages/billing/lib/clients/orb/client.unit.test.ts",
+     "line": 86,
+     "code": "TS2345",
+     "message": "Argument of type '{}' is not assignable to parameter of type 'Headers'."
+    },
+    {
+     "file": "packages/billing/lib/clients/orb/client.unit.test.ts",
+     "line": 93,
+     "code": "TS2345",
+     "message": "Argument of type '{}' is not assignable to parameter of type 'Headers'."
+    },
+    {
+     "file": "packages/billing/lib/clients/orb/client.unit.test.ts",
+     "line": 99,
+     "code": "TS2345",
+     "message": "Argument of type '{}' is not assignable to parameter of type 'Headers'."
+    },
+    {
+     "file": "packages/billing/lib/clients/orb/client.unit.test.ts",
+     "line": 125,
+     "code": "TS2345",
+     "message": "Argument of type '{}' is not assignable to parameter of type 'Headers'."
+    },
+    {
+     "file": "packages/billing/lib/clients/orb/client.unit.test.ts",
+     "line": 131,
+     "code": "TS2345",
+     "message": "Argument of type '{}' is not assignable to parameter of type 'Headers'."
+    }
+   ],
+   "stillBroken": [
+    {
+     "file": "packages/billing/lib/clients/orb/client.unit.test.ts",
+     "line": 86,
+     "code": "TS2345",
+     "message": "Argument of type '{}' is not assignable to parameter of type 'Headers'."
+    },
+    {
+     "file": "packages/billing/lib/clients/orb/client.unit.test.ts",
+     "line": 93,
+     "code": "TS2345",
+     "message": "Argument of type '{}' is not assignable to parameter of type 'Headers'."
+    },
+    {
+     "file": "packages/billing/lib/clients/orb/client.unit.test.ts",
+     "line": 99,
+     "code": "TS2345",
+     "message": "Argument of type '{}' is not assignable to parameter of type 'Headers'."
+    },
+    {
+     "file": "packages/billing/lib/clients/orb/client.unit.test.ts",
+     "line": 125,
+     "code": "TS2345",
+     "message": "Argument of type '{}' is not assignable to parameter of type 'Headers'."
+    },
+    {
+     "file": "packages/billing/lib/clients/orb/client.unit.test.ts",
+     "line": 131,
+     "code": "TS2345",
+     "message": "Argument of type '{}' is not assignable to parameter of type 'Headers'."
+    }
+   ],
+   "fixed": 4,
+   "newFromMigration": [],
+   "baselineErrors": 10
+  },
+  {
+   "repo": "ausdisau/mapableau-new",
+   "version": "5.46.0",
+   "commit": "5a41cddfc95bc4cbe1daab20fbf1f82411a6e061",
+   "muxFiles": [
+    "ports/mapableau-new/src/lib/orb/client.ts",
+    "scripts/server/orb.ts",
+    "server/orb.ts"
+   ],
+   "applyMs": 7233,
+   "applyExit": 0,
+   "changed": 0,
+   "changedByRule": {},
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 0,
+   "leftoverImports": null,
+   "undeclaredImports": [
+    "ports/mapableau-new/src/lib/orb/client.ts",
+    "scripts/server/orb.ts",
+    "server/orb.ts"
+   ],
+   "manifestsChanged": [],
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [
+    {
+     "file": "ports/mapableau-new/src/lib/orb/client.ts",
+     "line": 130,
+     "code": "TS2352",
+     "message": "Conversion of type 'UnwrapWebhookEvent' to type 'Record<string, unknown>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first."
+    },
+    {
+     "file": "scripts/server/orb.ts",
+     "line": 109,
+     "code": "TS2352",
+     "message": "Conversion of type 'UnwrapWebhookEvent' to type 'Record<string, unknown>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first."
+    },
+    {
+     "file": "server/orb.ts",
+     "line": 109,
+     "code": "TS2352",
+     "message": "Conversion of type 'UnwrapWebhookEvent' to type 'Record<string, unknown>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first."
+    }
+   ],
+   "stillBroken": [
+    {
+     "file": "ports/mapableau-new/src/lib/orb/client.ts",
+     "line": 130,
+     "code": "TS2352",
+     "message": "Conversion of type 'UnwrapWebhookEvent' to type 'Record<string, unknown>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first."
+    },
+    {
+     "file": "scripts/server/orb.ts",
+     "line": 109,
+     "code": "TS2352",
+     "message": "Conversion of type 'UnwrapWebhookEvent' to type 'Record<string, unknown>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first."
+    },
+    {
+     "file": "server/orb.ts",
+     "line": 109,
+     "code": "TS2352",
+     "message": "Conversion of type 'UnwrapWebhookEvent' to type 'Record<string, unknown>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first."
+    }
+   ],
+   "fixed": 0,
+   "newFromMigration": [],
+   "baselineErrors": 0
+  },
+  {
+   "repo": "supabase/orb-sync-engine",
+   "version": "^5.48.0",
+   "commit": "e59b2a3e292b69aaa09b93fd7298f8c2b89fab40",
+   "muxFiles": [
+    "apps/node-fastify/src/test/webhooks.test.ts",
+    "packages/orb-sync-lib/src/invoice-utils.ts",
+    "packages/orb-sync-lib/src/orb-sync.ts",
+    "packages/orb-sync-lib/src/sync/billable_metrics.ts",
+    "packages/orb-sync-lib/src/sync/credit_notes.ts",
+    "packages/orb-sync-lib/src/sync/customers.ts",
+    "packages/orb-sync-lib/src/sync/invoices.ts",
+    "packages/orb-sync-lib/src/sync/plans.ts",
+    "packages/orb-sync-lib/src/sync/subscriptions.ts",
+    "packages/orb-sync-lib/src/types.ts"
+   ],
+   "applyMs": 346,
+   "applyExit": 0,
+   "changed": 1,
+   "changedByRule": {
+    "dependency": 1
+   },
+   "unresolved": [],
+   "skipped": [],
+   "gate": true,
+   "filesChanged": 1,
+   "leftoverImports": null,
+   "undeclaredImports": [
+    "apps/node-fastify/src/test/webhooks.test.ts"
+   ],
+   "manifestsChanged": [
+    "packages/orb-sync-lib/package.json"
+   ],
+   "sdkResolvedInBaseline": true,
+   "brokenByUpgrade": [
+    {
+     "file": "packages/orb-sync-lib/src/orb-sync.ts",
+     "line": 2,
+     "code": "TS2307",
+     "message": "Cannot find module 'orb-billing/core' or its corresponding type declarations."
+    }
+   ],
+   "stillBroken": [
+    {
+     "file": "packages/orb-sync-lib/src/orb-sync.ts",
+     "line": 2,
+     "code": "TS2307",
+     "message": "Cannot find module 'orb-billing/core' or its corresponding type declarations."
+    }
+   ],
+   "fixed": 0,
+   "newFromMigration": [],
+   "baselineErrors": 17
+  }
+ ]
+}

@@ -1,0 +1,54 @@
+{
+ "totals": {
+  "text": 80,
+  "proven": 58,
+  "queued": 4,
+  "invisible": 18
+ },
+ "rows": [
+  {
+   "repo": "NangoHQ/nango",
+   "text": 32,
+   "proven": 24,
+   "queued": 4,
+   "invisible": 4,
+   "invisibleSites": [
+    "packages/metering/lib/processors/team.ts:55 customers.update",
+    "packages/server/lib/controllers/v1/stripe/payment_methods/postCollectPayment.ts:40 customers.create",
+    "packages/server/lib/controllers/v1/stripe/postWebhooks.ts:89 customers.update",
+    "packages/server/lib/controllers/v1/stripe/postWebhooks.ts:113 customers.update"
+   ]
+  },
+  {
+   "repo": "ausdisau/mapableau-new",
+   "text": 35,
+   "proven": 21,
+   "queued": 0,
+   "invisible": 14,
+   "invisibleSites": [
+    "amalgamation/access-media/apps/accessibooks/server/routes.ts:410 customers.create",
+    "amalgamation/access-media/apps/accessibooks/server/routes.ts:476 subscriptions.update",
+    "amalgamation/access-media/apps/accessibooks/server/routes.ts:610 subscriptions.update",
+    "amalgamation/access-media/apps/disabilityfour/server/routes.ts:126 customers.create",
+    "amalgamation/access-media/apps/disabilityfour/server/routes.ts:136 subscriptions.create",
+    "lib/billing/core/checkout-service.ts:36 customers.create",
+    "lib/billing/core/subscription-service.ts:46 customers.create",
+    "lib/stripe/customers.ts:15 customers.create",
+    "scripts/server/routes/grocery.ts:266 customers.create",
+    "scripts/server/routes/payments.ts:53 customers.create",
+    "scripts/server/routes/payments.ts:377 customers.create",
+    "server/routes/grocery.ts:266 customers.create",
+    "server/routes/payments.ts:53 customers.create",
+    "server/routes/payments.ts:377 customers.create"
+   ]
+  },
+  {
+   "repo": "supabase/orb-sync-engine",
+   "text": 13,
+   "proven": 13,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": []
+  }
+ ]
+}

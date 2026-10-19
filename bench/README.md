@@ -6,6 +6,7 @@ Each folder holds one recorded breaking change: a rule file for it and the resul
 | --- | --- | --- |
 | [mux-14-to-15](mux-14-to-15/README.md) | `@mux/mux-node` 14 to 15 (`@mux/ts`) | 32 |
 | [cloudflare-6-to-7](cloudflare-6-to-7/README.md) | `cloudflare` 6 to 7 (named path parameters) | 12 |
+| [orb-5-to-6](orb-5-to-6/README.md) | `orb-billing` 5 to 6 | 3 |
 
 ## How a benchmark runs
 

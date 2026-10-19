@@ -7,7 +7,7 @@ This is the working checklist for Phase 1 of the [strategy](strategy.md). It lis
 - A signed rule format, an engine, a gate, evidence and replay, a draft command, a watcher and an Action.
 - A Mux kit in [providers/mux](../providers/mux/README.md) with 6 rules, publishing steps and a draft message.
 - A Cloudflare kit in [providers/cloudflare](../providers/cloudflare/README.md) with 254 rules, publishing steps and a draft message.
-- An Orb kit in [providers/orb](../providers/orb/README.md) with 23 rules drafted from `orb-billing` 5.76.0 and 6.0.0, publishing steps and a draft message. It has not been benchmarked.
+- An Orb kit in [providers/orb](../providers/orb/README.md) with 23 rules drafted from `orb-billing` 5.76.0 and 6.0.0, publishing steps and a draft message. The [Orb benchmark](../bench/orb-5-to-6/README.md) ran it on 3 repositories: it fixed 4 of the 13 type errors the upgrade causes, introduced none, and left 9 that no rule covers without queuing them.
 - A test that each kit lints, signs with a throwaway key and builds an index.
 
 ## Not done
@@ -15,7 +15,7 @@ This is the working checklist for Phase 1 of the [strategy](strategy.md). It lis
 - No provider has been contacted.
 - No provider's domain serves a rule index. The live fetch works against a test domain in the `provider-selftest` workflow.
 - The rules are drafted from SDK diffs. No provider has reviewed them.
-- The Orb kit has not run on any repository.
+- The Orb kit misses changes that `api.md` does not show, such as error class constructors and a removed `orb-billing/core` export, and 20 of its 23 rules matched nothing in the 3 public codebases found calling version 5.
 - The Cloudflare argument rewrites have not run on real code, because none of the 12 benchmark repositories calls an affected method.
 
 ## Steps for the maintainer
