@@ -10,15 +10,18 @@ import { signingBlockers, validateRuleSet } from '../src/rule.js';
 const method = (verb, path, call, file, args = '', ret = 'Thing') => `- <code title="${verb} ${path}">client.${call.split('.').slice(0, -1).join('.')}.<a href="./src/${file}">${call.split('.').at(-1)}</a>(${args}) -> ${ret}</code>`;
 const type = (name, file) => `- <code><a href="./src/${file}">${name}</a></code>`;
 
-// A small SDK in the Stainless api.md layout: a root api.md that links to one per resource.
-function sdk(name, version, resources) {
+function checkout(files) {
   const dir = mkdtempSync(join(tmpdir(), 'sdk-'));
-  const write = (f, text) => { mkdirSync(dirname(join(dir, f)), { recursive: true }); writeFileSync(join(dir, f), text); };
-  write('package.json', JSON.stringify({ name, version }));
-  write('api.md', ['# Shared', '', ...resources.map((r) => `# [${r.title}](src/resources/${r.dir}/api.md)`)].join('\n') + '\n');
-  for (const r of resources) write(`src/resources/${r.dir}/api.md`, [`# ${r.title}`, '', 'Types:', '', ...r.types, '', 'Methods:', '', ...r.methods].join('\n') + '\n');
+  for (const [f, text] of Object.entries(files)) { mkdirSync(dirname(join(dir, f)), { recursive: true }); writeFileSync(join(dir, f), text); }
   return dir;
 }
+
+// A small SDK in the Stainless api.md layout: a root api.md that links to one per resource.
+const sdk = (name, version, resources) => checkout({
+  'package.json': JSON.stringify({ name, version }),
+  'api.md': ['# Shared', '', ...resources.map((r) => `# [${r.title}](src/resources/${r.dir}/api.md)`)].join('\n') + '\n',
+  ...Object.fromEntries(resources.map((r) => [`src/resources/${r.dir}/api.md`, [`# ${r.title}`, '', 'Types:', '', ...r.types, '', 'Methods:', '', ...r.methods].join('\n') + '\n'])),
+});
 
 const old = () => sdk('acme-sdk', '1.4.0', [
   { title: 'Jobs', dir: 'jobs-preview', types: [type('Job', 'resources/jobs-preview/jobs.ts')], methods: [
@@ -57,7 +60,8 @@ test('api.md surfaces are read across linked files with their endpoints and type
   assert.equal(s.name, 'acme-sdk');
   assert.equal(s.version, '1.4.0');
   assert.equal(s.files.length, 4);
-  assert.deepEqual(s.methods.get('GET /jobs/{ID}/result'), [{ call: 'jobsPreview.results.retrieve', file: 'src/resources/jobs-preview/results.ts', args: 'id', returns: 'Thing' }]);
+  assert.deepEqual(s.methods.get('GET /jobs/{ID}/result'), [{ call: 'jobsPreview.results.retrieve', file: 'src/resources/jobs-preview/results.ts', args: 'id', returns: 'Thing', section: ['Jobs'] }]);
+  assert.deepEqual([...s.sections], ['Shared', 'Jobs', 'Members', 'Data']);
   assert.deepEqual([...s.types.get('Job')], ['src/resources/jobs-preview/jobs.ts']);
   assert.throws(() => readApiSurface(mkdtempSync(join(tmpdir(), 'empty-'))), /has no api\.md/);
 });
@@ -118,4 +122,37 @@ test('a module is only moved when everything defined under it moved the same way
   );
   assert.deepEqual(whole.moves, [{ from: 'resources/jobs-preview', to: 'resources/jobs' }]);
   assert.deepEqual(whole.partialMoves, []);
+});
+
+test('a renamed resource gets a rename-namespace rule for its type namespace when the api.md headings name it', () => {
+  const m = (verb, path, call) => method(verb, path, call, 'resources/x.ts', 'id');
+  const release = (version, { robots, beta, plans, archive, other }) => checkout({
+    'package.json': JSON.stringify({ name: 'acme-sdk', version }),
+    'api.md': [
+      '# Shared', '', `# [${robots[0]}](src/resources/${robots[1]}/api.md)`, '',
+      '# Beta', '', `## ${beta[0]}`, '', m('get', '/plans/{id}', `beta.${beta[1]}.fetch`), m('post', '/plans/{id}/versions', `beta.${beta[1]}.createVersion`), '',
+      '# Plans', '', '## ExternalPlanID', '', m('put', '/p/{id}', `plans.${plans}.update`), m('get', '/p/{id}', `plans.${plans}.fetch`), '',
+      `# ${archive}`, '', m('get', '/legacy/a', `${archive.toLowerCase()}.a`), m('get', '/legacy/b', `${archive.toLowerCase()}.b`), '',
+      ...(archive === 'Legacy' ? [] : ['# Legacy', '', 'Types:', '', type('Kept', 'resources/x.ts'), '']),
+      `# ${other}`, '', m('get', '/misc/a', `${other.toLowerCase()}.a.run`), m('get', '/misc/b', `${other.toLowerCase()}.b.run`), '',
+    ].join('\n'),
+    [`src/resources/${robots[1]}/api.md`]: [`# ${robots[0]}`, '', '## Jobs', '', m('get', '/robots/jobs', `${robots[2]}.jobs.list`), '', '### AskQuestions', '', m('post', '/robots/jobs/ask', `${robots[2]}.jobs.askQuestions.create`)].join('\n'),
+  });
+  const a = readApiSurface(release('1.0.0', { robots: ['RobotsPreview', 'robots-preview', 'robotsPreview'], beta: ['ExternalPlanID', 'externalPlanId'], plans: 'externalPlanId', archive: 'Legacy', other: 'Misc' }));
+  const b = readApiSurface(release('2.0.0', { robots: ['Robots', 'robots', 'robots'], beta: ['ExternalPlans', 'externalPlans'], plans: 'externalPlanID', archive: 'Archive', other: 'Other' }));
+  assert.deepEqual(a.methods.get('POST /robots/jobs/ask')[0].section, ['RobotsPreview', 'Jobs', 'AskQuestions']);
+  const { ruleSet } = draftFromSurfaces(diffSurfaces(a, b), { provider: 'acme', from: a.version, to: b.version, oldName: a.name, newName: b.name, newVersion: b.version, oldMethods: [...a.methods.values()].flat().map((x) => x.call) });
+  // The type namespace comes from the headings, not from capitalising the path, which would give ExternalPlanId. A case-only
+  // change of the path keeps ## ExternalPlanID, Legacy is still a section in 2.0.0, and # Misc does not head misc.a or misc.b.
+  assert.deepEqual(ruleSet.rules.filter((r) => r.kind === 'rename-namespace').map((r) => [r.id, r.confidence, r.match.path, r.transform.to]), [
+    ['namespace-beta.externalPlanId', 'likely', 'beta.externalPlanId', 'beta.externalPlans'],
+    ['type-Beta.ExternalPlanID', 'likely', 'Beta.ExternalPlanID', 'Beta.ExternalPlans'],
+    ['namespace-plans.externalPlanId', 'likely', 'plans.externalPlanId', 'plans.externalPlanID'],
+    ['namespace-legacy', 'likely', 'legacy', 'archive'],
+    ['namespace-misc', 'likely', 'misc', 'other'],
+    ['namespace-robotsPreview', 'likely', 'robotsPreview', 'robots'],
+    ['type-RobotsPreview', 'likely', 'RobotsPreview', 'Robots'],
+  ]);
+  assert.equal(ruleSet.rules.find((r) => r.id === 'type-RobotsPreview').evidence, 'api.md lists every method under robotsPreview in section RobotsPreview in 1.0.0, and every method under robots in section Robots in 2.0.0, which has no section RobotsPreview');
+  assert.deepEqual(validateRuleSet(ruleSet), []);
 });

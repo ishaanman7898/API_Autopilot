@@ -7,29 +7,43 @@ import { SCHEMA } from './rule.js';
 const METHOD = /<code title="(\w+) ([^"]+)">client((?:\.\w+)*)\.<a href="\.\/([^"]+)">(\w+)<\/a>\(([^)]*)\)(?:\s*(?:-&gt;|->)\s*([^<]*))?<\/code>/g;
 const TYPE = /<code><a href="\.\/([^"]+)">(\w+)<\/a><\/code>/g;
 const LINK = /\]\((?:\.\/)?(src\/[^)]*?api\.md)\)/g;
+const HEADING = /^(#{1,6})[ \t]+(?:\[([^\]]*)\]\([^)]*\)|(.*?))[ \t]*$/gm;
+const NAME = /^[A-Za-z_$][\w$]*$/;
 
 // The import path of a source file inside the package: src/resources/a/b.ts becomes resources/a/b.
 const modulePath = (file) => file.replace(/^src\//, '').replace(/\.[cm]?[jt]sx?$/, '').replace(/\/index$/, '');
 
 // One api.md file: its methods and types go into the surface, and the api.md files it links to are returned.
+// Each method keeps the headings it sits under, such as ['RobotsPreview', 'Jobs'], null where a heading is not a name.
 function scanApiFile(surface, text) {
+  const heads = [];
+  let stack = [];
+  for (const h of text.matchAll(HEADING)) {
+    const name = (h[2] ?? h[3]).trim();
+    stack = [...Array.from({ length: h[1].length - 1 }, (_, i) => stack[i] ?? null), NAME.test(name) ? name : null];
+    heads.push({ at: h.index, stack });
+    if (stack.every(Boolean)) surface.sections.add(stack.join('.'));
+  }
+  let j = -1;
   for (const m of text.matchAll(METHOD)) {
+    while (j + 1 < heads.length && heads[j + 1].at < m.index) j++;
     const endpoint = `${m[1].toUpperCase()} ${m[2]}`;
     const call = [...m[3].split('.').filter(Boolean), m[5]].join('.');
-    surface.methods.set(endpoint, [...(surface.methods.get(endpoint) ?? []), { call, file: m[4], args: m[6].trim(), returns: (m[7] ?? '').trim() }]);
+    surface.methods.set(endpoint, [...(surface.methods.get(endpoint) ?? []), { call, file: m[4], args: m[6].trim(), returns: (m[7] ?? '').trim(), section: heads[j]?.stack ?? [] }]);
   }
   for (const m of text.matchAll(TYPE)) surface.types.set(m[2], new Set([...(surface.types.get(m[2]) ?? []), m[1]]));
   return [...text.matchAll(LINK)].map((m) => m[1]).filter((rel) => !rel.split('/').includes('..'));
 }
 
-const surfaceOf = (pkg, methods, types, seen) => ({ name: pkg?.name ?? null, version: pkg?.version ?? null, methods, types, files: [...seen] });
+const surfaceOf = (pkg, { methods, types, sections }, seen) => ({ name: pkg?.name ?? null, version: pkg?.version ?? null, methods, types, sections, files: [...seen] });
 
-// Reads an SDK checkout: { name, version, methods: Map endpoint -> [{ call, file, args, returns }], types: Map name -> files }.
+// Reads an SDK checkout: { name, version, methods: Map endpoint -> [{ call, file, args, returns, section }],
+// types: Map name -> files, sections: Set of heading paths such as RobotsPreview.Jobs }.
 export function readApiSurface(dir) {
   if (!existsSync(join(dir, 'api.md'))) throw new Error(`${dir} has no api.md`);
   let pkg = {};
   try { pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')); } catch { /* the name and version are then unknown */ }
-  const surface = { methods: new Map(), types: new Map() };
+  const surface = { methods: new Map(), types: new Map(), sections: new Set() };
   const seen = new Set();
   const queue = ['api.md'];
   while (queue.length) {
@@ -38,13 +52,13 @@ export function readApiSurface(dir) {
     seen.add(rel);
     queue.push(...scanApiFile(surface, readFileSync(join(dir, rel), 'utf8')));
   }
-  return surfaceOf(pkg, surface.methods, surface.types, seen);
+  return surfaceOf(pkg, surface, seen);
 }
 
 // The same walk over files that are fetched: read(rel) resolves to the text, or null when the file does not exist.
 // Files are fetched a few at a time and scanned in the order readApiSurface would scan them.
 export async function fetchApiSurface(read, pkg, { maxFiles = 2000, parallel = 8 } = {}) {
-  const surface = { methods: new Map(), types: new Map() };
+  const surface = { methods: new Map(), types: new Map(), sections: new Set() };
   const seen = new Set();
   const queue = ['api.md'];
   while (queue.length) {
@@ -58,7 +72,7 @@ export async function fetchApiSurface(read, pkg, { maxFiles = 2000, parallel = 8
     });
     if (!seen.has('api.md')) throw new Error('there is no api.md');
   }
-  return surfaceOf(pkg, surface.methods, surface.types, seen);
+  return surfaceOf(pkg, surface, seen);
 }
 
 const segments = (s) => s.split('.');
@@ -126,7 +140,7 @@ export function diffSurfaces(a, b) {
       const same = news.find((n) => n.call === o.call);
       const n = same ?? (olds.length === 1 && news.length === 1 ? news[0] : null);
       if (!n) { removed.push({ endpoint, call: o.call }); continue; }
-      if (n.call !== o.call) renamed.push({ endpoint, from: o.call, to: n.call });
+      if (n.call !== o.call) renamed.push({ endpoint, from: o.call, to: n.call, sections: [o.section, n.section] });
       if (argShape(n.args) !== argShape(o.args)) argsChanged.push({ endpoint, call: n.call, from: o.args, to: n.args });
       else if (n.returns !== o.returns) returnsChanged.push({ endpoint, call: n.call, from: o.returns, to: n.returns });
       move(o.file, n.file);
@@ -158,7 +172,24 @@ export function diffSurfaces(a, b) {
     if (others.length) ambiguous.set(from, { from, to, unmoved: others.length, moved: pairs.filter(([o]) => under(o, from)).length - others.length });
     else moves.set(from, to);
   }
-  return { renamed, removed, added, newCalls, argsChanged, returnsChanged, removedTypes, moves: [...moves].map(([from, to]) => ({ from, to })), partialMoves: [...ambiguous.values()] };
+  return { renamed, removed, added, newCalls, argsChanged, returnsChanged, removedTypes, moves: [...moves].map(([from, to]) => ({ from, to })), partialMoves: [...ambiguous.values()], newSections: b.sections ?? new Set() };
+}
+
+// The type namespace of a renamed resource, such as RobotsPreview to Robots for robotsPreview to robots, read from
+// the api.md headings its methods sit under, one heading per segment of the call path. Every method has to agree,
+// each heading has to match its segment apart from case, and the new version must have no section by the old name.
+// Capitalising the path would be wrong: Orb's externalPlanId sits under ## ExternalPlanID.
+function typeRename(list, prefix, next, newSections) {
+  const named = (call, section = [], path) => {
+    const segs = segments(path);
+    const heads = section.slice(0, segs.length);
+    return section.length === segments(call).length - 1 && heads.every((h, i) => h && squash(h) === squash(segs[i])) ? heads.join('.') : null;
+  };
+  const from = new Set(list.map((r) => named(r.from, r.sections?.[0], prefix)));
+  const to = new Set(list.map((r) => named(r.to, r.sections?.[1], next)));
+  const [a] = from;
+  const [b] = to;
+  return from.size === 1 && to.size === 1 && a && b && a !== b && !newSections.has(a) ? { from: a, to: b } : null;
 }
 
 // Turns the diff into a draft rule file. Every rule carries confidence and evidence, and the file is
@@ -198,6 +229,8 @@ export function draftFromSurfaces(diff, { provider, from, to, oldName, newName, 
     const whole = list.length > 1 && under.length === list.length && list.every((r) => r.from.startsWith(prefix + '.'));
     if (whole) {
       add({ id: `namespace-${prefix}`, kind: 'rename-namespace', confidence: 'likely', evidence: `all ${list.length} methods under ${prefix} moved to ${next}, matched by endpoint`, match: { path: prefix }, transform: { to: next } });
+      const type = typeRename(list, prefix, next, diff.newSections);
+      if (type) add({ id: `type-${type.from}`, kind: 'rename-namespace', confidence: 'likely', evidence: `api.md lists every method under ${prefix} in section ${type.from} in ${from}, and every method under ${next} in section ${type.to} in ${to}, which has no section ${type.from}`, match: { path: type.from }, transform: { to: type.to } });
     } else {
       for (const r of list) add({ id: `rename-${r.from}`, kind: 'rename-method', confidence: 'likely', evidence: `same endpoint ${r.endpoint}`, match: { call: r.from }, transform: { to: r.to } });
     }

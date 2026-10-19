@@ -48,6 +48,7 @@ The package name and versions come from each checkout's `package.json` unless `-
 | --- | --- |
 | A method keeps its endpoint but has a new call path | A `rename-method` rule, `likely`. |
 | Every method under a prefix moved the same way, such as `robotsPreview.*` to `robots.*` | One `rename-namespace` rule, `likely`. |
+| Those methods also moved to a new `api.md` heading, such as `# RobotsPreview` to `# Robots` | A second `rename-namespace` rule for the type namespace, such as `RobotsPreview` to `Robots`, `likely`, so that types such as `Mux.RobotsPreview.JobStatus` are renamed too. Every method must sit under one heading per segment of its path, each heading must match its segment apart from case, and the new version must have no heading with the old name. The type name is read from the headings, never made by capitalising the path: Orb 5's `externalPlanId` sits under `## ExternalPlanID`, and when Orb 6 renamed it to `externalPlanID` the heading stayed, so there is no type rule. |
 | Every type and method defined under one directory is defined under another | A `rename-import` rule for that subpath, `likely`, placed before the package rename. When only some of them moved, there is no rule, since a `rename-import` also matches every subpath. The report lists it under `partialModuleMoves`. |
 | The package name changed | A `rename-import` rule for the package, `likely`. |
 | An endpoint is gone | A `manual` rule, `needs-review`, naming the closest method with the same name as a likely replacement. |
@@ -55,11 +56,11 @@ The package name and versions come from each checkout's `package.json` unless `-
 | Any other change to the arguments a caller passes | A `manual` rule, `needs-review`, with both argument lists. Renamed placeholders, such as `memberId` to `memberID`, are not changes. |
 | The name or version changed | A `rename-dependency` rule to the new name at `^` the new version, `likely`. |
 
-Added methods, changed return types and removed types are listed in the report. On Mux 14.1.1 to 15.0.0 this drafts 5 rules: the `resources/robots-preview` subpath move, the rename to `@mux/ts`, `robotsPreview` to `robots`, a manual rule for `data.filters.listValues` that suggests `data.dimensions.listValues`, and the dependency.
+Added methods, changed return types and removed types are listed in the report. On Mux 14.1.1 to 15.0.0 this drafts 6 rules: the `resources/robots-preview` subpath move, the rename to `@mux/ts`, `robotsPreview` to `robots`, the type namespace `RobotsPreview` to `Robots`, a manual rule for `data.filters.listValues` that suggests `data.dimensions.listValues`, and the dependency.
 
 ## From npm releases
 
-`apimigrate watch` makes the same draft without checkouts when it finds a new major version and the provider publishes no signed rules. It fetches each release's `api.md` files from GitHub, at the commit npm recorded when the release was published or at its release tag. On `@mux/mux-node` 14.1.1 to 15.5.0 it drafts the same 5 rules as above. On `cloudflare` 6.5.0 to 7.3.0 it drafts 274, 21 of them `needs-review`, and lists 6 partial module moves, such as one type moving from `resources/dns` into `resources/dns/dnssec`, without drafting rules for them. When neither release has an `api.md`, it drafts from their TypeScript declarations instead, as described below. These drafts are never signed. They reach a repository only as draft pull requests marked unsigned. See [CLI reference](cli.md#watch).
+`apimigrate watch` makes the same draft without checkouts when it finds a new major version and the provider publishes no signed rules. It fetches each release's `api.md` files from GitHub, at the commit npm recorded when the release was published or at its release tag. On `@mux/mux-node` 14.1.1 to 15.5.0 it drafts the same 6 rules as above. On `cloudflare` 6.5.0 to 7.3.0 it drafts 274, 21 of them `needs-review`, and lists 6 partial module moves, such as one type moving from `resources/dns` into `resources/dns/dnssec`, without drafting rules for them. When neither release has an `api.md`, it drafts from their TypeScript declarations instead, as described below. These drafts are never signed. They reach a repository only as draft pull requests marked unsigned. See [CLI reference](cli.md#watch).
 
 ## From TypeScript declarations
 

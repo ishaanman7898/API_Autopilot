@@ -2,7 +2,7 @@
 
 `@mux/mux-node` 15 renamed the package to `@mux/ts`, renamed `client.robotsPreview` to `client.robots`, removed `client.data.filters`, and moved some type declarations. The full list is in Mux's [migration guide](https://github.com/muxinc/mux-ts/blob/v15.0.0/MIGRATION.md).
 
-[rules.json](rules.json) holds six rules. Five are what `apimigrate draft` produces from the 14.1.1 and 15.0.0 SDK checkouts, with the review marks removed: a `rename-import` for the `resources/robots-preview` subpath, a `rename-import` to `@mux/ts`, a `rename-namespace` from `robotsPreview` to `robots`, a `manual` rule for `data.filters.listValues` that names `data.dimensions.listValues` as the likely replacement, and a `rename-dependency` to `@mux/ts` `^15.0.0`. The sixth, a `rename-namespace` from the type namespace `RobotsPreview` to `Robots`, was written by hand from the SDK declarations, because `draft` does not find renamed types. The first version of this benchmark used 16 hand-written rules.
+[rules.json](rules.json) holds six rules, which are what `apimigrate draft` produces from the 14.1.1 and 15.0.0 SDK checkouts, with the review marks removed: a `rename-import` for the `resources/robots-preview` subpath, a `rename-import` to `@mux/ts`, a `rename-namespace` from `robotsPreview` to `robots`, a `rename-namespace` from the type namespace `RobotsPreview` to `Robots`, a `manual` rule for `data.filters.listValues` that names `data.dimensions.listValues` as the likely replacement, and a `rename-dependency` to `@mux/ts` `^15.0.0`. The type rule was written by hand at first. `draft` now reads it from the `api.md` headings that hold the renamed methods, `# RobotsPreview` in 14.1.1 and `# Robots` in 15.0.0. The first version of this benchmark used 16 hand-written rules.
 
 The 32 repositories are every public GitHub repository that code search found pinning `@mux/mux-node` 14 in October 2026, out of 391 it found importing the package. They are listed with their commits in [repos.json](repos.json). Raw output from the latest run is in [results.json](results.json) and [coverage.json](coverage.json). See [how a benchmark runs](../README.md) for the method.
 
@@ -28,9 +28,9 @@ The 32 repositories are every public GitHub repository that code search found pi
 
 ## What to build next
 
-- Draft renamed type namespaces, such as `RobotsPreview` to `Robots`, so the type rule does not have to be written by hand.
+- Draft rules for types that are gone. 15.0.0 drops `ExportsResponse`, `AssetCreateStaticRenditionResponse` and the `Data.Filters` types `FilterValue` and `FiltersResponse`, and `draft` only lists them in the report. Replacements, such as `VideoViewExportsResponse` for `ExportsResponse` and `StaticRendition` for `AssetCreateStaticRenditionResponse`, are not confirmed.
 
-Done since the first run: `tsconfig.json` and `jsconfig.json` path aliases, `export default <name>`, factory functions and lazy caches, queueing lookalikes in files that reach the package, CommonJS `require` and `module.exports`, `globalThis` caches, typed and untyped parameters, class fields, JSDoc `import()` types, `rename-dependency`, `rename-namespace`, type names, drafting from `api.md`, and program reuse between rules.
+Done since the first run: `tsconfig.json` and `jsconfig.json` path aliases, `export default <name>`, factory functions and lazy caches, queueing lookalikes in files that reach the package, CommonJS `require` and `module.exports`, `globalThis` caches, typed and untyped parameters, class fields, JSDoc `import()` types, `rename-dependency`, `rename-namespace`, type names, drafting from `api.md`, drafting renamed type namespaces, and program reuse between rules.
 
 ## Results
 
