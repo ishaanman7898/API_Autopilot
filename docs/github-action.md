@@ -48,6 +48,8 @@ Branch names hold only the version lines, so a scheduled run skips an upgrade wh
 
 The sample workflow in `examples/workflow.yml` asks for `contents: write` and `pull-requests: write`, and nothing else. Keep it that way. The tool needs no other access, and it never calls a merge API.
 
+With the default workflow token, the repository must also allow workflows to open pull requests: in Settings, under Actions, General, Workflow permissions, turn on "Allow GitHub Actions to create and approve pull requests". It was off in a new personal repository, and an organization may have to allow it first. While it is off, the branch is pushed, `gh pr create` fails with `GitHub Actions is not permitted to create or approve pull requests`, the action deletes the branch again and the job fails. The setting also lets workflows approve pull requests, which the action never does. The other way is to pass a token in `token` that can push and open pull requests.
+
 ## Safety choices
 
 - Inputs reach shell steps through environment variables, never through expression interpolation in the script.
@@ -58,6 +60,7 @@ The sample workflow in `examples/workflow.yml` asks for `contents: write` and `p
 ## Limits
 
 - The action runs on a real GitHub runner in the `action-selftest` workflow, in apply mode against a copy of `examples/app` and in watch mode against a repository that depends on Mux 14, with the real npm registry and GitHub. In watch mode its tests call the SDK, and a clone of the pushed branch must pass `npm ci` and `npm test`. It pushes to a local bare repository and `gh` is replaced by a stand-in that records its arguments, so that run checks everything up to the pull request but does not open one. The `provider-selftest` workflow runs watch mode the same way against a consumer that lists `atomicayush.github.io` in `sources`, so the signed path fetches a live rule index, key set and rule file.
+- A real pull request was opened once, by hand, not in CI. A private throwaway repository held the same Mux 14 consumer, with no `.apimigrate.yml`, and a `workflow_dispatch` workflow that ran this action at commit `74be924` with `mode: watch`, `test-cmd: npm test` and the default token. The first run hit the repository setting described under Permissions, and the action deleted the branch it had pushed. After the setting was turned on, the next run opened a draft pull request as `github-actions[bot]`, titled `[unsigned draft] API migration: @mux/mux-node 14.1.1 to 15.5.0`. Its body had the unsigned warning, the five drafted rules, the lockfile note and `Tests | exit code 0`, and it changed only `package.json`, `package-lock.json` and `src/video.ts`. A third run skipped the upgrade because the branch existed. Nothing was merged, approved or set to auto merge.
 - Pull requests created with the default workflow token do not trigger other workflows. Use a token with the access you want if you need that.
 - A migration with unresolved sites opens a draft that is partly done. The body says so, and the sites are in the artifact.
 - The repository must already be checked out, and Node 20 or newer must be set up before this action runs. Install your dependencies first, as the sample workflows do with `npm ci`, and set up `pnpm`, `yarn` or `bun` if the lockfile names one.

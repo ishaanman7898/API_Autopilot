@@ -109,7 +109,7 @@ Related docs are [CLI reference](docs/cli.md) and [gate](docs/gate.md).
 
 ## GitHub Action
 
-The action runs `apply` on your runner, then opens a draft pull request with the evidence in the body and as an artifact. It never merges. The sample workflow asks for `contents: write` and `pull-requests: write` and nothing else.
+The action runs `apply` on your runner, then opens a draft pull request with the evidence in the body and as an artifact. It never merges. The sample workflow asks for `contents: write` and `pull-requests: write` and nothing else. With the default workflow token, also turn on "Allow GitHub Actions to create and approve pull requests" in the repository's Actions settings, which is off by default.
 
 Related docs are [GitHub Action](docs/github-action.md).
 
@@ -123,7 +123,7 @@ Related docs are [GitHub Action](docs/github-action.md).
 - Replay reproduces only the deterministic pass. Agent edits are checked by the head digests, the gate and your tests, not reproduced.
 - Regex `replace` rules are not parse-verified and are labelled that way in the evidence.
 - The test suite passes in CI on Linux, macOS and Windows with Node 20 and 22.
-- The GitHub Action runs on a real runner in CI (`action-selftest` and `provider-selftest`), but those runs record the pull request command instead of opening one. `provider-selftest` reads signed rules from a live test domain. No SDK provider publishes rules yet.
+- The GitHub Action runs on a real runner in CI (`action-selftest` and `provider-selftest`), but those runs record the pull request command instead of opening one. Watch mode opened a real draft pull request once, by hand, in a throwaway repository. That check is not part of CI. `provider-selftest` reads signed rules from a live test domain. No SDK provider publishes rules yet.
 - Keys are fetched from a well-known URL on each run. There is no transparency log. Consumers who want stronger guarantees should pin rule hashes or commit the key set.
 - Secret detection is a list of patterns, not an entropy check. Prompt-injection stripping is a heuristic.
 - Performance on very large repositories has not been measured. A 114-rule run takes under a second on a 265-file app and about 4 seconds on a monorepo.
