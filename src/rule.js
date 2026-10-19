@@ -35,8 +35,9 @@ export function validateRuleSet(rs) {
   if (typeof rs.sunset !== 'string' || !ISO_DATE.test(rs.sunset) || Number.isNaN(Date.parse(rs.sunset))) errors.push('sunset must be an ISO date');
   if (!Array.isArray(rs.rules) || rs.rules.length === 0) errors.push('rules must be a non-empty array');
   const ids = new Set();
-  for (const [i, r] of (rs.rules ?? []).entries()) {
+  for (const [i, r] of (Array.isArray(rs.rules) ? rs.rules : []).entries()) {
     const at = `rules[${i}]`;
+    if (!r || typeof r !== 'object' || Array.isArray(r)) { errors.push(`${at}: must be an object`); continue; }
     if (!r.id || ids.has(r.id)) errors.push(`${at}: id missing or duplicate`);
     ids.add(r.id);
     if (!KINDS.includes(r.kind)) errors.push(`${at}: unknown kind ${r.kind}`);
@@ -67,6 +68,6 @@ export function isSunset(rs, now = new Date()) {
 export function signingBlockers(rs) {
   const blockers = [];
   if (rs.draft) blockers.push('file is marked draft');
-  for (const r of rs.rules ?? []) if (r.confidence) blockers.push(`rule ${r.id} still has confidence "${r.confidence}"`);
+  for (const r of Array.isArray(rs.rules) ? rs.rules : []) if (r?.confidence) blockers.push(`rule ${r.id} still has confidence "${r.confidence}"`);
   return blockers;
 }

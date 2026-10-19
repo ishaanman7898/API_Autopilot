@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateRuleSet } from '../src/rule.js';
+import { signingBlockers, validateRuleSet } from '../src/rule.js';
 import { applyRuleSet } from '../src/engine.js';
 import { parseArgs } from '../src/args.js';
 import { parseConfig, withDefaults } from '../src/config.js';
@@ -16,6 +16,10 @@ test('validation catches bad rules', () => {
   assert.ok(validateRuleSet({ ...good, sunset: 'someday' }).length > 0);
   assert.ok(validateRuleSet({ ...good, scope: 'everything' }).length > 0);
   assert.ok(validateRuleSet(null).length > 0);
+  // Malformed entries are errors, not crashes.
+  assert.deepEqual(validateRuleSet({ ...good, rules: [null, 7, [], good.rules[0]] }), ['rules[0]: must be an object', 'rules[1]: must be an object', 'rules[2]: must be an object']);
+  for (const rules of [{}, 'x']) assert.deepEqual(validateRuleSet({ ...good, rules }), ['rules must be a non-empty array']);
+  assert.deepEqual(signingBlockers({ rules: [null, { id: 'a', confidence: 'likely' }] }), ['rule a still has confidence "likely"']);
 });
 
 test('scope any: replace rules migrate named files and nothing else', () => {
