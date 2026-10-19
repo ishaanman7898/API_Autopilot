@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { branchName, changedPaths, prBody } from '../src/prbody.js';
+import { PR_PERMISSION_HINT, PR_REFUSED } from '../src/watchpr.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // Git on Windows can check files out with CRLF line endings, so compare as LF.
@@ -70,7 +71,13 @@ test('the action opens draft pull requests only and never merges', () => {
     const text = readRepoFile(f);
     assert.doesNotMatch(text, /uses: [^@\n]+@v\d/, `${f} pins actions by commit`);
   }
-  for (const f of ['examples/workflow.yml', 'examples/watch-workflow.yml']) assert.match(readRepoFile(f), /permissions:\n  contents: write\n  pull-requests: write/);
+  for (const f of ['examples/workflow.yml', 'examples/watch-workflow.yml']) {
+    const text = readRepoFile(f);
+    assert.match(text, /permissions:\n  contents: write\n  pull-requests: write/);
+    assert.match(text, /Workflow permissions > "Allow GitHub Actions to create and approve pull requests"/, `${f} names the repository setting`);
+  }
+  assert.ok(action.includes(`echo '${PR_PERMISSION_HINT}' >&2`), 'apply mode prints the same hint as watch mode');
+  assert.ok(action.includes(`grep -q '${PR_REFUSED.source}'`), 'apply mode looks for the same refusal as watch mode');
   const watch = readRepoFile('src/watchpr.js');
   assert.match(watch, /'pr', 'create', '--draft'/);
   assert.doesNotMatch(watch, /'merge'|--auto|--admin|'add', '-A'|'add', '\.'/, 'watch mode opens drafts only and stages only changed files');

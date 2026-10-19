@@ -87,7 +87,17 @@ runs:
         git add -- "${paths[@]}"
         git -c user.name=apimigrate -c user.email=apimigrate@users.noreply.github.com commit -m "$title"
         git push origin "$branch"
-        gh pr create --draft --title "$title" --body-file "$RUNNER_TEMP/apimigrate-pr-body.md"
+        # gh's stderr is kept so a refusal from the repository settings can name the setting to turn on.
+        gh_err="$RUNNER_TEMP/apimigrate-gh.err"
+        status=0
+        gh pr create --draft --title "$title" --body-file "$RUNNER_TEMP/apimigrate-pr-body.md" 2> "$gh_err" || status=$?
+        cat "$gh_err" >&2
+        if [ "$status" -ne 0 ]; then
+          if grep -q 'GitHub Actions is not permitted to create or approve pull requests' "$gh_err"; then
+            echo 'GitHub does not let this workflow open pull requests. Turn on Settings > Actions > General > Workflow permissions > "Allow GitHub Actions to create and approve pull requests", or pass a token that can open pull requests in the token input of the action.' >&2
+          fi
+          exit "$status"
+        fi
 
     - name: Watch for new major versions and open draft pull requests
       if: inputs.mode == 'watch'

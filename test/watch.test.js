@@ -13,7 +13,7 @@ import { generateKeys, signRuleSet } from '../src/signing.js';
 import { parseSources, signedRulesFor } from '../src/sources.js';
 import { RAW, draftedRulesFor, githubRepo, releaseRefs } from '../src/upstream.js';
 import { readTar } from '../src/dts.js';
-import { openWatchPullRequests } from '../src/watchpr.js';
+import { openWatchPullRequests, PR_PERMISSION_HINT } from '../src/watchpr.js';
 import { watchBody, watchBranch, watchTitle } from '../src/prbody.js';
 import { fetchText } from '../src/net.js';
 import { versionLine } from '../src/commands/index.js';
@@ -336,8 +336,19 @@ test('watch mode skips unsigned drafts when pins are set, and deletes the branch
   const r = await failing.watchAndOpen(upstreamRoutes(), () => { throw new Error('gh pr create failed with exit code 1'); });
   assert.equal(r.code, 1);
   assert.match(r.log, /gh pr create failed/);
+  assert.ok(!r.log.includes(PR_PERMISSION_HINT), 'other gh failures get no hint about the repository setting');
   assert.equal(spawnSync('git', ['ls-remote', '--exit-code', '--heads', 'origin', 'refs/heads/apimigrate/acme-sdk-1-to-2-unsigned'], { cwd: failing.dir }).status, 2);
   assert.equal(git(failing.dir, 'rev-parse', '--abbrev-ref', 'HEAD'), 'main');
+});
+
+test('watch mode names the repository setting when GitHub refuses to open the pull request, and still deletes the branch', async () => {
+  const refused = consumer();
+  const stderr = 'pull request create failed: GraphQL: GitHub Actions is not permitted to create or approve pull requests (createPullRequest)\n';
+  const r = await refused.watchAndOpen(upstreamRoutes(), () => { throw Object.assign(new Error('gh pr create failed with exit code 1'), { stderr }); });
+  assert.equal(r.code, 1);
+  assert.match(r.log, /acme-sdk 1\.4\.1 -> 2\.1\.0: gh pr create failed with exit code 1\nGitHub does not let this workflow open pull requests\. Turn on Settings > Actions > General > Workflow permissions > "Allow GitHub Actions to create and approve pull requests", or pass a token .* in the token input/);
+  assert.equal(spawnSync('git', ['ls-remote', '--exit-code', '--heads', 'origin', 'refs/heads/apimigrate/acme-sdk-1-to-2-unsigned'], { cwd: refused.dir }).status, 2);
+  assert.equal(git(refused.dir, 'rev-parse', '--abbrev-ref', 'HEAD'), 'main');
 });
 
 test('watch mode skips drafts whose provider is not in the providers list, and runs them when it is', async () => {

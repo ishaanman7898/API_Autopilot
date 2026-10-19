@@ -6,13 +6,18 @@ import { loadConfig } from './commands/common.js';
 import { installDependencies } from './install.js';
 import { changedPaths, watchBody, watchBranch, watchTitle } from './prbody.js';
 
+// What gh prints when the repository does not let the workflow token open pull requests, and the line that
+// says what to change. action.yml prints the same line in apply mode.
+export const PR_REFUSED = /GitHub Actions is not permitted to create or approve pull requests/;
+export const PR_PERMISSION_HINT = 'GitHub does not let this workflow open pull requests. Turn on Settings > Actions > General > Workflow permissions > "Allow GitHub Actions to create and approve pull requests", or pass a token that can open pull requests in the token input of the action.';
+
 // Opens one draft pull request per upgrade in a `watch` plan, for the Action's watch mode. Each upgrade is
 // applied on its own branch from the commit that was checked out, with --allow-unsigned only for drafts.
 // An upgrade whose branch already exists on the remote is skipped, so a scheduled run does not open it twice.
 // New versions are installed before the tests: install is 'auto' for the package manager the lockfile names,
 // 'none', or a shell command. After an upgrade installed, the base versions are installed again, so the next
 // upgrade is tested against the base dependencies. git and gh get argument arrays, never a shell. gh can be
-// replaced in tests. Returns the exit code.
+// replaced in tests, and an error it throws may carry gh's stderr in `stderr`. Returns the exit code.
 export async function openWatchPullRequests({ root, planPath, testCmd = null, install = 'auto', runUrl = null, gh, out = () => {}, err = () => {} }) {
   const git = (...args) => spawnSync('git', args, { cwd: root, encoding: 'utf8' });
   const must = (...args) => {
@@ -92,6 +97,7 @@ export async function openWatchPullRequests({ root, planPath, testCmd = null, in
     } catch (e) {
       // Without the pull request the branch would make every later run skip this upgrade.
       err(`${name}: ${e.message}`);
+      if (PR_REFUSED.test(e.stderr ?? '')) err(PR_PERMISSION_HINT);
       git('push', '-q', 'origin', '--delete', branch);
       failed++;
     }

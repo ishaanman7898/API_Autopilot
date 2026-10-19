@@ -10,9 +10,11 @@ if (!planPath) {
   console.error('usage: watch-prs.mjs <plan.json>');
   process.exit(2);
 }
+// gh's stderr is captured so watch mode can tell when the repository refuses the pull request, and printed as is.
 const gh = (args) => {
-  const r = spawnSync('gh', args, { stdio: 'inherit' });
-  if (r.status !== 0) throw new Error(`gh ${args.slice(0, 2).join(' ')} failed with exit code ${r.status ?? r.error?.message}`);
+  const r = spawnSync('gh', args, { stdio: ['inherit', 'inherit', 'pipe'], encoding: 'utf8' });
+  if (r.stderr) process.stderr.write(r.stderr);
+  if (r.status !== 0) throw Object.assign(new Error(`gh ${args.slice(0, 2).join(' ')} failed with exit code ${r.status ?? r.error?.message}`), { stderr: r.stderr ?? '' });
 };
 const { GITHUB_SERVER_URL: server, GITHUB_REPOSITORY: repo, GITHUB_RUN_ID: run } = process.env;
 const runUrl = server && repo && run ? `${server}/${repo}/actions/runs/${run}` : null;

@@ -6,6 +6,7 @@ on:
     - cron: '0 6 * * 1'
 
 # The job can push a branch and open a pull request. It cannot merge, and it has no other access.
+# With the default token, turn on Settings > Actions > General > Workflow permissions > "Allow GitHub Actions to create and approve pull requests".
 permissions:
   contents: write
   pull-requests: write
