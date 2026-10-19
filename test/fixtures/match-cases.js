@@ -198,6 +198,7 @@ export const cases = [
   ...factoryCases(),
   ...commonJsCases(),
   ...namespaceCases(),
+  ...typeNameCases(),
   ...globalCacheCases(),
   ...positionalCases(),
   ...parameterCases(),
@@ -363,6 +364,68 @@ function namespaceCases() {
       expect: { 'a.ts': `${imp}import Other from 'other-sdk';\nconst c = new Acme();\nc.data.dimensions.listValues('id');\nnew Other().data.filters.listValues('id');\nfunction f(x) { return x.data.filters.listValues('id'); }\nc.data?.filters.listValues('id');\nconst { data } = c;\n` },
       untouched: ['unrelated.ts'],
       unresolved: [['a.ts', 6, 'cannot be traced'], ['a.ts', 7, 'optional chaining']],
+    },
+  ];
+}
+
+// Type names, as in Mux 15: the resource property robotsPreview became robots and its type namespace
+// RobotsPreview became Robots, in a module that moved from resources/robots-preview to resources/robots.
+function typeNameCases() {
+  const rules = [
+    { id: 'sub', kind: 'rename-import', match: { module: 'acme-sdk/resources/robots-preview' }, transform: { to: 'acme-sdk/resources/robots' } },
+    { id: 'ns', kind: 'rename-namespace', match: { path: 'robotsPreview' }, transform: { to: 'robots' } },
+    { id: 'type', kind: 'rename-namespace', match: { path: 'RobotsPreview' }, transform: { to: 'Robots' } },
+  ];
+  const sub = "'acme-sdk/resources/robots-preview'";
+  const moved = "'acme-sdk/resources/robots'";
+  return [
+    {
+      name: 'type names are renamed after default, namespace and aliased imports, in typeof and in heritage clauses',
+      rules,
+      files: {
+        'a.ts': `import Acme from 'acme-sdk';\nimport * as acme from 'acme-sdk';\nimport { default as A } from 'acme-sdk';\nimport { RobotsPreview as RP } from ${sub};\nconst client = new Acme();\ntype J1 = Acme.RobotsPreview.Job;\ntype J2 = acme.default.RobotsPreview.Job;\ntype J3 = A.RobotsPreview.Job;\ntype J4 = RP.Job;\ntype R = typeof client.robotsPreview;\ntype L = ReturnType<typeof client.robotsPreview.jobs.list>;\nclass Jobs extends Acme.RobotsPreview {}\ninterface Job extends Acme.RobotsPreview.Job {}\nclass Impl implements acme.default.RobotsPreview.Job {}\nimport Alias = Acme.RobotsPreview;\n`,
+      },
+      expect: {
+        'a.ts': `import Acme from 'acme-sdk';\nimport * as acme from 'acme-sdk';\nimport { default as A } from 'acme-sdk';\nimport { Robots as RP } from ${moved};\nconst client = new Acme();\ntype J1 = Acme.Robots.Job;\ntype J2 = acme.default.Robots.Job;\ntype J3 = A.Robots.Job;\ntype J4 = RP.Job;\ntype R = typeof client.robots;\ntype L = ReturnType<typeof client.robots.jobs.list>;\nclass Jobs extends Acme.Robots {}\ninterface Job extends Acme.Robots.Job {}\nclass Impl implements acme.default.Robots.Job {}\nimport Alias = Acme.Robots;\n`,
+      },
+      unresolved: [],
+    },
+    {
+      name: 'names brought in by import type, export from and require are renamed with the local name kept',
+      rules,
+      files: {
+        'types.ts': `import type Acme from 'acme-sdk';\nimport type { RobotsPreview } from ${sub};\nimport { type RobotsPreview as Preview, type JobStatus } from ${sub};\nexport type { RobotsPreview } from ${sub};\nexport type Status = RobotsPreview.JobStatus | Preview.JobStatus | JobStatus | Acme.RobotsPreview.JobStatus;\n`,
+        'b.js': `const { RobotsPreview } = require(${sub});\nmodule.exports = { RobotsPreview };\n`,
+      },
+      expect: {
+        'types.ts': `import type Acme from 'acme-sdk';\nimport type { Robots as RobotsPreview } from ${moved};\nimport { type Robots as Preview, type JobStatus } from ${moved};\nexport type { Robots as RobotsPreview } from ${moved};\nexport type Status = RobotsPreview.JobStatus | Preview.JobStatus | JobStatus | Acme.Robots.JobStatus;\n`,
+        'b.js': `const { Robots: RobotsPreview } = require(${moved});\nmodule.exports = { RobotsPreview };\n`,
+      },
+      unresolved: [],
+    },
+    {
+      name: 'JSDoc types and import() types are renamed, a JSDoc link is not',
+      rules,
+      files: {
+        'a.js': `const Acme = require('acme-sdk');\n/** @type {Acme.RobotsPreview.Job} */\nlet job;\n/**\n * @param {import(${sub}).RobotsPreview} rp\n * @param {import('acme-sdk').default.RobotsPreview.Job} j\n * @returns {typeof import(${sub}).RobotsPreview}\n */\nfunction f(rp, j) { return rp; }\n/** See {@link Acme.RobotsPreview}. */\nmodule.exports = { f, job };\n`,
+        'b.ts': `export type J = import(${sub}).RobotsPreview.Job;\nexport type K = import('acme-sdk').default.RobotsPreview;\n`,
+      },
+      expect: {
+        'a.js': `const Acme = require('acme-sdk');\n/** @type {Acme.Robots.Job} */\nlet job;\n/**\n * @param {import(${moved}).Robots} rp\n * @param {import('acme-sdk').default.Robots.Job} j\n * @returns {typeof import(${moved}).Robots}\n */\nfunction f(rp, j) { return rp; }\n/** See {@link Acme.RobotsPreview}. */\nmodule.exports = { f, job };\n`,
+        'b.ts': `export type J = import(${moved}).Robots.Job;\nexport type K = import('acme-sdk').default.Robots;\n`,
+      },
+      unresolved: [],
+    },
+    {
+      name: 'a local type with the same name is not touched, and a type name that cannot be traced is queued',
+      rules,
+      files: {
+        'a.ts': "import Acme from 'acme-sdk';\nimport Other from 'other-sdk';\nimport type { Acme as Named } from 'acme-sdk';\ndeclare namespace Local { namespace RobotsPreview { type Job = string } }\ninterface RobotsPreview { id: string }\ntype A = Local.RobotsPreview.Job;\ntype B = RobotsPreview;\ntype C = Other.RobotsPreview.Job;\ntype D = Named.RobotsPreview.Job;\ndeclare const loose: any;\ntype E = typeof loose.robotsPreview;\nexport type All = [A, B, C, D, E, Acme];\n",
+        'unrelated.ts': 'declare const x: any;\nexport type T = typeof x.robotsPreview;\n',
+      },
+      expect: {},
+      untouched: ['a.ts', 'unrelated.ts'],
+      unresolved: [['a.ts', 9, 'follows Named, which is imported by name'], ['a.ts', 11, 'type name robotsPreview cannot be traced']],
     },
   ];
 }

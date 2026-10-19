@@ -1,5 +1,6 @@
 import ts from 'typescript';
 import { findCalls, jsDocModuleRefs, moduleRefs, propertyChain } from './match.js';
+import { importTypeOf } from './bindings.js';
 import { walk } from './parse.js';
 
 const IDENT = /^[A-Za-z_$][\w$]*$/;
@@ -83,10 +84,31 @@ export function renameParam(ctx, sf, rule, out) {
   }
 }
 
+// One segment of a dotted name and what comes before it: a property access in code, a qualified name in a
+// type such as Acme.Jobs.Job, or the first name after an import('x') type, whose base is the import itself.
+function segmentOf(n) {
+  if (ts.isPropertyAccessExpression(n) && ts.isIdentifier(n.name)) return { name: n.name, base: n.expression };
+  if (ts.isQualifiedName(n)) return { name: n.right, base: n.left };
+  const holder = ts.isIdentifier(n) ? importTypeOf(n) : null;
+  return holder ? { name: n, base: holder } : null;
+}
+
+// The type position a qualified name or import('x') type sits in: a type reference, typeof, or import X = A.B.
+// A name inside a JSDoc @link, or inside an expression, is not one.
+function typePosition(n) {
+  while (ts.isQualifiedName(n.parent) || (ts.isImportTypeNode(n.parent) && n.parent.qualifier === n)) n = n.parent;
+  const p = n.parent;
+  if (ts.isTypeQueryNode(p)) return 'typeof';
+  if (ts.isImportTypeNode(n)) return n.isTypeOf ? 'typeof' : 'type';
+  return ts.isTypeReferenceNode(p) || ts.isImportEqualsDeclaration(p) ? 'type' : null;
+}
+
 // Renames a property path such as robotsPreview to robots wherever it follows a proven package value,
-// in calls and in plain reads, so one rule moves a whole resource. A one-segment path in destructuring is
-// renamed with the local name kept. The same path on something that cannot be proven is queued in files
-// that reach the package, and the same path on another package is left alone.
+// in calls and in plain reads, so one rule moves a whole resource. The same path is renamed in type names,
+// such as Acme.RobotsPreview.Job, typeof client.robotsPreview and import('acme-sdk').RobotsPreview, and in
+// JSDoc types. A one-segment path in destructuring, or imported by name from the package, is renamed with
+// the local name kept. The same path on something that cannot be proven is queued in files that reach the
+// package, and the same path on another package, or on a type the files declare themselves, is left alone.
 export function renameNamespace(ctx, sf, rule, out) {
   const { path } = rule.match;
   const segs = path.split('.');
@@ -94,22 +116,43 @@ export function renameNamespace(ctx, sf, rule, out) {
   const reaches = ctx.reaches ? ctx.reaches.has(sf.fileName) : moduleRefs(sf, ctx).some((r) => ctx.isPackage(r.spec));
   const rooted = (o) => o?.module && ctx.isPackage(o.module) && o.root !== 'named' && o.props.length === 0;
   const unknown = (o) => !o?.module;
-  walk(sf, (n) => {
-    if (ts.isPropertyAccessExpression(n) && ts.isIdentifier(n.name) && n.name.text === segs.at(-1)) {
+  const leftmost = (n) => (ts.isQualifiedName(n) ? leftmost(n.left) : n);
+  const visit = (n) => {
+    const last = segmentOf(n);
+    if (last && last.name.text === segs.at(-1)) {
       let node = n;
       const names = [];
       for (let i = segs.length - 1; i >= 0; i--) {
-        if (!ts.isPropertyAccessExpression(node) || !ts.isIdentifier(node.name) || node.name.text !== segs[i]) return;
-        names.unshift(node.name);
-        node = node.expression;
+        const s = segmentOf(node);
+        if (!s || s.name.text !== segs[i]) return;
+        names.unshift(s.name);
+        node = s.base;
       }
+      const inType = ts.isPropertyAccessExpression(n) ? null : typePosition(n);
+      if (!ts.isPropertyAccessExpression(n) && !inType) return;
       const origin = ctx.originOf(node);
       if (rooted(origin)) {
         const start = names[0].getStart(sf);
         const end = names.at(-1).getEnd();
         if (!/^[\w$\s.]+$/.test(sf.text.slice(start, end))) out.fail(sf, n, `comments or optional chaining inside ${path}`);
         else out.edit(sf, start, end, to, n);
-      } else if (unknown(origin) && reaches) out.fail(sf, n, `receiver of ${path} cannot be traced to ${ctx.packageName}`);
+      } else if (inType && origin?.module && ctx.isPackage(origin.module) && origin.root === 'named' && origin.props.length === 0) {
+        out.fail(sf, n, `type name ${path} follows ${node.getText(sf)}, which is imported by name from ${origin.module} and may not be the client`);
+      } else if (unknown(origin) && reaches) {
+        // A type the scanned files declare, such as a local namespace with the same member, is not the package's.
+        if (inType === 'type' && !ts.isImportTypeNode(node) && ctx.declaredHere(leftmost(node))) return;
+        out.fail(sf, n, inType ? `type name ${path} cannot be traced to ${ctx.packageName}` : `receiver of ${path} cannot be traced to ${ctx.packageName}`);
+      }
+      return;
+    }
+    // import { RobotsPreview } from 'acme-sdk/resources' becomes import { Robots as RobotsPreview }, and the same in export from.
+    if (segs.length === 1 && (ts.isImportSpecifier(n) || ts.isExportSpecifier(n)) && keyText(n.propertyName ?? n.name) === path) {
+      const spec = (ts.isImportSpecifier(n) ? n.parent.parent.parent : n.parent.parent).moduleSpecifier;
+      if (!spec || !ts.isStringLiteralLike(spec) || !ctx.isPackage(spec.text)) return;
+      if (!IDENT.test(to)) out.fail(sf, n, `${path} cannot be renamed to ${to} in an import`);
+      else if (n.propertyName && ts.isIdentifier(n.propertyName)) out.edit(sf, n.propertyName.getStart(sf), n.propertyName.getEnd(), to, n);
+      else if (!n.propertyName && ts.isIdentifier(n.name)) out.edit(sf, n.name.getStart(sf), n.name.getEnd(), `${to} as ${n.name.text}`, n);
+      else out.fail(sf, n, `${path} is imported with a quoted name`);
       return;
     }
     if (segs.length === 1 && ts.isBindingElement(n) && ts.isObjectBindingPattern(n.parent) && !n.dotDotDotToken && keyText(n.propertyName ?? n.name) === path) {
@@ -122,6 +165,10 @@ export function renameNamespace(ctx, sf, rule, out) {
       } else if (rooted(origin)) out.fail(sf, n, `${path} cannot be renamed to ${to} in destructuring`);
       else if (unknown(origin) && reaches) out.fail(sf, n, `receiver of ${path} cannot be traced to ${ctx.packageName}`);
     }
+  };
+  walk(sf, (n) => {
+    visit(n);
+    for (const doc of n.jsDoc ?? []) ts.forEachChild(doc, (c) => walk(c, visit));
   });
 }
 

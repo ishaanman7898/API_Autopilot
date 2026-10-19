@@ -20,6 +20,13 @@ export function unwrap(n) {
 
 export const fullPath = (o) => (o.root === 'named' ? [o.name] : []).concat(o.props);
 
+// The import('x') type whose qualifier starts with this identifier, as Job does in import('x').Job.Status.
+export function importTypeOf(id) {
+  let q = id;
+  while (q.parent && ts.isQualifiedName(q.parent) && q.parent.left === q) q = q.parent;
+  return q.parent && ts.isImportTypeNode(q.parent) && q.parent.qualifier === q ? q.parent : null;
+}
+
 const sameOrigin = (a, b) => a.module === b.module && a.root === b.root && a.name === b.name && a.props.join('.') === b.props.join('.');
 
 // The single package value behind several possible values, or null. null and undefined are allowed
@@ -95,10 +102,10 @@ export function createResolver(checker, isPackage, sourceFiles = []) {
     return decl ? fromDeclaration(decl, depth) : null;
   }
 
-  // require('x') and import('x'). A scanned file is followed, a relative path that resolves to
-  // nothing is unknown, and anything else is another package.
-  function fromRequire(call, spec, depth) {
-    const mod = checker.getSymbolAtLocation(call.arguments[0]);
+  // require('x'), import('x') and the type import('x'), given the string literal. A scanned file is followed,
+  // a relative path that resolves to nothing is unknown, and anything else is another package.
+  function fromRequire(lit, spec, depth) {
+    const mod = checker.getSymbolAtLocation(lit);
     const file = mod?.declarations?.[0];
     if (file && ts.isSourceFile(file)) return fromModuleSymbol(mod, depth);
     return isRelative(spec) ? null : { module: spec, root: 'other', props: [] };
@@ -377,7 +384,22 @@ export function createResolver(checker, isPackage, sourceFiles = []) {
   function originOf(node, depth = 0) {
     node = unwrap(node);
     if (depth > MAX_DEPTH) return null;
-    if (ts.isIdentifier(node)) return fromSymbol(checker.getSymbolAtLocation(node), depth + 1);
+    if (ts.isIdentifier(node)) {
+      const holder = importTypeOf(node);
+      if (!holder) return fromSymbol(checker.getSymbolAtLocation(node), depth + 1);
+      const base = originOf(holder, depth + 1);
+      return base && extend(base, node.text, undefined, depth);
+    }
+    // Names in types, such as Acme.Jobs.Job, typeof client.jobs and import('acme-sdk').Job, read like property accesses.
+    if (ts.isQualifiedName(node)) {
+      const base = originOf(node.left, depth + 1);
+      return base && extend(base, node.right.text, undefined, depth);
+    }
+    if (ts.isImportTypeNode(node)) {
+      const lit = ts.isLiteralTypeNode(node.argument) && ts.isStringLiteralLike(node.argument.literal) ? node.argument.literal : null;
+      if (!lit) return null;
+      return isPackage(lit.text) ? { module: lit.text, root: 'namespace', props: [] } : fromRequire(lit, lit.text, depth);
+    }
     if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) return { fn: node };
     if (ts.isPropertyAccessExpression(node)) {
       if (ts.isIdentifier(node.name) && isGlobalObject(node.expression)) return fromGlobalCache(node.name.text, depth + 1);
@@ -396,7 +418,7 @@ export function createResolver(checker, isPackage, sourceFiles = []) {
     }
     if (ts.isCallExpression(node)) {
       const spec = moduleArg(node);
-      if (spec !== null) return isPackage(spec) ? { module: spec, root: 'namespace', props: [] } : fromRequire(node, spec, depth);
+      if (spec !== null) return isPackage(spec) ? { module: spec, root: 'namespace', props: [] } : fromRequire(node.arguments[0], spec, depth);
       const base = originOf(node.expression, depth + 1);
       if (base?.fn) return fromFunction(base.fn, depth + 1);
       return base?.module ? { module: base.module, root: 'instance', props: [] } : null;
@@ -421,5 +443,11 @@ export function createResolver(checker, isPackage, sourceFiles = []) {
     }
     return memo.get(n);
   };
-  return { originOf: publicOrigin, moduleArg };
+  // A name the scanned files declare themselves rather than import, such as a local namespace or interface.
+  // No library files are loaded, so every declaration the checker knows is in a scanned file.
+  const declaredHere = (id) => {
+    const sym = checker.getSymbolAtLocation(id);
+    return Boolean(sym && !(sym.flags & ts.SymbolFlags.Alias) && sym.declarations?.length);
+  };
+  return { originOf: publicOrigin, moduleArg, declaredHere };
 }

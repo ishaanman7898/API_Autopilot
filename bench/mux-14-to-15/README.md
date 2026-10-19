@@ -2,7 +2,7 @@
 
 `@mux/mux-node` 15 renamed the package to `@mux/ts`, renamed `client.robotsPreview` to `client.robots`, removed `client.data.filters`, and moved some type declarations. The full list is in Mux's [migration guide](https://github.com/muxinc/mux-ts/blob/v15.0.0/MIGRATION.md).
 
-[rules.json](rules.json) holds the five rules that `apimigrate draft` produces from the 14.1.1 and 15.0.0 SDK checkouts, with the review marks removed: a `rename-import` for the `resources/robots-preview` subpath, a `rename-import` to `@mux/ts`, a `rename-namespace` from `robotsPreview` to `robots`, a `manual` rule for `data.filters.listValues` that names `data.dimensions.listValues` as the likely replacement, and a `rename-dependency` to `@mux/ts` `^15.0.0`. The first version of this benchmark used 16 hand-written rules.
+[rules.json](rules.json) holds six rules. Five are what `apimigrate draft` produces from the 14.1.1 and 15.0.0 SDK checkouts, with the review marks removed: a `rename-import` for the `resources/robots-preview` subpath, a `rename-import` to `@mux/ts`, a `rename-namespace` from `robotsPreview` to `robots`, a `manual` rule for `data.filters.listValues` that names `data.dimensions.listValues` as the likely replacement, and a `rename-dependency` to `@mux/ts` `^15.0.0`. The sixth, a `rename-namespace` from the type namespace `RobotsPreview` to `Robots`, was written by hand from the SDK declarations, because `draft` does not find renamed types. The first version of this benchmark used 16 hand-written rules.
 
 The 32 repositories are every public GitHub repository that code search found pinning `@mux/mux-node` 14 in October 2026, out of 391 it found importing the package. They are listed with their commits in [repos.json](repos.json). Raw output from the latest run is in [results.json](results.json) and [coverage.json](coverage.json). See [how a benchmark runs](../README.md) for the method.
 
@@ -23,17 +23,18 @@ The 32 repositories are every public GitHub repository that code search found pi
    | with clients passed as parameters or held in class fields | 153 (98%) | 3 (2%) | 0 |
 
    The 3 calls still queued build their client from a constructor loaded with a dynamic `import()` at run time, which cannot be proven without running the code.
-5. **Large rule sets are fast.** The 114-rule probe used to rebuild the program for every rule and took 131 s on the largest repository. Reusing the program between rules and caching resolver answers brought it to 3.8 s with identical output. The median apply time with the five rules is about 1.2 s.
+5. **Large rule sets are fast.** The 114-rule probe used to rebuild the program for every rule and took 131 s on the largest repository. Reusing the program between rules and caching resolver answers brought it to 3.8 s with identical output. The median apply time with the six rules is about 1.2 s.
+6. **Type names are renamed where they can be traced, and the sample has none to rename.** `rename-namespace` now also renames its path in type names such as `Mux.RobotsPreview.JobStatus`, `typeof client.robotsPreview` and JSDoc types, and in names imported from the package, such as `import type { RobotsPreview }`. The only robots-preview type in the 32 repositories is the JSDoc `import()` in XAct1HP/10kp, which the subpath rule already moved. So the sixth rule rewrote nothing, and the results with five and six rules are the same as before: 4 errors fixed, none introduced, and 153 of 156 calls proven with 3 queued.
 
 ## What to build next
 
-- Rewrite moved type names inside TypeScript type positions, such as `Mux.RobotsPreview.Job`, not only import paths.
+- Draft renamed type namespaces, such as `RobotsPreview` to `Robots`, so the type rule does not have to be written by hand.
 
-Done since the first run: `tsconfig.json` and `jsconfig.json` path aliases, `export default <name>`, factory functions and lazy caches, queueing lookalikes in files that reach the package, CommonJS `require` and `module.exports`, `globalThis` caches, typed and untyped parameters, class fields, JSDoc `import()` types, `rename-dependency`, `rename-namespace`, drafting from `api.md`, and program reuse between rules.
+Done since the first run: `tsconfig.json` and `jsconfig.json` path aliases, `export default <name>`, factory functions and lazy caches, queueing lookalikes in files that reach the package, CommonJS `require` and `module.exports`, `globalThis` caches, typed and untyped parameters, class fields, JSDoc `import()` types, `rename-dependency`, `rename-namespace`, type names, drafting from `api.md`, and program reuse between rules.
 
 ## Results
 
-Rule file `bench/mux-14-to-15/rules.json`, old SDK `@mux/mux-node@14.1.1`, new SDK `@mux/mux-node@15.5.0, @mux/ts@15.5.0`, run 2026-10-18.
+Rule file `bench/mux-14-to-15/rules.json`, old SDK `@mux/mux-node@14.1.1`, new SDK `@mux/mux-node@15.5.0, @mux/ts@15.5.0`, run 2026-10-19.
 
 | | |
 | --- | --- |
@@ -55,7 +56,7 @@ Rule file `bench/mux-14-to-15/rules.json`, old SDK `@mux/mux-node@14.1.1`, new S
 | Repos with an SDK import its package.json does not declare | 0 of 32 (0 files) |
 | Repos where the SDK resolved in the baseline type-check | 32 of 32 |
 | Old package names left in code after migration | 2 files |
-| Median apply time | 1234 ms |
+| Median apply time | 1196 ms |
 
 ### Per repository
 

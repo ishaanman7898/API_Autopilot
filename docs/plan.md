@@ -5,7 +5,7 @@ This is the working checklist for Phase 1 of the [strategy](strategy.md). It lis
 ## Done
 
 - A signed rule format, an engine, a gate, evidence and replay, a draft command, a watcher and an Action.
-- A Mux kit in [providers/mux](../providers/mux/README.md) with 5 rules, publishing steps and a draft message.
+- A Mux kit in [providers/mux](../providers/mux/README.md) with 6 rules, publishing steps and a draft message.
 - A Cloudflare kit in [providers/cloudflare](../providers/cloudflare/README.md) with 254 rules, publishing steps and a draft message.
 - An Orb kit in [providers/orb](../providers/orb/README.md) with 23 rules drafted from `orb-billing` 5.76.0 and 6.0.0, publishing steps and a draft message. It has not been benchmarked.
 - A test that each kit lints, signs with a throwaway key and builds an index.

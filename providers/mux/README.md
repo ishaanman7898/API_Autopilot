@@ -2,12 +2,12 @@
 
 This folder is a ready to publish rule set for the `@mux/mux-node` 14 to `@mux/ts` 15 upgrade. It is unsigned on purpose. Only Mux can sign it, because the signature is what tells a consumer the change comes from Mux.
 
-[mux-node-14-to-15.rules.json](mux-node-14-to-15.rules.json) holds the five rules from the [Mux benchmark](../../bench/mux-14-to-15/README.md). In that benchmark they fixed every type error the upgrade caused on 32 public repositories, introduced none, and updated every `package.json`.
+[mux-node-14-to-15.rules.json](mux-node-14-to-15.rules.json) holds the six rules from the [Mux benchmark](../../bench/mux-14-to-15/README.md). In that benchmark they fixed every type error the upgrade caused on 32 public repositories, introduced none, and updated every `package.json`.
 
 ## What Mux should check before signing
 
 1. The `manual` rule for `data.filters.listValues` names `data.dimensions.listValues` as a likely replacement. That comes from the SDK diff, not from Mux. Confirm it or change the prompt.
-2. Rewriting moved type names inside type positions, such as `Mux.RobotsPreview.Job`, is not covered yet. Say whether other renames in the migration guide need a rule.
+2. `type-RobotsPreview` renames the type namespace `RobotsPreview` to `Robots` wherever it can be traced to the package: in types such as `Mux.RobotsPreview.JobStatus`, in `import type { RobotsPreview }`, which becomes `import type { Robots as RobotsPreview }`, and in JSDoc types. `apimigrate draft` does not find this rename, so the rule was written by hand from the SDK declarations. A type after `import { Mux } from '@mux/mux-node'` is queued, not rewritten. Four other types are gone in 15 with no rule: `ExportsResponse`, `AssetCreateStaticRenditionResponse`, `DeliveryReportsPageWithTotal` and `PlaybackStoryboardMetaResponse`, as well as the `Data.Filters` types. Say whether any of them has a replacement that needs a rule.
 3. The sunset date is 2027-12-31. Pick the date after which you no longer want consumers to apply the rule.
 
 ## Publishing steps

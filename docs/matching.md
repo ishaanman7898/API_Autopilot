@@ -32,6 +32,7 @@ The engine traces the receiver of a call back to an export of the package. These
 | Untyped parameter of a local function | `function zone(cf) {...}` when every call in the file passes the same package value, and the function is not exported, passed on or bound |
 | Client cached on the global object | `export const client = globalThis.__client ?? makeClient()`, with `globalThis.__client = client` in development, or the same through `const g = globalThis as unknown as {...}` |
 | `??`, `\|\|` and `? :` | `cached ?? new Acme()`, when every side is the same value or `null` |
+| Name in a type | `Acme.Jobs.Job`, `typeof client.jobs`, `import Jobs = Acme.Jobs` or `import('acme-sdk').Jobs.Job`, also inside JSDoc types, each traced from its first name like a receiver |
 | Parentheses, `as`, `!`, `await` around any of the above | `(await import('acme-sdk')).default` |
 
 A function call is proven when every `return` in the function gives the same package value, `null` or `undefined`. A `let` or `var` is proven when every value it is given anywhere in its file is the same package value, `null` or `undefined`. One assignment of anything else, or a write such as `+=`, `++`, a destructuring target or a loop variable, makes it unproven. Generators and methods are not followed.
@@ -52,6 +53,8 @@ For a single segment call such as `createCharge`, the edit renames the imported 
 
 For `rename-param`, the engine renames the key in an object literal argument. Shorthand `{ amount_cents }` becomes `{ amount: amount_cents }`. A quoted key keeps its quotes.
 
+For `rename-namespace`, the path is renamed wherever it directly follows a proven package value: in calls and reads such as `client.robotsPreview.jobs.list()`, and in type names. With `import Mux from '@mux/mux-node'`, a rule from `RobotsPreview` to `Robots` turns `Mux.RobotsPreview.JobStatus` into `Mux.Robots.JobStatus`, and the same in `class Jobs extends Mux.RobotsPreview`, `import Alias = Mux.RobotsPreview`, `import('@mux/mux-node/resources/robots-preview').RobotsPreview` and JSDoc types such as `@type {Mux.RobotsPreview.JobStatus}`. A rule names one spelling, so when both the property `robotsPreview` and the type namespace `RobotsPreview` change, as in Mux 15, each needs its own rule. A one-segment path that is imported by name from the package, or destructured from a proven value, is renamed with the local name kept: `import type { RobotsPreview } from '...'` becomes `import type { Robots as RobotsPreview } from '...'`, and no reference changes. A type the scanned files declare themselves, such as a local namespace with a member of the same name, is left alone. So is a JSDoc `@link`.
+
 Edits are applied by source position, so formatting, comments and line endings outside the edit are untouched.
 
 ## What goes to the queue
@@ -59,6 +62,8 @@ Edits are applied by source position, so formatting, comments and line endings o
 | Reason | When |
 | --- | --- |
 | receiver of `<call>` cannot be traced to `<package>` | The call looks right and the file imports the package, directly or through other scanned files, but the receiver is a parameter, a class field, a `let` that is also given other values, the result of a function that can return something else, or anything else the engine cannot follow. |
+| type name `<path>` cannot be traced to `<package>` | The same for a type, such as `typeof x.robotsPreview`, where `x` cannot be followed. |
+| type name `<path>` follows `<name>`, which is imported by name from `<package>` and may not be the client | A type such as `Mux.RobotsPreview.JobStatus` after `import { Mux } from '@mux/mux-node'`. A named export can be anything, so the path after it is not proven to be the client's. |
 | call path crosses a variable binding or a named import | The proven path is split across bindings, such as `const { charges } = client` and then `charges.create()`, or `import { charges } from 'acme-sdk'`. Rewriting the call alone would break the binding. |
 | comments or optional chaining inside the call path | The text between the segments is not plain identifiers and dots. |
 | argument N of `<call>` is not an object literal | The argument is a variable or an expression. |
@@ -76,7 +81,7 @@ Files with syntax errors are skipped and listed. Files larger than 2 MB are not 
 - Object methods and class members are not followed. A property of `globalThis` is followed only when every assignment to it in the scanned files gives the same package value, so code outside the scan that sets it is not seen.
 - Files outside `paths` are not part of the program, so imports of them are not followed.
 - `export * from` is not followed.
-- Computed property names and dynamic calls are not followed.
+- Computed property names and dynamic calls are not followed. Neither are indexed access types such as `Mux['RobotsPreview']`.
 - Test frameworks that mock the package can hide a call from the engine. The mock string is queued, the calls through the mock are not.
 - The TypeScript version is pinned and recorded in the evidence. A different version may resolve some edge cases differently.
 

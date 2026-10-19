@@ -10,7 +10,7 @@ I build apimigrate, an open source tool that applies a provider's signed migrati
 
 Two things I would like from you.
 
-1. Review the five rules, in particular the replacement for `data.filters.listValues`.
+1. Review the six rules, in particular the replacement for `data.filters.listValues` and the hand-written rename of the `RobotsPreview` types.
 2. If they look right, sign them with a Mux key and host the key set and index on your domain. The steps take about ten minutes and are in the Mux rule kit.
 
 Consumers would then get a draft pull request for the upgrade that you vouch for. Nothing is merged for them, and you can set a sunset date or revoke the key at any time.

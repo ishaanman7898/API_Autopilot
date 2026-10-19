@@ -38,6 +38,16 @@
       }
     },
     {
+      "id": "type-RobotsPreview",
+      "kind": "rename-namespace",
+      "match": {
+        "path": "RobotsPreview"
+      },
+      "transform": {
+        "to": "Robots"
+      }
+    },
+    {
       "id": "removed-data.filters.listValues",
       "kind": "manual",
       "match": {
