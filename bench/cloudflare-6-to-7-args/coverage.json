@@ -1,0 +1,906 @@
+{
+ "totals": {
+  "text": 233,
+  "proven": 187,
+  "queued": 31,
+  "invisible": 15
+ },
+ "receivers": {
+  "types": {
+   "Cloudflare": 184
+  },
+  "other": [
+   "DeveloperKubilay/Karshard serve/Cloudflare/index.js:70 rulesets.rules.edit: client is any",
+   "alecks/digifilm uploader/main.js:138 kv.namespaces.values.delete: cloudflareClient is any",
+   "alecks/digifilm uploader/main.js:82 kv.namespaces.values.get: cloudflareClient is any",
+   "alecks/digifilm uploader/main.js:116 kv.namespaces.values.update: cloudflareClient is any"
+  ]
+ },
+ "rows": [
+  {
+   "repo": "Christopher-Hayes/yt-on-fedi",
+   "text": 2,
+   "proven": 2,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 2
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "DeveloperKubilay/Karshard",
+   "text": 1,
+   "proven": 1,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {},
+    "other": [
+     "serve/Cloudflare/index.js:70 rulesets.rules.edit: client is any"
+    ]
+   }
+  },
+  {
+   "repo": "EthanThatOneKid/sparql-agent",
+   "text": 3,
+   "proven": 3,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 3
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "ExaDev/InfraSync",
+   "text": 2,
+   "proven": 2,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 2
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "GriffinSego/pebble-api",
+   "text": 2,
+   "proven": 2,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 2
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "Groupthink-dev/cloudflare-blade-mcp",
+   "text": 8,
+   "proven": 8,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 8
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "Helicone/helicone",
+   "text": 3,
+   "proven": 3,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 3
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "Infrawrench/Infrawrench",
+   "text": 12,
+   "proven": 12,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 12
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "JesusFilm/core",
+   "text": 1,
+   "proven": 0,
+   "queued": 1,
+   "invisible": 0,
+   "invisibleSites": []
+  },
+  {
+   "repo": "Lakphy/quote0-api-demo",
+   "text": 13,
+   "proven": 13,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 13
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "MyGameOne/nintendo-switch-scraper",
+   "text": 6,
+   "proven": 6,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 6
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "SkyBird233/cf-pages-logs",
+   "text": 2,
+   "proven": 2,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 2
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "Tanvisharma31/cloudflare-mcp-server",
+   "text": 5,
+   "proven": 5,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 5
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "The-LukeZ/DiscordDataViewer",
+   "text": 2,
+   "proven": 2,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 3
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "ThunLights/Status-Guard",
+   "text": 1,
+   "proven": 1,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 1
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "TimoWilhelm/wfp-manager",
+   "text": 2,
+   "proven": 2,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 2
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "abdu6666/Bunny-AI-Agent",
+   "text": 2,
+   "proven": 2,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 2
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "aizen2006/MarketSage",
+   "text": 3,
+   "proven": 3,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 3
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "alchemy-run/alchemy-async",
+   "text": 1,
+   "proven": 1,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 1
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "alecks/digifilm",
+   "text": 3,
+   "proven": 3,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {},
+    "other": [
+     "uploader/main.js:138 kv.namespaces.values.delete: cloudflareClient is any",
+     "uploader/main.js:82 kv.namespaces.values.get: cloudflareClient is any",
+     "uploader/main.js:116 kv.namespaces.values.update: cloudflareClient is any"
+    ]
+   }
+  },
+  {
+   "repo": "alhill/newportfolionog",
+   "text": 3,
+   "proven": 3,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 3
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "anomalyco/opencode",
+   "text": 2,
+   "proven": 2,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 2
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "apandey16/news_ainchor",
+   "text": 2,
+   "proven": 2,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 2
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "axtuki1/kick-ban-chance",
+   "text": 2,
+   "proven": 2,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 2
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "bearBoy80/cflareOps",
+   "text": 11,
+   "proven": 11,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 11
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "caiomioto2/meta-ads-saas",
+   "text": 4,
+   "proven": 0,
+   "queued": 4,
+   "invisible": 0,
+   "invisibleSites": []
+  },
+  {
+   "repo": "christcr2012/robinsonai-mcp-servers-49bf1a39",
+   "text": 10,
+   "proven": 0,
+   "queued": 0,
+   "invisible": 10,
+   "invisibleSites": [
+    "packages/robinsons-toolkit-mcp/src/categories/cloudflare/handlers-3.ts:84 kv.namespaces.values.get",
+    "packages/robinsons-toolkit-mcp/src/categories/cloudflare/handlers-3.ts:95 kv.namespaces.values.update",
+    "packages/robinsons-toolkit-mcp/src/categories/cloudflare/handlers-3.ts:142 kv.namespaces.metadata.get",
+    "packages/robinsons-toolkit-mcp/src/categories/cloudflare/handlers-3.ts:158 kv.namespaces.values.get",
+    "packages/robinsons-toolkit-mcp/src/categories/cloudflare/handlers-3.ts:159 kv.namespaces.metadata.get",
+    "packages/robinsons-toolkit-mcp/src/categories/cloudflare/handlers-3.ts:272 r2.buckets.objects.upload",
+    "packages/robinsons-toolkit-mcp/src/categories/cloudflare/handlers-3.ts:283 r2.buckets.objects.get",
+    "packages/robinsons-toolkit-mcp/src/categories/cloudflare/handlers-4.ts:73 pages.projects.deployments.get",
+    "packages/robinsons-toolkit-mcp/src/categories/cloudflare/handlers-4.ts:106 pages.projects.deployments.retry",
+    "packages/robinsons-toolkit-mcp/src/categories/cloudflare/handlers-4.ts:117 pages.projects.deployments.rollback"
+   ]
+  },
+  {
+   "repo": "cloudflare/mcp-server-cloudflare",
+   "text": 3,
+   "proven": 0,
+   "queued": 0,
+   "invisible": 3,
+   "invisibleSites": [
+    "apps/ai-gateway/src/tools/ai-gateway.tools.ts:111 aiGateway.logs.get",
+    "apps/ai-gateway/src/tools/ai-gateway.tools.ts:152 aiGateway.logs.request",
+    "apps/ai-gateway/src/tools/ai-gateway.tools.ts:193 aiGateway.logs.response"
+   ]
+  },
+  {
+   "repo": "cloudflare/templates",
+   "text": 2,
+   "proven": 2,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 2
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "cloudflare/workers-for-platforms-example",
+   "text": 1,
+   "proven": 1,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 1
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "codius/codius-workers",
+   "text": 2,
+   "proven": 2,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 2
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "crowdsecurity/cs-cloudflare-worker-bouncer-install",
+   "text": 6,
+   "proven": 0,
+   "queued": 6,
+   "invisible": 0,
+   "invisibleSites": []
+  },
+  {
+   "repo": "dociodev/docio",
+   "text": 1,
+   "proven": 0,
+   "queued": 0,
+   "invisible": 1,
+   "invisibleSites": [
+    "apps/worker/src/github/utils/remove-repo.ts:54 pages.projects.domains.delete"
+   ]
+  },
+  {
+   "repo": "erfianugrah/cloudflare_api_scripts",
+   "text": 2,
+   "proven": 2,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 2
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "fanonwue/cf-deployment-deleter",
+   "text": 1,
+   "proven": 1,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 1
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "fiberplane/fiberplane",
+   "text": 1,
+   "proven": 1,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 1
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "gwelinder/pi-cloudflare-codemode",
+   "text": 11,
+   "proven": 11,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 11
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "hefy2027/cf-manager",
+   "text": 13,
+   "proven": 13,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 13
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "hyperholmes/orgflare",
+   "text": 6,
+   "proven": 6,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 6
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "jmbish04/custom-cloudflare-mcp-server",
+   "text": 6,
+   "proven": 6,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 6
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "jpheimonen/flaregun",
+   "text": 3,
+   "proven": 0,
+   "queued": 3,
+   "invisible": 0,
+   "invisibleSites": []
+  },
+  {
+   "repo": "julienloizelet/cs-cloudflare-bouncer-gui",
+   "text": 2,
+   "proven": 0,
+   "queued": 2,
+   "invisible": 0,
+   "invisibleSites": []
+  },
+  {
+   "repo": "jwyGithub/cloudflare-workers",
+   "text": 2,
+   "proven": 2,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 2
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "lemonmade/watch",
+   "text": 1,
+   "proven": 1,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 1
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "m1steranderson/interview",
+   "text": 3,
+   "proven": 3,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 3
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "markjmiller/workers-hmd",
+   "text": 1,
+   "proven": 1,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 1
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "mastermakrela/cf-cleanup-worker",
+   "text": 1,
+   "proven": 1,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 1
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "mastra-ai/mastra",
+   "error": "apply crashed (SIGABRT)",
+   "text": 3,
+   "proven": 0,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": []
+  },
+  {
+   "repo": "mfinelli/cloudflare-pages-cleanup",
+   "text": 2,
+   "proven": 1,
+   "queued": 0,
+   "invisible": 1,
+   "invisibleSites": [
+    "src/cloudflare.ts:388 pages.projects.deployments.delete"
+   ],
+   "receivers": {
+    "types": {
+     "Cloudflare": 1
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "mizchi/k1c",
+   "text": 16,
+   "proven": 2,
+   "queued": 14,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 2
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "myselfgus/worker-publisher",
+   "text": 5,
+   "proven": 5,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 5
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "nandanmen/wakaran-ai",
+   "text": 2,
+   "proven": 2,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 2
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "opennextjs/opennextjs-cloudflare",
+   "text": 1,
+   "proven": 0,
+   "queued": 1,
+   "invisible": 0,
+   "invisibleSites": []
+  },
+  {
+   "repo": "opraying/template",
+   "text": 1,
+   "proven": 1,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 1
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "orctane/opentools",
+   "text": 3,
+   "proven": 3,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 3
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "rouvenschandl/cloudflare-updater",
+   "text": 1,
+   "proven": 1,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 1
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "ryanyogan/cloudflare-tui-ink",
+   "text": 2,
+   "proven": 2,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 2
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "shopify-magical/agx9-staff",
+   "text": 2,
+   "proven": 2,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 2
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "shun-yamazaki/v-metrics",
+   "text": 4,
+   "proven": 4,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 4
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "spacelift-flows-apps/flows-app-cloudflare",
+   "text": 3,
+   "proven": 3,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 3
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "streetwriters/notesnook",
+   "error": "apply did not finish in 10 minutes",
+   "text": 1,
+   "proven": 0,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": []
+  },
+  {
+   "repo": "sureboy/jscadwebsite",
+   "error": "apply did not finish in 10 minutes",
+   "text": 3,
+   "proven": 0,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": []
+  },
+  {
+   "repo": "surgent-dev/surgent",
+   "text": 4,
+   "proven": 4,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 4
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "tidtulabs/tidtu",
+   "text": 6,
+   "proven": 6,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 6
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "vaishnav-mk/workflows-plus-plus",
+   "error": "apply did not finish in 10 minutes",
+   "text": 2,
+   "proven": 0,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": []
+  },
+  {
+   "repo": "webview-bundle/webview-bundle",
+   "text": 2,
+   "proven": 2,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 2
+    },
+    "other": []
+   }
+  },
+  {
+   "repo": "wriddhi/bskypt",
+   "text": 3,
+   "proven": 3,
+   "queued": 0,
+   "invisible": 0,
+   "invisibleSites": [],
+   "receivers": {
+    "types": {
+     "Cloudflare": 3
+    },
+    "other": []
+   }
+  }
+ ]
+}
