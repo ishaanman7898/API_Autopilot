@@ -21,8 +21,9 @@ The 32 repositories are every public GitHub repository that code search found pi
    | with factory functions, lazy caches, and lookalikes queued in files that reach the package | 126 (81%) | 29 (19%) | 1 (1%) |
    | with CommonJS exports and `globalThis` caches | 136 (87%) | 20 (13%) | 0 |
    | with clients passed as parameters or held in class fields | 153 (98%) | 3 (2%) | 0 |
+   | with methods, getters and object literal members, and callbacks a local method calls | 153 (98%) | 3 (2%) | 0 |
 
-   The 3 calls still queued build their client from a constructor loaded with a dynamic `import()` at run time, which cannot be proven without running the code.
+   The 3 calls still queued build their client from a constructor loaded with a dynamic `import()` at run time, which cannot be proven without running the code. No Mux call in the sample gets its client from a method, getter, object literal or callback, so following those changed nothing here. It did slow the probe on Docaari/GrindfyManager, a 2,705-file app with many `window.x` reads, until global-object writes and identifiers were indexed once per run. With that, the 114-rule probe there takes less than half the CPU time it took before methods were followed, with identical output.
 5. **Large rule sets are fast.** The 114-rule probe used to rebuild the program for every rule and took 131 s on the largest repository. Reusing the program between rules and caching resolver answers brought it to 3.8 s with identical output. The median apply time with the six rules is about 1.2 s.
 6. **Type names are renamed where they can be traced, and the sample has none to rename.** `rename-namespace` now also renames its path in type names such as `Mux.RobotsPreview.JobStatus`, `typeof client.robotsPreview` and JSDoc types, and in names imported from the package, such as `import type { RobotsPreview }`. The only robots-preview type in the 32 repositories is the JSDoc `import()` in XAct1HP/10kp, which the subpath rule already moved. So the sixth rule rewrote nothing, and the results with five and six rules are the same as before: 4 errors fixed, none introduced, and 153 of 156 calls proven with 3 queued.
 
@@ -56,7 +57,7 @@ Rule file `bench/mux-14-to-15/rules.json`, old SDK `@mux/mux-node@14.1.1`, new S
 | Repos with an SDK import its package.json does not declare | 0 of 32 (0 files) |
 | Repos where the SDK resolved in the baseline type-check | 32 of 32 |
 | Old package names left in code after migration | 2 files |
-| Median apply time | 1196 ms |
+| Median apply time | 1157 ms |
 
 ### Per repository
 
