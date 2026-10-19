@@ -244,32 +244,41 @@ export function createResolver(checker, isPackage, sourceFiles = []) {
   // followed when every assignment to it in the scanned files gives the same package value, null or
   // undefined. A write with a computed key or a compound operator, or no write at all, leaves it unknown.
   function fromGlobalCache(name, depth) {
+    const writes = globalWrites();
+    if (writes.unknown) return null;
     if (pendingGlobals.has(name)) return PENDING;
     pendingGlobals.add(name);
     try {
-      const values = [];
-      let unknownWrite = false;
-      for (const sf of sourceFiles) {
-        walk(sf, (n) => {
-          if (unknownWrite || !ts.isBinaryExpression(n)) return;
-          const op = n.operatorToken.kind;
-          if (op < ts.SyntaxKind.FirstAssignment || op > ts.SyntaxKind.LastAssignment) return;
-          const left = unwrap(n.left);
-          let key;
-          if (ts.isPropertyAccessExpression(left) && ts.isIdentifier(left.name)) key = left.name.text;
-          else if (ts.isElementAccessExpression(left)) key = ts.isStringLiteralLike(left.argumentExpression) ? left.argumentExpression.text : null;
-          else return;
-          if (!isGlobalObject(left.expression)) return;
-          if (key === null) unknownWrite = true;
-          else if (key !== name) return;
-          else if (op === ts.SyntaxKind.EqualsToken || op === ts.SyntaxKind.QuestionQuestionEqualsToken || op === ts.SyntaxKind.BarBarEqualsToken) values.push(valueOf(n.right, depth + 1));
-          else unknownWrite = true;
-        });
-      }
-      return unknownWrite || !values.length ? null : join(values);
+      const list = writes.byName.get(name) ?? [];
+      return !list.length || list.includes(null) ? null : join(list.map((right) => valueOf(right, depth + 1)));
     } finally {
       pendingGlobals.delete(name);
     }
+  }
+  // Every assignment to a property of the global object in the scanned files, found once: the right side by
+  // property name, or null for a compound operator. unknown is set by a write with a computed key.
+  let globalIndex = null;
+  function globalWrites() {
+    if (globalIndex) return globalIndex;
+    globalIndex = { unknown: false, byName: new Map() };
+    for (const sf of sourceFiles) {
+      walk(sf, (n) => {
+        if (!ts.isBinaryExpression(n)) return;
+        const op = n.operatorToken.kind;
+        if (op < ts.SyntaxKind.FirstAssignment || op > ts.SyntaxKind.LastAssignment) return;
+        const left = unwrap(n.left);
+        let key;
+        if (ts.isPropertyAccessExpression(left) && ts.isIdentifier(left.name)) key = left.name.text;
+        else if (ts.isElementAccessExpression(left)) key = ts.isStringLiteralLike(left.argumentExpression) ? left.argumentExpression.text : null;
+        else return;
+        if (!isGlobalObject(left.expression)) return;
+        if (key === null) { globalIndex.unknown = true; return; }
+        if (!globalIndex.byName.has(key)) globalIndex.byName.set(key, []);
+        const stores = op === ts.SyntaxKind.EqualsToken || op === ts.SyntaxKind.QuestionQuestionEqualsToken || op === ts.SyntaxKind.BarBarEqualsToken;
+        globalIndex.byName.get(key).push(stores ? n.right : null);
+      });
+    }
+    return globalIndex;
   }
 
   // A call is followed when every return of the function gives the same package value, null or undefined.
@@ -467,17 +476,29 @@ export function createResolver(checker, isPackage, sourceFiles = []) {
       }
     }
     const refs = [];
-    for (const sf of sourceFiles) {
-      walk(sf, (n) => {
-        if (!ts.isIdentifier(n) || !names.has(n.text)) return;
-        let s = ts.isShorthandPropertyAssignment(n.parent) && n.parent.name === n ? checker.getShorthandAssignmentValueSymbol(n.parent) : checker.getSymbolAtLocation(n);
-        if (s && s.flags & ts.SymbolFlags.Alias) {
-          try { s = checker.getAliasedSymbol(s); } catch { s = null; }
-        }
-        if (s === sym) refs.push(n);
-      });
+    for (const n of [...names].flatMap(identifiersNamed)) {
+      let s = ts.isShorthandPropertyAssignment(n.parent) && n.parent.name === n ? checker.getShorthandAssignmentValueSymbol(n.parent) : checker.getSymbolAtLocation(n);
+      if (s && s.flags & ts.SymbolFlags.Alias) {
+        try { s = checker.getAliasedSymbol(s); } catch { s = null; }
+      }
+      if (s === sym) refs.push(n);
     }
     return refs;
+  }
+  // Every identifier in the scanned files by its text, found once.
+  let identifierIndex = null;
+  function identifiersNamed(name) {
+    if (!identifierIndex) {
+      identifierIndex = new Map();
+      for (const sf of sourceFiles) {
+        walk(sf, (n) => {
+          if (!ts.isIdentifier(n)) return;
+          if (!identifierIndex.has(n.text)) identifierIndex.set(n.text, []);
+          identifierIndex.get(n.text).push(n);
+        });
+      }
+    }
+    return identifierIndex.get(name) ?? [];
   }
 
   // A type annotation that names a package export, such as `client: Acme`, `client: Acme | null` or
