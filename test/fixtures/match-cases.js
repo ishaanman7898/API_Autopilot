@@ -203,6 +203,7 @@ export const cases = [
   ...positionalCases(),
   ...optionCases(),
   ...parameterCases(),
+  ...memberCases(),
   {
     name: 'lookalikes in files that reach the package through local imports are queued, others are not',
     rules: mp,
@@ -281,6 +282,48 @@ function parameterCases() {
       untouched: ['a.js'],
       unresolved: [['a.js', 3, 'cannot be traced'], ['a.js', 6, 'cannot be traced'], ['a.js', 9, 'cannot be traced']],
     },
+  ];
+}
+
+// Clients returned or held by methods, getters and properties of local classes and object literals, and passed
+// by a method to a callback. Each followed case is written once with call() and expected with done().
+function memberCases() {
+  const imp = "import Acme from 'acme-sdk';\n";
+  const call = (r) => `${r}.charges.create({ amount_cents: 1 })`;
+  const done = (r) => `${r}.payments.create({ amount: 1 })`;
+  const followed = (name, files) => ({ name, rules: mp, files: files(call), expect: files(done), unresolved: [] });
+  const refused = (name, files, unresolved) => ({ name, rules: mp, files, expect: {}, untouched: Object.keys(files), unresolved: unresolved.map(([f, l]) => [f, l, 'cannot be traced']) });
+  return [
+    followed('a method that returns the client is followed on this, on an instance, on a static method and on a parameter typed with a local class', (c) => ({
+      'a.ts': `${imp}class Base {\n  protected make() { return new Acme(); }\n}\nexport class S extends Base {\n  static shared() { return new Acme(); }\n  client() { return this.make(); }\n  pay() { ${c('this.client()')}; }\n}\nconst s = new S();\n${c('s.client()')};\n${c('S.shared()')};\nexport function f(svc: S) { ${c('svc.client()')}; }\n`,
+    })),
+    followed('a getter that returns the client is followed in a class, as a static and in an object literal', (c) => ({
+      'a.ts': `${imp}export class S {\n  private cached: Acme | null = null;\n  get client() { return (this.cached ??= new Acme()); }\n  static get shared() { return new Acme(); }\n  pay() { ${c('this.client')}; }\n}\n${c('new S().client')};\n${c('S.shared')};\nconst deps = { get client() { return new Acme(); } };\n${c('deps.client')};\n`,
+    })),
+    followed('object literal properties and methods that hold or return the client are followed, also from another file', (c) => ({
+      'lib/deps.ts': `${imp}const cf = new Acme();\nexport const api = { client: new Acme(), cf, make: () => new Acme() };\nexport const deps = {\n  cf() { return cf; },\n  pay() { ${c('this.cf()')}; },\n};\n`,
+      'a.ts': `import { api, deps } from './lib/deps';\nimport * as lib from './lib/deps';\n${c('api.client')};\n${c('api.cf')};\n${c('api.make()')};\n${c('deps.cf()')};\n${c('lib.api.client')};\n`,
+    })),
+    followed('a client a class method returns inside an object, read through a field typed with that class or passed to a callback', (c) => ({
+      'runner.ts': `${imp}export interface Auth { cf: Acme; token: string }\nexport class Runner {\n  async auth(): Promise<Auth> {\n    if (!process.env.TOKEN) throw new Error('no token');\n    return { cf: new Acme(), token: process.env.TOKEN };\n  }\n  async run<T>(fn: (a: Auth) => Promise<T>): Promise<T> {\n    const a = await this.auth();\n    return fn(a);\n  }\n}\n`,
+      'dns.ts': `import { Runner } from './runner';\nexport class Dns {\n  constructor(private readonly runner: Runner) {}\n  async list() {\n    const { cf } = await this.runner.auth();\n    return ${c('cf')};\n  }\n  create() { return this.runner.run(async ({ cf }) => ${c('cf')}); }\n  remove() { return this.runner.run(async (auth) => ${c('auth.cf')}); }\n}\n`,
+    })),
+    refused('a method or getter that can return something else is not trusted', {
+      'a.ts': `${imp}class S {\n  client() { return process.env.MOCK ? makeMock() : new Acme(); }\n  get other() { if (process.env.MOCK) return makeMock(); return new Acme(); }\n}\n${call('new S().client()')};\n${call('new S().other')};\n`,
+    }, [['a.ts', 6], ['a.ts', 7]]),
+    refused('a member that is written anywhere, even through this, is not trusted', {
+      'a.ts': `${imp}class S {\n  client() { return new Acme(); }\n}\nclass T {\n  make() { return new Acme(); }\n  constructor() { this.make = this.make.bind(this); }\n}\nS.prototype.client = () => makeMock();\nconst api = { client: new Acme(), reset() { this.client = makeMock(); } };\n${call('new S().client()')};\n${call('new T().make()')};\n${call('api.client')};\n`,
+    }, [['a.ts', 11], ['a.ts', 12], ['a.ts', 13]]),
+    refused('an object that escapes, or has a spread or computed write after the member, is not trusted', {
+      'lib.ts': `${imp}export const shared = { client: new Acme() };\nconst a = { client: new Acme() };\nregister(a);\nconst b = { client: new Acme() };\nconst alias = b;\nconst c = { client: new Acme(), ...overrides };\nconst d = { client: new Acme() };\nd[key] = makeMock();\n${call('a.client')};\n${call('b.client')};\n${call('c.client')};\n${call('d.client')};\n`,
+      'use.ts': `import { shared } from './lib';\nObject.assign(shared, overrides);\n${call('shared.client')};\n`,
+    }, [['lib.ts', 10], ['lib.ts', 11], ['lib.ts', 12], ['lib.ts', 13], ['use.ts', 3]]),
+    refused('a member a subclass or a mixin may override is not trusted', {
+      'a.ts': `${imp}export class S {\n  readonly field = new Acme();\n  client() { return new Acme(); }\n  pay() { ${call('this.client()')}; }\n  payField() { ${call('this.field')}; }\n}\nexport class T extends S {\n  readonly field = makeMock();\n  client() { return makeMock(); }\n}\nclass M { client() { return new Acme(); } }\nclass N extends Mixin(M) {}\nexport function f(s: S, m: M) {\n  ${call('s.client()')};\n  ${call('m.client()')};\n}\n`,
+    }, [['a.ts', 5], ['a.ts', 6], ['a.ts', 15], ['a.ts', 16]]),
+    refused('a callback is not followed when the method passes it on, reads arguments or calls it with something else', {
+      'a.ts': `${imp}class R {\n  auth() { return { cf: new Acme() }; }\n  leak(fn) { queue.push(fn); return fn(this.auth()); }\n  args(fn) { arguments[0](makeMock()); return fn(this.auth()); }\n  mixed(fn) { fn(this.auth()); return fn({ cf: makeMock() }); }\n}\nconst r = new R();\nr.leak(({ cf }) => ${call('cf')});\nr.args(({ cf }) => ${call('cf')});\nr.mixed(({ cf }) => ${call('cf')});\n`,
+    }, [['a.ts', 9], ['a.ts', 10], ['a.ts', 11]]),
   ];
 }
 

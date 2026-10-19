@@ -29,13 +29,25 @@ The engine traces the receiver of a call back to an export of the package. These
 | Lazily cached client | `let cached = null; function getClient() { if (!cached) cached = new Acme(); return cached }` |
 | Parameter typed with the SDK class | `function run(client: Acme)`, also `Acme \| null` and `acme.Client` |
 | Class field through `this` | `private readonly client: Acme`, `constructor(private client: Acme)` or `private readonly client = new Acme()`, used as `this.client` |
+| Method of a local class | `client() { return new Acme() }`, then `this.client().charges.create()`, `new Svc().client()`, or `svc.client()` with `svc: Svc`. Also static methods and methods of a local base class. |
+| Getter | `get client() { return (this.cached ??= new Acme()) }`, in a class or an object literal |
+| Object literal property or method | `const api = { client: new Acme(), cf() { return cf } }`, then `api.client` or `api.cf()`, also from another file and through `this` in the literal's own methods |
+| Callback a local method calls | `runner.run(async ({ cf }) => cf.zones.list())`, when `run(fn)` only ever calls `fn` with the same value, such as `fn(await this.getClient())` |
 | Untyped parameter of a local function | `function zone(cf) {...}` when every call in the file passes the same package value, and the function is not exported, passed on or bound |
 | Client cached on the global object | `export const client = globalThis.__client ?? makeClient()`, with `globalThis.__client = client` in development, or the same through `const g = globalThis as unknown as {...}` |
 | `??`, `\|\|` and `? :` | `cached ?? new Acme()`, when every side is the same value or `null` |
 | Name in a type | `Acme.Jobs.Job`, `typeof client.jobs`, `import Jobs = Acme.Jobs` or `import('acme-sdk').Jobs.Job`, also inside JSDoc types, each traced from its first name like a receiver |
 | Parentheses, `as`, `!`, `await` around any of the above | `(await import('acme-sdk')).default` |
 
-A function call is proven when every `return` in the function gives the same package value, `null` or `undefined`. A `let` or `var` is proven when every value it is given anywhere in its file is the same package value, `null` or `undefined`. One assignment of anything else, or a write such as `+=`, `++`, a destructuring target or a loop variable, makes it unproven. Generators and methods are not followed.
+A function call is proven when every `return` in the function gives the same package value, `null` or `undefined`. A `let` or `var` is proven when every value it is given anywhere in its file is the same package value, `null` or `undefined`. One assignment of anything else, or a write such as `+=`, `++`, a destructuring target or a loop variable, makes it unproven. Generators are not followed.
+
+A method or getter is followed through its `return`s like a function, and an object literal's property through its value. A class field still needs a type annotation, or `readonly` with an initializer. A member is not followed, and its calls are queued, when:
+
+- a property with its name is written anywhere in the scanned files, as in `svc.client = mock`, `Svc.prototype.client = ...` or `this.client = this.client.bind(this)`. A write through `this` in an unrelated class, such as another class setting its own field of the same name, does not count.
+- the class is known only from a type or from `this`, and a subclass in the scanned files declares the same member, or the class is passed to a mixin, as in `class B extends Mixin(A)`. This also applies to a `readonly` field traced through its initializer.
+- the object literal is held in a variable or a default export, and any scanned file uses it other than to read its properties, export it or name its type. `register(api)`, `const other = api` and `{ api }` let other code change it. A spread or computed key after the member can also replace it.
+
+An untyped parameter of a function passed straight to a local function or method is followed when every call that function makes to the parameter passes the same value. It is queued when the function passes the callback on, stores it, reads `arguments` or calls it with anything else.
 
 A call whose receiver comes from a different package is ignored on purpose, even if its shape matches.
 
@@ -67,7 +79,7 @@ Edits are applied by source position, so formatting, comments and line endings o
 
 | Reason | When |
 | --- | --- |
-| receiver of `<call>` cannot be traced to `<package>` | The call looks right and the file imports the package, directly or through other scanned files, but the receiver is a parameter, a class field, a `let` that is also given other values, the result of a function that can return something else, or anything else the engine cannot follow. |
+| receiver of `<call>` cannot be traced to `<package>` | The call looks right and the file imports the package, directly or through other scanned files, but the receiver is a parameter, a class field, a `let` that is also given other values, the result of a function that can return something else, a member that is written elsewhere or may be overridden, or anything else the engine cannot follow. |
 | type name `<path>` cannot be traced to `<package>` | The same for a type, such as `typeof x.robotsPreview`, where `x` cannot be followed. |
 | type name `<path>` follows `<name>`, which is imported by name from `<package>` and may not be the client | A type such as `Mux.RobotsPreview.JobStatus` after `import { Mux } from '@mux/mux-node'`. A named export can be anything, so the path after it is not proven to be the client's. |
 | call path crosses a variable binding or a named import | The proven path is split across bindings, such as `const { charges } = client` and then `charges.create()`, or `import { charges } from 'acme-sdk'`. Rewriting the call alone would break the binding. |
@@ -88,7 +100,7 @@ Files with syntax errors are skipped and listed. Files larger than 2 MB are not 
 
 - No type information. The engine does not know the type of a parameter or a field.
 - A call in a file that does not import the package, and does not reach it through a relative or aliased import of another scanned file, is not seen.
-- Object methods and class members are not followed. A property of `globalThis` is followed only when every assignment to it in the scanned files gives the same package value, so code outside the scan that sets it is not seen.
+- A class instance is not checked for escapes, so a method replaced other than by assignment, as by `Object.assign(svc, ...)` or a test spy, is not seen. An object literal that no variable holds, such as one a method returns, is only checked for writes to the member. A property of `globalThis` is followed only when every assignment to it in the scanned files gives the same package value, so code outside the scan that sets it is not seen.
 - Files outside `paths` are not part of the program, so imports of them are not followed.
 - `export * from` is not followed.
 - Computed property names and dynamic calls are not followed. Neither are indexed access types such as `Mux['RobotsPreview']`.

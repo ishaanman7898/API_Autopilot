@@ -4,6 +4,8 @@ import { walk } from './parse.js';
 const MAX_DEPTH = 16;
 const isRelative = (s) => s.startsWith('.') || s.startsWith('/');
 const keyName = (k) => (ts.isIdentifier(k) || ts.isStringLiteralLike(k) ? k.text : null);
+const memberKey = (k) => (ts.isPrivateIdentifier(k) ? k.text : keyName(k));
+const isStatic = (m) => (ts.getCombinedModifierFlags(m) & ts.ModifierFlags.Static) !== 0;
 
 // Markers used while working out every value a function or a variable can hold. They never leave the resolver.
 const NULLISH = Object.freeze({ nullish: true });
@@ -18,6 +20,13 @@ export function unwrap(n) {
   return n;
 }
 
+// The outermost of the parentheses, `as`, `!` and `satisfies` wrapped around n, the reverse of unwrap.
+function outer(n) {
+  while (n.parent && (ts.isParenthesizedExpression(n.parent) || ts.isAsExpression(n.parent) || ts.isNonNullExpression(n.parent) ||
+    ts.isTypeAssertionExpression(n.parent) || ts.isSatisfiesExpression(n.parent))) n = n.parent;
+  return n;
+}
+
 export const fullPath = (o) => (o.root === 'named' ? [o.name] : []).concat(o.props);
 
 // The import('x') type whose qualifier starts with this identifier, as Job does in import('x').Job.Status.
@@ -28,27 +37,31 @@ export function importTypeOf(id) {
 }
 
 const sameOrigin = (a, b) => a.module === b.module && a.root === b.root && a.name === b.name && a.props.join('.') === b.props.join('.');
+const sameValue = (a, b) => (a.module ? Boolean(b.module) && sameOrigin(a, b) : ['fn', 'obj', 'cls', 'inst', 'local'].some((k) => a[k] && a[k] === b[k]));
 
-// The single package value behind several possible values, or null. null and undefined are allowed
+// The single value behind several possible values, or null. null and undefined are allowed
 // alongside it, and so is a reference back to the value being worked out (PENDING).
 function join(values) {
   let out = null;
   for (const v of values) {
     if (v === NULLISH || v === PENDING) continue;
-    if (!v?.module || (out && !sameOrigin(out, v))) return null;
+    if (!v || (out && !sameValue(out, v))) return null;
     out = out ?? v;
   }
-  return out && { module: out.module, root: out.root, ...(out.name ? { name: out.name } : {}), props: out.props };
+  if (!out?.module) return out;
+  return { module: out.module, root: out.root, ...(out.name ? { name: out.name } : {}), props: out.props };
 }
 
 // An origin says which export of a package a value came from: { module, root, name?, props, site? }.
 // root is namespace, default, named or instance. site is the binding that introduced the last path segment.
-// { fn } is a function whose call can be traced through its return statements.
+// { fn } is a function whose call can be traced through its return statements. { cls } is a local class,
+// { inst } an instance of one, and { obj } an object literal, whose members are traced like variables.
 // sourceFiles are every scanned file, which a global cache such as globalThis.__client is checked across.
 export function createResolver(checker, isPackage, sourceFiles = []) {
   const pendingSymbols = new Set();
   const pendingFunctions = new Set();
   const pendingGlobals = new Set();
+  const pendingParams = new Set();
 
   const isGlobalRequire = (callee) => {
     if (!ts.isIdentifier(callee) || callee.text !== 'require') return false;
@@ -69,10 +82,13 @@ export function createResolver(checker, isPackage, sourceFiles = []) {
       const exported = checker.getExportsOfModule(base.local).find((s) => s.name === name);
       return exported ? fromSymbol(exported, depth + 1) : null;
     }
-    if (base.obj) {
+    if (base.obj && isExportsLiteral(base.obj)) {
       const prop = base.obj.properties.find((p) => p.name && keyName(p.name) === name);
-      return prop ? fromObjectProperty(prop, depth) : null;
+      if (!prop) return null;
+      return ts.isPropertyAssignment(prop) || ts.isShorthandPropertyAssignment(prop) ? fromObjectProperty(prop, depth) : fromMember(base.obj, name, false, depth);
     }
+    if (base.obj || base.inst || base.cls) return fromMember(base.obj ?? base.inst ?? base.cls, name, Boolean(base.cls), depth);
+    if (!base.module) return null;
     if (base.root === 'namespace' && base.props.length === 0 && name === 'default') return { ...base, root: 'default', site };
     return { ...base, props: [...base.props, name], site };
   }
@@ -114,6 +130,11 @@ export function createResolver(checker, isPackage, sourceFiles = []) {
   const isExportsObject = (n) => {
     n = unwrap(n);
     return (ts.isIdentifier(n) && n.text === 'exports') || (ts.isPropertyAccessExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === 'module' && n.name.text === 'exports');
+  };
+  // The object literal of `module.exports = { ... }`, whose properties are the module's exports.
+  const isExportsLiteral = (obj) => {
+    const p = outer(obj).parent;
+    return ts.isBinaryExpression(p) && p.operatorToken.kind === ts.SyntaxKind.EqualsToken && unwrap(p.right) === obj && isExportsObject(p.left);
   };
 
   // A property of an object assigned to module.exports, unless the file assigns that property again.
@@ -271,8 +292,196 @@ export function createResolver(checker, isPackage, sourceFiles = []) {
     }
   }
 
+  // A member of a local class or object literal: a method gives { fn }, a getter what it returns, and a field or
+  // property its value. statics picks static class members. A member missing from a class is looked up in the
+  // local class it extends.
+  function fromMember(holder, name, statics, depth) {
+    if (!name || depth > MAX_DEPTH) return null;
+    const literal = ts.isObjectLiteralExpression(holder);
+    const own = literal ? holder.properties : holder.members.filter((m) => !ts.isConstructorDeclaration(m) && isStatic(m) === statics);
+    const found = own.filter((m) => m.name && memberKey(m.name) === name);
+    if (!literal && !statics) found.push(...parameterProperties(holder).filter((p) => p.name.text === name));
+    if (!found.length) {
+      const base = literal ? null : baseClass(holder);
+      return base ? fromMember(base, name, statics, depth + 1) : null;
+    }
+    // One member, a getter with or without its setter, or overloads of one method. In a literal a later spread
+    // or computed key can replace it.
+    const getter = found.find(ts.isGetAccessorDeclaration);
+    const bodies = found.filter((m) => ts.isMethodDeclaration(m) && m.body);
+    let member = null;
+    if (getter && found.every((m) => m === getter || ts.isSetAccessorDeclaration(m))) member = getter;
+    else if (bodies.length === 1 && found.every(ts.isMethodDeclaration)) member = bodies[0];
+    else if (found.length === 1 && !ts.isMethodDeclaration(found[0]) && !ts.isSetAccessorDeclaration(found[0])) member = found[0];
+    if (!member) return null;
+    if (literal) {
+      const last = Math.max(...found.map((m) => holder.properties.indexOf(m)));
+      if (holder.properties.slice(last + 1).some((p) => ts.isSpreadAssignment(p) || (p.name && ts.isComputedPropertyName(p.name)))) return null;
+    }
+    // Class fields keep their own rules: a type annotation, or readonly with an initializer.
+    if (ts.isPropertyDeclaration(member) || ts.isParameter(member)) return fromDeclaration(member, depth + 1);
+    if (reassigned(name, holder) || (literal ? escapes(holder) : overridden(holder, name, statics))) return null;
+    if (ts.isMethodDeclaration(member)) return { fn: member };
+    if (ts.isGetAccessorDeclaration(member)) return fromFunction(member, depth + 1);
+    if (ts.isPropertyAssignment(member)) return originOf(member.initializer, depth + 1);
+    if (ts.isShorthandPropertyAssignment(member)) return fromSymbol(checker.getShorthandAssignmentValueSymbol(member), depth + 1);
+    return null;
+  }
+
+  const parameterProperties = (cls) => {
+    const ctor = cls.members.find((m) => ts.isConstructorDeclaration(m) && m.body);
+    return ctor ? ctor.parameters.filter((p) => ts.isParameterPropertyDeclaration(p, ctor) && ts.isIdentifier(p.name)) : [];
+  };
+
+  // The local class a class expression or declaration names, through imports and a const that holds a class expression.
+  function classOf(expr) {
+    let sym = checker.getSymbolAtLocation(unwrap(expr));
+    if (sym && sym.flags & ts.SymbolFlags.Alias) {
+      try { sym = checker.getAliasedSymbol(sym); } catch { return null; }
+    }
+    let decl = sym?.valueDeclaration;
+    if (decl && ts.isVariableDeclaration(decl) && isConst(decl) && decl.initializer) decl = unwrap(decl.initializer);
+    return decl && ts.isClassLike(decl) ? decl : null;
+  }
+  const baseClass = (cls) => {
+    const ext = cls.heritageClauses?.find((h) => h.token === ts.SyntaxKind.ExtendsKeyword)?.types[0];
+    return ext ? classOf(ext.expression) : null;
+  };
+
+  // The method, accessor, constructor or field whose `this` is the one at n, or null in a plain function or at the top level.
+  function thisMember(n) {
+    for (let p = n.parent; p; p = p.parent) {
+      if (ts.isArrowFunction(p)) continue;
+      const member = ts.isMethodDeclaration(p) || ts.isAccessor(p) || ts.isConstructorDeclaration(p) || ts.isPropertyDeclaration(p) || ts.isClassStaticBlockDeclaration(p);
+      if (member && (ts.isClassLike(p.parent) || ts.isObjectLiteralExpression(p.parent))) return p;
+      if (ts.isFunctionLike(p) || ts.isClassLike(p) || ts.isSourceFile(p)) return null;
+    }
+    return null;
+  }
+
+  // Every write to a property by name in the scanned files: an assignment, `delete`, `++` or `--`, or a destructuring or loop target.
+  let writeIndex = null;
+  function writesTo(name) {
+    if (!writeIndex) {
+      writeIndex = new Map();
+      for (const sf of sourceFiles) {
+        walk(sf, (n) => {
+          let key = null;
+          if (ts.isPropertyAccessExpression(n)) key = memberKey(n.name);
+          else if (ts.isElementAccessExpression(n) && ts.isStringLiteralLike(n.argumentExpression)) key = n.argumentExpression.text;
+          if (key === null || (!ts.isDeleteExpression(outer(n).parent) && writeOf(n) === 'read')) return;
+          if (!writeIndex.has(key)) writeIndex.set(key, []);
+          writeIndex.get(key).push(n);
+        });
+      }
+    }
+    return writeIndex.get(name) ?? [];
+  }
+  // A member is reassigned when its name is written anywhere, except through `this` in a class or object literal
+  // that has nothing to do with the holder, such as another class setting its own field of the same name.
+  const reassigned = (name, holder) => writesTo(name).some((w) => {
+    if (unwrap(w.expression).kind !== ts.SyntaxKind.ThisKeyword) return true;
+    const writer = thisMember(w)?.parent;
+    if (!writer || writer === holder) return true;
+    return ts.isClassLike(writer) && ts.isClassLike(holder) && (descendants(holder).includes(writer) || descendants(writer).includes(holder));
+  });
+
+  // Local classes by the class they extend, and the classes passed to a mixin, as A is in `class B extends Mixin(A)`.
+  let subclassIndex = null;
+  function descendants(cls) {
+    if (!subclassIndex) {
+      subclassIndex = { children: new Map(), mixed: new Set() };
+      for (const sf of sourceFiles) {
+        walk(sf, (n) => {
+          const ext = ts.isClassLike(n) && n.heritageClauses?.find((h) => h.token === ts.SyntaxKind.ExtendsKeyword)?.types[0];
+          if (!ext) return;
+          const base = classOf(ext.expression);
+          const call = unwrap(ext.expression);
+          if (base) {
+            if (!subclassIndex.children.has(base)) subclassIndex.children.set(base, []);
+            subclassIndex.children.get(base).push(n);
+          } else if (ts.isCallExpression(call)) for (const a of call.arguments) { const c = classOf(a); if (c) subclassIndex.mixed.add(c); }
+        });
+      }
+    }
+    const out = [];
+    for (let i = -1, c = cls; i < out.length; c = out[++i]) {
+      for (const child of subclassIndex.children.get(c) ?? []) if (!out.includes(child)) out.push(child);
+    }
+    return out;
+  }
+  // A subclass can replace a member, so one traced through its body or initializer is not followed when a
+  // subclass in the scanned files declares the same name, or the class or a subclass is passed to a mixin.
+  function overridden(cls, name, statics) {
+    const below = descendants(cls);
+    if ([cls, ...below].some((c) => subclassIndex.mixed.has(c))) return true;
+    return below.some((c) => c.members.some((m) => m.name && memberKey(m.name) === name && isStatic(m) === statics) ||
+      (!statics && parameterProperties(c).some((p) => p.name.text === name)));
+  }
+
+  // An object literal held in a variable or a default export escapes when a reference to it, in any scanned file,
+  // does anything but read a property of it, export or import it, or name its type. Code it escapes to could change
+  // it. A literal inside another literal escapes with it. A literal no name holds, such as one a function returns
+  // or one stored in a field, is only checked for writes to the member.
+  const escaped = new Map();
+  function escapes(obj) {
+    const p = outer(obj).parent;
+    if (ts.isPropertyAssignment(p) && ts.isObjectLiteralExpression(p.parent)) return escapes(p.parent);
+    let sym = null;
+    let name = 'default';
+    if (ts.isExportAssignment(p) && !p.isExportEquals) sym = checker.getSymbolAtLocation(p.getSourceFile())?.exports?.get('default');
+    else {
+      const id = ts.isVariableDeclaration(p) ? p.name : ts.isBinaryExpression(p) && p.operatorToken.kind === ts.SyntaxKind.EqualsToken ? unwrap(p.left) : null;
+      if (!id || !ts.isIdentifier(id)) return false;
+      sym = checker.getSymbolAtLocation(id);
+      name = id.text;
+    }
+    if (!sym) return true;
+    if (!escaped.has(sym)) escaped.set(sym, referencesOf(sym, name).some((ref) => !readOnly(ref)));
+    return escaped.get(sym);
+  }
+  function readOnly(ref) {
+    const use = outer(ts.isPropertyAccessExpression(ref.parent) && ref.parent.name === ref ? ref.parent : ref);
+    const p = use.parent;
+    if (ts.isVariableDeclaration(p) && p.name === ref) return true;
+    if (ts.isImportSpecifier(p) || ts.isExportSpecifier(p) || ts.isImportClause(p) || ts.isExportAssignment(p) || ts.isTypeQueryNode(p) || ts.isQualifiedName(p)) return true;
+    if (ts.isPropertyAccessExpression(p) && p.expression === use) return true;
+    if (ts.isElementAccessExpression(p) && p.expression === use) return ts.isStringLiteralLike(p.argumentExpression) || (writeOf(p) === 'read' && !ts.isDeleteExpression(outer(p).parent));
+    if (ts.isBinaryExpression(p) && p.left === use && p.operatorToken.kind === ts.SyntaxKind.EqualsToken) return true;
+    return false;
+  }
+  // Identifiers in the scanned files that refer to sym, also through imports, re-exports and a default export.
+  function referencesOf(sym, name) {
+    const names = new Set([name]);
+    for (let size = 0; size !== names.size;) {
+      size = names.size;
+      for (const sf of sourceFiles) {
+        for (const st of sf.statements) {
+          if (ts.isExportAssignment(st) && ts.isIdentifier(st.expression) && names.has(st.expression.text)) names.add('default');
+          const clause = ts.isImportDeclaration(st) ? st.importClause : null;
+          if (clause?.name && names.has('default')) names.add(clause.name.text);
+          const bindings = clause?.namedBindings ?? (ts.isExportDeclaration(st) ? st.exportClause : null);
+          if (!bindings || !(ts.isNamedImports(bindings) || ts.isNamedExports(bindings))) continue;
+          for (const el of bindings.elements) if (names.has((el.propertyName ?? el.name).text)) names.add(el.name.text);
+        }
+      }
+    }
+    const refs = [];
+    for (const sf of sourceFiles) {
+      walk(sf, (n) => {
+        if (!ts.isIdentifier(n) || !names.has(n.text)) return;
+        let s = ts.isShorthandPropertyAssignment(n.parent) && n.parent.name === n ? checker.getShorthandAssignmentValueSymbol(n.parent) : checker.getSymbolAtLocation(n);
+        if (s && s.flags & ts.SymbolFlags.Alias) {
+          try { s = checker.getAliasedSymbol(s); } catch { s = null; }
+        }
+        if (s === sym) refs.push(n);
+      });
+    }
+    return refs;
+  }
+
   // A type annotation that names a package export, such as `client: Acme`, `client: Acme | null` or
-  // `client: acme.Client`, is read as an instance of it.
+  // `client: acme.Client`, is read as an instance of it, and so is one that names a local class, such as `runner: Runner`.
   function fromTypeAnnotation(type, depth) {
     if (!type) return null;
     if (ts.isParenthesizedTypeNode(type)) return fromTypeAnnotation(type.type, depth);
@@ -280,13 +489,14 @@ export function createResolver(checker, isPackage, sourceFiles = []) {
       const parts = type.types.filter((m) => !(ts.isLiteralTypeNode(m) && m.literal.kind === ts.SyntaxKind.NullKeyword) && m.kind !== ts.SyntaxKind.UndefinedKeyword);
       return parts.length === 1 ? fromTypeAnnotation(parts[0], depth) : null;
     }
-    if (!ts.isTypeReferenceNode(type) || type.typeArguments?.length) return null;
+    if (!ts.isTypeReferenceNode(type)) return null;
     const names = [];
     let n = type.typeName;
     while (ts.isQualifiedName(n)) { names.unshift(n.right.text); n = n.left; }
     let base = fromSymbol(checker.getSymbolAtLocation(n), depth + 1);
     for (const name of names) base = base && extend(base, name, undefined, depth);
-    return base?.module && isPackage(base.module) ? { module: base.module, root: 'instance', props: [] } : null;
+    if (base?.cls) return { inst: base.cls };
+    return base?.module && isPackage(base.module) && !type.typeArguments?.length ? { module: base.module, root: 'instance', props: [] } : null;
   }
 
   // An untyped parameter of a local function, when every call to the function passes the same package
@@ -296,6 +506,7 @@ export function createResolver(checker, isPackage, sourceFiles = []) {
     const typed = fromTypeAnnotation(param.type, depth);
     if (typed || param.type) return typed;
     const fn = param.parent;
+    if (!param.dotDotDotToken && (ts.isArrowFunction(fn) || ts.isFunctionExpression(fn)) && ts.isCallExpression(outer(fn).parent)) return fromCallback(param, fn, depth);
     if (!ts.isIdentifier(param.name) || param.dotDotDotToken || !(ts.isFunctionDeclaration(fn) || ts.isArrowFunction(fn) || ts.isFunctionExpression(fn))) return null;
     const holder = ts.isFunctionDeclaration(fn) ? fn : ts.isVariableDeclaration(fn.parent) && fn.parent.initializer === fn && isConst(fn.parent) ? fn.parent : null;
     if (!holder?.name || !ts.isIdentifier(holder.name)) return null;
@@ -323,15 +534,54 @@ export function createResolver(checker, isPackage, sourceFiles = []) {
     }
   }
 
+  // An untyped parameter of a function passed straight to a local function or method, as `({ cf })` is in
+  // `runner.run(ctx, async ({ cf }) => ...)`, when every call that function makes to it passes the same value
+  // and it never passes it on, stores it or reads it any other way.
+  function fromCallback(param, fn, depth) {
+    const call = outer(fn).parent;
+    const k = call.arguments.indexOf(outer(fn));
+    if (k < 0 || call.arguments.slice(0, k).some(ts.isSpreadElement)) return null;
+    if (pendingParams.has(param)) return PENDING;
+    pendingParams.add(param);
+    try {
+      const target = originOf(call.expression, depth + 1)?.fn;
+      const slot = target?.body ? target.parameters[k] : null;
+      if (!slot || !ts.isIdentifier(slot.name) || slot.dotDotDotToken) return null;
+      const sym = checker.getSymbolAtLocation(slot.name);
+      const index = fn.parameters.indexOf(param);
+      const values = [];
+      let escapes = !sym;
+      walk(target, (n) => {
+        if (escapes || n === slot.name || !ts.isIdentifier(n)) return;
+        if (n.text === 'arguments' && !checker.getSymbolAtLocation(n)?.declarations?.length) { escapes = true; return; }
+        if (n.text !== slot.name.text || checker.getSymbolAtLocation(n) !== sym) return;
+        const use = outer(n);
+        const c = use.parent;
+        if (!ts.isCallExpression(c) || c.expression !== use || c.arguments.slice(0, index + 1).some(ts.isSpreadElement)) { escapes = true; return; }
+        const arg = c.arguments[index];
+        values.push(arg ? valueOf(arg, depth + 1) : param.initializer ? valueOf(param.initializer, depth + 1) : NULLISH);
+      });
+      return escapes || !values.length ? null : join(values);
+    } finally {
+      pendingParams.delete(param);
+    }
+  }
+
   function fromDeclaration(decl, depth) {
     if (ts.isFunctionDeclaration(decl)) return { fn: decl };
+    if (ts.isClassDeclaration(decl)) return { cls: decl };
     if (ts.isParameter(decl)) return fromParameter(decl, depth);
-    // A class field typed with the SDK class, or a readonly field initialised with the client.
+    // A class field typed with the SDK class, or a readonly field initialised with the client that no subclass declares again.
     if (ts.isPropertyDeclaration(decl)) {
       const typed = fromTypeAnnotation(decl.type, depth);
       if (typed || decl.type) return typed;
       const readonly = (ts.getCombinedModifierFlags(decl) & ts.ModifierFlags.Readonly) !== 0;
-      return readonly && decl.initializer ? originOf(decl.initializer, depth + 1) : null;
+      if (!readonly || !decl.initializer || overridden(decl.parent, memberKey(decl.name), isStatic(decl))) return null;
+      return originOf(decl.initializer, depth + 1);
+    }
+    // A method or accessor, reached through `this.name`.
+    if ((ts.isMethodDeclaration(decl) || ts.isAccessor(decl)) && (ts.isClassLike(decl.parent) || ts.isObjectLiteralExpression(decl.parent))) {
+      return fromMember(decl.parent, memberKey(decl.name), isStatic(decl), depth);
     }
     if (ts.isVariableDeclaration(decl)) {
       if (!ts.isIdentifier(decl.name)) return null;
@@ -348,11 +598,15 @@ export function createResolver(checker, isPackage, sourceFiles = []) {
         if (!holder.initializer || !isConst(holder)) return null;
         base = originOf(holder.initializer, depth + 1);
       } else if (ts.isBindingElement(holder)) base = fromDeclaration(holder, depth + 1);
+      else if (ts.isParameter(holder)) base = fromParameter(holder, depth + 1);
       return base && extend(base, name, decl, depth);
     }
     if (ts.isExportAssignment(decl)) return originOf(decl.expression, depth + 1);
     // CommonJS: the property of a module.exports object, and `exports.client = ...` or `module.exports = ...`.
-    if ((ts.isShorthandPropertyAssignment(decl) || ts.isPropertyAssignment(decl)) && ts.isObjectLiteralExpression(decl.parent)) return fromObjectProperty(decl, depth);
+    // The property of any other object literal, reached through `this.name` in one of its methods.
+    if ((ts.isShorthandPropertyAssignment(decl) || ts.isPropertyAssignment(decl)) && ts.isObjectLiteralExpression(decl.parent)) {
+      return isExportsLiteral(decl.parent) ? fromObjectProperty(decl, depth) : fromMember(decl.parent, keyName(decl.name), false, depth);
+    }
     if (ts.isPropertyAccessExpression(decl) && ts.isBinaryExpression(decl.parent) && decl.parent.left === decl && decl.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken) return originOf(decl.parent.right, depth + 1);
     if (ts.isBinaryExpression(decl) && decl.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
       const value = unwrap(decl.right);
@@ -401,10 +655,24 @@ export function createResolver(checker, isPackage, sourceFiles = []) {
       return isPackage(lit.text) ? { module: lit.text, root: 'namespace', props: [] } : fromRequire(lit, lit.text, depth);
     }
     if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) return { fn: node };
+    if (ts.isClassExpression(node)) return { cls: node };
+    if (ts.isObjectLiteralExpression(node)) return { obj: node };
+    if (node.kind === ts.SyntaxKind.ThisKeyword) {
+      const m = thisMember(node);
+      if (!m) return null;
+      if (ts.isObjectLiteralExpression(m.parent)) return { obj: m.parent };
+      return ts.isClassStaticBlockDeclaration(m) || isStatic(m) ? { cls: m.parent } : { inst: m.parent };
+    }
     if (ts.isPropertyAccessExpression(node)) {
       if (ts.isIdentifier(node.name) && isGlobalObject(node.expression)) return fromGlobalCache(node.name.text, depth + 1);
-      // this.client inside a class: the field's declaration, or a constructor parameter property.
-      if (node.expression.kind === ts.SyntaxKind.ThisKeyword) return fromSymbol(checker.getSymbolAtLocation(node.name), depth + 1);
+      // this.client inside a class: the member's declaration, or a constructor parameter property. Without
+      // noImplicitThis the checker types `this` in an object literal's method as any, so the literal is found by position.
+      if (node.expression.kind === ts.SyntaxKind.ThisKeyword) {
+        const sym = checker.getSymbolAtLocation(node.name);
+        if (sym?.declarations?.length) return fromSymbol(sym, depth + 1);
+        const self = originOf(node.expression, depth + 1);
+        return self?.obj ? extend(self, memberKey(node.name), undefined, depth) : null;
+      }
       const base = originOf(node.expression, depth + 1);
       return base && ts.isIdentifier(node.name) ? extend(base, node.name.text, undefined, depth) : null;
     }
@@ -414,6 +682,7 @@ export function createResolver(checker, isPackage, sourceFiles = []) {
     }
     if (ts.isNewExpression(node)) {
       const base = originOf(node.expression, depth + 1);
+      if (base?.cls) return { inst: base.cls };
       return base?.module ? { module: base.module, root: 'instance', props: [] } : null;
     }
     if (ts.isCallExpression(node)) {
@@ -433,7 +702,7 @@ export function createResolver(checker, isPackage, sourceFiles = []) {
     return null;
   }
 
-  // Callers only ever see a package origin, a function, a local module or null, never the internal markers.
+  // Callers only ever see a package origin, a local value such as a function, module, class or object, or null, never the internal markers.
   // The program does not change while a resolver lives, so each node's answer is computed once.
   const memo = new WeakMap();
   const publicOrigin = (n) => {
