@@ -589,29 +589,31 @@ test('watch drafts rules from the type declarations of both npm releases when ne
   const seen = [];
   const r = await cli(['watch', '--root', dir], fakeFetch(shapesRoutes(), seen));
   assert.equal(r.code, 0, r.err);
-  assert.match(r.out, /shapes: 1\.2\.0 -> 2\.0\.0 in package\.json: 7 unsigned draft rules from the type declarations of shapes@1\.2\.0 and shapes@2\.0\.0 on npm, 4 need review/);
+  assert.match(r.out, /shapes: 1\.2\.0 -> 2\.0\.0 in package\.json: 7 unsigned draft rules from the type declarations of shapes@1\.2\.0 and shapes@2\.0\.0 on npm, 4 need review, shapes has no default export$/m);
   assert.ok(seen.includes(`${RAW}/geo/shapes-js/v1.2.0/api.md`), 'api.md is looked for first');
   const [entry] = JSON.parse(readFileSync(join(dir, '.apimigrate/watch/plan.json'), 'utf8')).upgrades;
   assert.deepEqual([entry.source, entry.draftedFrom, entry.signed, entry.ruleCount, entry.likely, entry.needsReview], ['draft', 'd.ts', false, 7, 3, 4]);
   assert.deepEqual(entry.upstream.from, { package: 'shapes', version: '1.2.0', tarball: TGZ('1.2.0'), integrity: sri(pack(SHAPES_1)), files: 4 });
   assert.equal(entry.upstream.to.files, 2);
-  assert.deepEqual(entry.uncovered, ['shapes no longer has a default export', 'shapes/extra is no longer exported', 'shapes/package.json is no longer exported', '1 classes, constants or namespaces are gone, such as ORIGIN', '2 exported types are gone']);
+  assert.deepEqual(entry.defaultExportsRemoved, [{ import: 'shapes', was: 'Shape', replacement: 'Shape', commonjs: false, confidence: 'needs-review' }]);
+  assert.equal(entry.grouped, undefined);
+  assert.deepEqual(entry.uncovered, ['shapes/extra is no longer exported', 'shapes/package.json is no longer exported', '1 classes, constants or namespaces are gone, such as ORIGIN', '2 exported types are gone']);
 
   const drafted = JSON.parse(readFileSync(join(dir, entry.rules), 'utf8'));
   assert.deepEqual([drafted.draft, drafted.provider, drafted.package, drafted.from, drafted.to], [true, 'geo', 'shapes', '1.2.0', '2.0.0']);
   assert.deepEqual(drafted.rules.map((x) => [x.id, x.kind, x.confidence, x.match, x.transform ?? null]), [
     ['rename-circle', 'rename-method', 'likely', { call: 'circle' }, { to: 'makeCircle' }],
     ['rename-grow', 'rename-method', 'likely', { call: 'grow' }, { to: 'scale' }],
-    ['removed-legacy', 'manual', 'needs-review', { call: 'legacy' }, null],
-    ['removed-triangle', 'manual', 'needs-review', { call: 'triangle' }, null],
     ['args-move', 'manual', 'needs-review', { call: 'move' }, null],
     ['args-tween', 'manual', 'needs-review', { call: 'tween' }, null],
+    ['removed-legacy', 'manual', 'needs-review', { call: 'legacy' }, null],
+    ['removed-triangle', 'manual', 'needs-review', { call: 'triangle' }, null],
     ['dependency', 'rename-dependency', 'likely', { dependency: 'shapes' }, { version: '^2.0.0' }],
   ]);
   assert.match(drafted.rules[0].evidence, /^The export circle is gone from shapes@2\.0\.0, and makeCircle takes the same arguments there\. shapes@1\.2\.0 marked it @deprecated: "Use makeCircle instead"\.$/);
-  assert.match(drafted.rules[3].evidence, /marked it @deprecated: "Use `polygon` with three points"/, 'a note that says more than the new name is not a rename');
-  assert.doesNotMatch(drafted.rules[3].fallback.prompt, /polygon/, 'package text never reaches a prompt');
-  assert.equal(drafted.rules[4].fallback.prompt, 'In shapes 2.0.0, the method move of Shape takes 2 arguments, where it took 1 to 2. Update each call.');
+  assert.match(drafted.rules[5].evidence, /marked it @deprecated: "Use `polygon` with three points"/, 'a note that says more than the new name is not a rename');
+  assert.doesNotMatch(drafted.rules[5].fallback.prompt, /polygon/, 'package text never reaches a prompt');
+  assert.equal(drafted.rules[2].fallback.prompt, 'In shapes 2.0.0, the method move of Shape takes 2 arguments, where it took 1 to 2. Update each call.');
   const report = JSON.parse(readFileSync(join(dir, entry.report), 'utf8'));
   assert.deepEqual([report.source, report.typesRemoved, report.valuesRemoved, report.subpathsRemoved], ['d.ts', ['Old', 'Point'], ['ORIGIN'], ['./extra', './package.json']]);
   assert.deepEqual(report.optionalArgumentsDropped, [{ path: 'blend', in: 'shapes', from: '1 to 2', to: '1' }]);
@@ -627,8 +629,79 @@ test('watch drafts rules from the type declarations of both npm releases when ne
 
   const body = watchBody(entry, evidence, drafted);
   assert.match(body, /drafted them from the TypeScript declarations in the npm tarballs of the two releases, `shapes@1\.2\.0` and `shapes@2\.0\.0`, each checked against its sha512 integrity\./);
-  assert.match(body, /### Not covered by any rule\n\n.*\n\n- `shapes no longer has a default export`\n- `shapes\/extra is no longer exported`/);
-  assert.match(body, /\| `rename-grow` \| `rename-method` \| `likely` \|/);
+  assert.match(body, /> \*\*Default export removed, needs review\.\*\* `shapes` `2\.0\.0` has no default export, so `import Shape from 'shapes'` no longer works\. `2\.0\.0` exports `Shape` by name instead: `import \{ Shape \} from 'shapes'`\. No rule kind can find imports/);
+  assert.match(body, /### Not covered by any rule\n\n.*\n\n- `shapes\/extra is no longer exported`/);
+  assert.match(body, /\| `rename-grow` \| `rename-method` \| `likely` \| 1 \|/);
+});
+
+// 2.0.0 drops static members that share a name (create) or an owner (util), a function only in the extra subpath,
+// a method, a root function, and two default exports: an anonymous one and the `export =` class of the legacy subpath.
+const GROUPS_1 = {
+  'package.json': { name: 'shapes', version: '1.2.0', exports: { '.': { types: './index.d.ts' }, './extra': { types: './extra.d.ts' }, './legacy': { types: './legacy.d.ts' } } },
+  'index.d.ts': [
+    'export declare class Circle { static create(r: number): Circle; static fromJSON(s: string): Circle; area(): number; shrink(n: number): Circle; }',
+    'export declare class Square { static create(s: number): Square; area(): number; }',
+    'export declare class Line { static create(): Line; }',
+    'export declare const util: { clamp(n: number): number; lerp(a: number, b: number): number; smooth(n: number): number };',
+    'export declare function draw(c: Circle): void;',
+    'export declare function measure(c: Circle, unit: string): number;',
+    'export default function (n: number): Circle;',
+  ].join('\n'),
+  'extra.d.ts': 'export declare function helper(): void;\nexport declare function other(): void;',
+  'legacy.d.ts': 'declare class Cache { get(k: string): number; }\nexport = Cache;',
+};
+const GROUPS_2 = {
+  'package.json': { name: 'shapes', version: '2.0.0', exports: { '.': { types: './index.d.ts' }, './extra': { types: './extra.d.ts' }, './legacy': { types: './legacy.d.ts' } } },
+  'index.d.ts': [
+    'export declare class Circle { area(): number; }',
+    'export declare class Square { area(): number; }',
+    'export declare class Line {}',
+    'export declare const util: { clamp(n: number): number };',
+    'export declare function measure(c: Circle): number;',
+  ].join('\n'),
+  'extra.d.ts': 'export declare function other(): void;',
+  'legacy.d.ts': 'export declare class Cache { get(k: string): number; }',
+};
+
+test('a declaration draft groups removed static members, keeps rules for root functions and methods, and flags removed default exports', async () => {
+  const dir = repoWith({
+    'package.json': JSON.stringify({ dependencies: { shapes: '^1.2.0' } }),
+    'src/use.ts': "import { Circle, draw, measure } from 'shapes';\nconst c = Circle.create(1);\ndraw(c);\nexport const m = measure(c, 'cm');\n",
+  });
+  const r = await cli(['watch', '--root', dir], fakeFetch(shapesRoutes({ v1: pack(GROUPS_1), v2: pack(GROUPS_2) })));
+  assert.equal(r.code, 0, r.err);
+  assert.match(r.out, /4 unsigned draft rules from the type declarations of shapes@1\.2\.0 and shapes@2\.0\.0 on npm, 3 need review, 7 more removals grouped without rules, shapes has no default export, shapes\/legacy has no default export$/m);
+  const [entry] = JSON.parse(readFileSync(join(dir, '.apimigrate/watch/plan.json'), 'utf8')).upgrades;
+  const drafted = JSON.parse(readFileSync(join(dir, entry.rules), 'utf8'));
+  assert.deepEqual(drafted.rules.map((x) => x.id), ['args-measure', 'removed-shrink', 'removed-draw', 'dependency'], 'changed arguments, then methods, then functions');
+  assert.deepEqual(entry.grouped.map((g) => [g.pattern, g.count, g.summary]), [
+    ['*.create', 3, '3 static members named create: Circle.create, Line.create, Square.create'],
+    ['util.*', 2, '2 static members of util: lerp, smooth'],
+    ['Circle.fromJSON', 1, 'the static member Circle.fromJSON'],
+    ['shapes/extra', 1, '1 function or method only in shapes/extra: helper'],
+  ]);
+  const report = JSON.parse(readFileSync(join(dir, entry.report), 'utf8'));
+  assert.deepEqual(report.groupedRemovals[0].paths, ['Circle.create', 'Line.create', 'Square.create']);
+  assert.deepEqual(entry.defaultExportsRemoved, [
+    { import: 'shapes', was: null, replacement: null, commonjs: false, confidence: 'needs-review' },
+    { import: 'shapes/legacy', was: 'Cache', replacement: 'Cache', commonjs: true, confidence: 'needs-review' },
+  ]);
+
+  const applied = await cli(['apply', '--root', dir, '--rules', join(dir, entry.rules), '--allow-unsigned']);
+  assert.equal(applied.code, 0, applied.err);
+  const evidence = JSON.parse(readFileSync(join(dir, '.apimigrate/evidence.json'), 'utf8'));
+  assert.deepEqual(evidence.unresolved.map((u) => [u.ruleId, u.line]), [['removed-draw', 3], ['args-measure', 4]], 'no rule looks for Circle.create');
+  const body = watchBody(entry, evidence, drafted);
+  assert.match(body, /> \*\*Default export removed, needs review\.\*\* `shapes` `2\.0\.0` has no default export, so `import x from 'shapes'` no longer works\. No rule kind/);
+  assert.match(body, /`shapes\/legacy` `2\.0\.0` has no default export, so `import Cache from 'shapes\/legacy'` and `const Cache = require\('shapes\/legacy'\)` no longer work\. `2\.0\.0` exports `Cache` by name instead: `import \{ Cache \} from 'shapes\/legacy'` or `const \{ Cache \} = require\('shapes\/legacy'\)`\./);
+  assert.match(body, /### Removed without a rule each\n\nThese 7 removals get no rule each\..*\n\n- `3 static members named create: Circle\.create, Line\.create, Square\.create`\n- `2 static members of util: lerp, smooth`\n/);
+  const table = body.split('\n').filter((l) => /^\| `/.test(l)).map((l) => l.split(' | ').slice(0, 4).join(' | '));
+  assert.deepEqual(table, [
+    '| `args-measure` | `manual` | `needs-review` | 1',
+    '| `removed-draw` | `manual` | `needs-review` | 1',
+    '| `dependency` | `rename-dependency` | `likely` | 1',
+    '| `removed-shrink` | `manual` | `needs-review` | 0',
+  ], 'rules with call sites here first, needs-review before likely');
 });
 
 test('a declaration draft refuses a tarball that fails its integrity, is too large, or escapes the package', async () => {

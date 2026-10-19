@@ -218,6 +218,8 @@ export function declarationSurface(files, name) {
         arity: arityOf(type),
         // A namespace export such as zod's z mirrors the root exports, which are compared on their own.
         statics: type ? callables(checker.getPropertiesOfType(type).filter((p) => !targets.has(resolve(p)))) : null,
+        // What the default export was, such as lru-cache 7's `export = LRUCache`, so its removal can name a replacement.
+        ...(n === 'default' ? { target: IDENT.test(target.name) && !target.name.startsWith('_') && target.name !== 'default' ? target.name : null, assigned: sym === assigned } : {}),
       });
       if (target.flags & (ts.SymbolFlags.Class | ts.SymbolFlags.Interface) && !classes.has(target.name)) {
         try { classes.set(target.name, callables(checker.getPropertiesOfType(checker.getDeclaredTypeOfSymbol(target)))); } catch { /* left out */ }
@@ -231,6 +233,7 @@ export function declarationSurface(files, name) {
 // What a consumer of the old release would see break: functions, methods and static members that are gone, and
 // functions whose required arguments changed. Everything is compared per subpath. Classes, constants and types
 // that are gone are only listed, since a manual rule matches calls and they are used with new, instanceof or as types.
+// So is a removed default export, with what it was and whether the new release exports that name instead.
 export function diffDeclarations(a, b) {
   const removed = new Map();
   const changed = new Map();
@@ -246,6 +249,7 @@ export function diffDeclarations(a, b) {
   const exportsAdded = new Set();
   const dropped = [];
   const deprecatedNow = [];
+  const defaultsRemoved = [];
   const notes = [];
   const label = (s, sub) => (sub === '.' ? s.name : `${s.name}/${sub.slice(2)}`);
   const compare = (path, kind, owner, sub, o, x) => {
@@ -259,7 +263,9 @@ export function diffDeclarations(a, b) {
     for (const [n, o] of old.exports) {
       const x = now.exports.get(n);
       if (n === 'default') {
-        if (o.value && !x?.value) notes.push(`${at} no longer has a default export`);
+        // Subpaths are package text, so one that is not a plain path stays a note, which is only shown as code.
+        if (o.value && !x?.value && sub !== '.' && !SUBPATH.test(sub)) notes.push(`${at} no longer has a default export`);
+        else if (o.value && !x?.value) defaultsRemoved.push({ import: at, was: o.target ?? null, replacement: o.target && now.exports.get(o.target)?.value ? o.target : null, commonjs: Boolean(o.assigned) });
         continue;
       }
       if (!x || (o.value && !x.value)) {
@@ -327,6 +333,7 @@ export function diffDeclarations(a, b) {
     subpathsRemoved: oldSubs.filter((s) => !newSubs.includes(s)),
     subpathsAdded: newSubs.filter((s) => !oldSubs.includes(s)),
     deprecatedNow,
+    defaultsRemoved,
     notes,
   };
 }
@@ -369,6 +376,30 @@ const listed = (set, max = 3) => {
   return xs.length > max ? `${xs.slice(0, max).join(', ')} and ${xs.length - max} more` : xs.join(', ');
 };
 
+const whereOf = (r, pkg) => listed(new Set([...r.subs].filter((s) => SUBPATH.test(s) || s === '.').map((s) => (s === '.' ? pkg : `${pkg}/${s.slice(2)}`)))) || pkg;
+
+// Removals that get no rule, in groups: static members that share a name, such as every *.create, then the other
+// static members by owner, then names only in other subpaths by subpath. Largest groups first.
+function groupRemovals(list, pkg) {
+  const by = (xs, key) => {
+    const m = new Map();
+    for (const x of xs) m.set(key(x), [...(m.get(key(x)) ?? []), x]);
+    return [...m];
+  };
+  const member = (p) => p.slice(p.indexOf('.') + 1);
+  const statics = list.filter((r) => r.kinds.has('static')).map((r) => r.path);
+  const shared = by(statics, member).filter(([, ps]) => ps.length > 1);
+  const taken = new Set(shared.flatMap(([, ps]) => ps));
+  const groups = [
+    ...shared.map(([m, ps]) => ({ pattern: `*.${m}`, paths: ps, summary: `${ps.length} static members named ${m}: ${listed(ps)}` })),
+    ...by(statics.filter((p) => !taken.has(p)), (p) => p.slice(0, p.indexOf('.'))).map(([o, ps]) => (ps.length > 1
+      ? { pattern: `${o}.*`, paths: ps, summary: `${ps.length} static members of ${o}: ${listed(ps.map(member))}` }
+      : { pattern: ps[0], paths: ps, summary: `the static member ${ps[0]}` })),
+    ...by(list.filter((r) => !r.kinds.has('static')), (r) => whereOf(r, pkg)).map(([w, rs]) => ({ pattern: w, paths: rs.map((r) => r.path), summary: `${rs.length} ${rs.length === 1 ? 'function or method' : 'functions or methods'} only in ${w}: ${listed(rs.map((r) => r.path))}` })),
+  ];
+  return groups.map((g) => ({ ...g, count: g.paths.length })).sort((a, b) => b.count - a.count || (a.pattern < b.pattern ? -1 : 1));
+}
+
 // Turns the diff into a draft rule file. Rule prompts are built only from identifiers, versions and counts.
 // @deprecated notes are package text, so they go in the evidence that a reviewer reads, never in a prompt.
 export function draftFromDeclarations(diff, { provider, pkg, from, to, newVersion }) {
@@ -390,19 +421,23 @@ export function draftFromDeclarations(diff, { provider, pkg, from, to, newVersio
     const what = r.kinds.has('method') ? `The method ${r.path} of ${listed(r.owners)}` : `The export ${r.path}`;
     add({ id: `rename-${r.path}`, kind: 'rename-method', confidence: 'likely', evidence: `${what} is gone from ${pkg}@${to}, and ${target} takes the same arguments there.${note(r)}`, match: { call: r.path }, transform: { to: target } });
   }
-  for (const r of kept) {
-    const subs = [...r.subs];
-    const where = listed(new Set(subs.filter((s) => SUBPATH.test(s) || s === '.').map((s) => (s === '.' ? pkg : `${pkg}/${s.slice(2)}`)))) || pkg;
-    const prompt = r.kinds.has('method') ? `The method ${r.path} of ${listed(r.owners)} was removed in ${pkg} ${to}.`
-      : r.kinds.has('static') ? `${r.path} was removed in ${pkg} ${to}.`
-        : r.kinds.has('callable') ? `${r.path} from ${where} is no longer a function in ${pkg} ${to}.`
-          : `${r.path} is no longer exported by ${where} in ${pkg} ${to}.`;
-    const still = diff.live.has(r.path) ? ` Something named ${r.path} is still in ${pkg} ${to}, in another subpath or class, so some of these calls may be right as they are.` : '';
-    add({ id: `removed-${r.path}`, kind: 'manual', confidence: 'needs-review', evidence: `in the type declarations of ${at} and not of ${pkg}@${to}.${note(r)}`, match: { call: r.path }, fallback: { prompt: `${prompt}${still} Keep the behaviour identical.` } });
-  }
+  // Removed functions and instance methods of the package root get a manual rule each. Static members, such as
+  // zod 3's ZodString.create and the other *.create factories, and names only in other subpaths are listed in
+  // groups instead, so the rules a caller is likely to hit are not lost among rules for what is rarely called.
+  const rootless = !diff.old.entries.has('.');
+  const main = kept.filter((r) => ['export', 'callable', 'method'].some((k) => r.kinds.has(k)) && (rootless || r.subs.has('.')));
+  const grouped = groupRemovals(kept.filter((r) => !main.includes(r)), pkg);
+  // What a caller most likely hits comes first: changed arguments of what is still there, then removed methods, then removed functions.
   for (const c of diff.changed) {
     const what = c.kinds.has('method') ? `the method ${c.path} of ${listed(c.owners)}` : c.path;
     add({ id: `args-${c.path}`, kind: 'manual', confidence: 'needs-review', evidence: `${at} declares ${arityText(c.from)} arguments and ${pkg}@${to} declares ${arityText(c.to)}`, match: { call: c.path }, fallback: { prompt: `In ${pkg} ${to}, ${what} takes ${arityText(c.to)} arguments, where it took ${arityText(c.from)}. Update each call.` } });
+  }
+  for (const r of [...main.filter((x) => x.kinds.has('method')), ...main.filter((x) => !x.kinds.has('method'))]) {
+    const prompt = r.kinds.has('method') ? `The method ${r.path} of ${listed(r.owners)} was removed in ${pkg} ${to}.`
+      : r.kinds.has('callable') ? `${r.path} from ${whereOf(r, pkg)} is no longer a function in ${pkg} ${to}.`
+        : `${r.path} is no longer exported by ${whereOf(r, pkg)} in ${pkg} ${to}.`;
+    const still = diff.live.has(r.path) ? ` Something named ${r.path} is still in ${pkg} ${to}, in another subpath or class, so some of these calls may be right as they are.` : '';
+    add({ id: `removed-${r.path}`, kind: 'manual', confidence: 'needs-review', evidence: `in the type declarations of ${at} and not of ${pkg}@${to}.${note(r)}`, match: { call: r.path }, fallback: { prompt: `${prompt}${still} Keep the behaviour identical.` } });
   }
   if (newVersion && from !== to) add({ id: 'dependency', kind: 'rename-dependency', confidence: 'likely', evidence: `the new version is ${pkg}@${newVersion}`, match: { dependency: pkg }, transform: { version: `^${newVersion}` } });
 
@@ -420,6 +455,9 @@ export function draftFromDeclarations(diff, { provider, pkg, from, to, newVersio
       typesRemoved: diff.typesRemoved.slice(0, 500),
       optionalArgumentsDropped: diff.optionalDropped.slice(0, 200),
       deprecatedInNewVersion: diff.deprecatedNow.slice(0, 200),
+      groupedRemovals: grouped.map((g) => ({ ...g, paths: g.paths.slice(0, 500) })),
+      // No rule kind can find an import, so these are for a person to fix.
+      defaultExportsRemoved: diff.defaultsRemoved.map((d) => ({ ...d, confidence: 'needs-review' })),
       notes: diff.notes,
       uncovered: [
         ...diff.notes,
