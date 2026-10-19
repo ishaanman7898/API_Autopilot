@@ -38,7 +38,7 @@ function flags(argv) {
 
 function sh(cmd, args, opts = {}) {
   const r = spawnSync(cmd, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 10 * 60 * 1000, ...opts });
-  return { code: r.status ?? 1, out: r.stdout ?? '', err: r.stderr ?? '' };
+  return { code: r.status ?? 1, signal: r.signal, out: r.stdout ?? '', err: r.stderr ?? '' };
 }
 
 function codeFiles(dir, root = dir, acc = []) {
@@ -83,6 +83,41 @@ function typecheck(tree, files, label, typeNames = []) {
 }
 
 const minus = (a, b) => [...a].filter(([k]) => !b.has(k)).map(([, v]) => v);
+const HUNK = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/gm;
+
+// A rewrite that joins or splits lines moves every later line of the file, so the migrated tree's errors are
+// mapped back to the original's lines before the trees are compared. A line inside a changed hunk maps to the
+// hunk's first original line, on both sides, so an error inside a rewritten call compares with itself.
+function lineMaps(baseTree, migratedTree) {
+  const cache = new Map();
+  const hunksOf = (file) => {
+    if (!cache.has(file)) {
+      const before = join(baseTree, file), after = join(migratedTree, file);
+      const same = !existsSync(before) || !existsSync(after) || readFileSync(before, 'utf8') === readFileSync(after, 'utf8');
+      cache.set(file, same ? [] : [...sh('git', ['diff', '--no-index', '--no-color', '-U0', before, after]).out.matchAll(HUNK)].map(([, a, b = '1', c, d = '1']) => {
+        const oldStart = +b ? +a : +a + 1, newStart = +d ? +c : +c + 1;
+        return { a: +a, b: +b, oldStart, oldEnd: oldStart + +b, newStart, newEnd: newStart + +d };
+      }));
+    }
+    return cache.get(file);
+  };
+  return {
+    base: (file, line) => hunksOf(file).find((h) => h.b && line >= h.oldStart && line < h.oldEnd)?.oldStart ?? line,
+    migrated: (file, line) => {
+      let shift = 0;
+      for (const h of hunksOf(file)) {
+        if (line < h.newStart) break;
+        if (line < h.newEnd) return h.b ? h.oldStart : Math.max(h.a, 1);
+        shift = h.newEnd - h.oldEnd;
+      }
+      return line - shift;
+    },
+  };
+}
+const rekey = (diags, map) => new Map([...diags.values()].map((d) => {
+  const line = map(d.file, d.line);
+  return [`${d.file}:${line}:${d.code}`, { ...d, line, ...(line !== d.line && { reportedLine: d.line }) }];
+}));
 const IMPORT = /(?:\bfrom\s+|\brequire\(\s*|\bimport\(\s*)['"]((?:@[^'"/]+\/)?[^'"/]+)(?:\/[^'"]*)?['"]/g;
 const DEP_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'];
 // Line and block comments removed, so a package name mentioned in a comment is not counted as an import.
@@ -159,7 +194,11 @@ function main() {
     row.applyMs = Date.now() - started;
     row.applyExit = a.code;
     const evidencePath = join(migrated, '.apimigrate', 'evidence.json');
-    if (!existsSync(evidencePath)) { row.error = `apply wrote no evidence: ${(a.err || a.out).trim().split('\n')[0]}`; continue; }
+    if (!existsSync(evidencePath)) {
+      row.error = a.signal === 'SIGTERM' ? 'apply did not finish in 10 minutes' : /heap out of memory/.test(a.err) ? 'apply ran out of memory'
+        : `apply wrote no evidence: ${(a.err || a.out).trim().split('\n')[0]}`;
+      continue;
+    }
     const ev = JSON.parse(readFileSync(evidencePath, 'utf8'));
     row.changed = ev.callSites.length;
     row.changedByRule = ev.callSites.reduce((m, c) => ({ ...m, [c.ruleId]: (m[c.ruleId] ?? 0) + 1 }), {});
@@ -183,6 +222,8 @@ function main() {
   for (const r of checkable) {
     r.B = typecheck(treeOf(r, 'base'), r.typecheckFiles, 'B', typeNames);
     r.C = typecheck(treeOf(r, 'migrated'), r.typecheckFiles, 'C', typeNames);
+    const lines = lineMaps(treeOf(r, 'base'), treeOf(r, 'migrated'));
+    r.A = rekey(r.A, lines.base); r.B = rekey(r.B, lines.base); r.C = rekey(r.C, lines.migrated);
     // The baseline must actually see the SDK, or a clean result means nothing.
     r.sdkResolvedInBaseline = ![...r.A.values()].some((d) => d.code === 'TS2307' && d.message.includes(`'${pkgName}'`));
     r.brokenByUpgrade = minus(r.B, r.A);

@@ -47,13 +47,15 @@ const rows = [];
 const reposDir = join(f.work, 'repos');
 for (const slug of readdirSync(reposDir).filter((d) => d.includes('__')).sort()) {
   const base = join(reposDir, slug, 'base');
-  const r = spawnSync(process.execPath, [TOOL, 'apply', '--rules', probe, '--allow-unsigned', '--dry-run', '--root', base], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  const r = spawnSync(process.execPath, [TOOL, 'apply', '--rules', probe, '--allow-unsigned', '--dry-run', '--root', base], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 10 * 60 * 1000 });
+  // A run killed by the timeout or a crash reports nothing, so its text hits are counted but kept out of the totals.
+  const error = r.status === null ? (r.signal === 'SIGTERM' ? 'apply did not finish in 10 minutes' : `apply crashed (${r.signal})`) : null;
   const seen = new Map();
-  for (const line of r.stdout.split('\n')) {
+  for (const line of (r.stdout ?? '').split('\n')) {
     const m = line.match(/^unresolved: (.+):(\d+) (\S+): (.*)$/);
     if (m && callOf.has(m[3])) seen.set(`${m[1]}:${m[2]}:${callOf.get(m[3])}`, m[4].startsWith('manual rule') ? 'proven' : 'queued');
   }
-  const row = { repo: slug.replace('__', '/'), text: 0, proven: 0, queued: 0, invisible: 0, invisibleSites: [] };
+  const row = { repo: slug.replace('__', '/'), ...(error && { error }), text: 0, proven: 0, queued: 0, invisible: 0, invisibleSites: [] };
   for (const file of codeFiles(base)) {
     const lines = readFileSync(join(base, file), 'utf8').split('\n');
     lines.forEach((text, i) => {
@@ -62,17 +64,18 @@ for (const slug of readdirSync(reposDir).filter((d) => d.includes('__')).sort())
         // A longer method path that also matched on this line wins, so a.b.c.list is not also counted as b.c.list.
         if (patterns.some(([other, ore]) => other !== call && other.endsWith('.' + call) && ore.test(text))) continue;
         row.text++;
+        if (error) continue;
         const status = seen.get(`${file}:${i + 1}:${call}`) ?? 'invisible';
         row[status]++;
         if (status === 'invisible') row.invisibleSites.push(`${file}:${i + 1} ${call}`);
       }
     });
   }
-  for (const k of Object.keys(totals)) totals[k] += row[k];
+  if (!error) for (const k of Object.keys(totals)) totals[k] += row[k];
   rows.push(row);
 }
 
 writeFileSync(join(f.work, 'coverage.json'), JSON.stringify({ totals, rows }, null, 1) + '\n');
 const pct = (n) => (totals.text ? `${Math.round((n / totals.text) * 100)}%` : '0%');
 console.log(`text hits ${totals.text}: proven ${totals.proven} (${pct(totals.proven)}), queued ${totals.queued} (${pct(totals.queued)}), invisible ${totals.invisible} (${pct(totals.invisible)})`);
-for (const row of rows.filter((x) => x.text)) console.log(`${row.repo}: ${row.text} hits, ${row.proven} proven, ${row.queued} queued, ${row.invisible} invisible`);
+for (const row of rows.filter((x) => x.text)) console.log(`${row.repo}: ${row.text} hits, ${row.error ?? `${row.proven} proven, ${row.queued} queued, ${row.invisible} invisible`}`);
