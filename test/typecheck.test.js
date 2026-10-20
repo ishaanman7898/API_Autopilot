@@ -253,6 +253,27 @@ test('agent-apply uses apply\'s run against the old versions, so an error the up
   assert.deepEqual(without.added, [{ file: 'src/meta.ts', ...body }], 'without the run against sdk 1 it would count');
 });
 
+test('the pull request body shows the type-check of agent edits, with the new errors on lines the agent did not change', async () => {
+  // The agent fixes the import the upgrade broke, which uncovers an error on a line it did not touch.
+  const kv = "import { values, OldValues } from 'sdk';\n\ndeclare const v: OldValues;\nexport const n: number = v.count;\n\nexport async function save(ns: string, key: string, data: object) {\n  await values.update(ns, key, JSON.stringify(data));\n}\n";
+  const { dir, rules, installCmd } = consumer({ 'src/kv.ts': kv }, [], [QUEUE]);
+  assert.equal((await cli(['apply', '--root', dir, '--rules', rules, '--allow-unsigned', '--install-cmd', installCmd, '--typecheck'])).code, 0);
+  assert.doesNotMatch(prBody(evidenceOf(dir)), /Agent edits type check|agent did not change/);
+  const edited = kv.replace('OldValues }', 'Values as OldValues }').replace(UPDATE, 'values.update(key, { namespace_id: ns, value: JSON.stringify(data) })');
+  const r = await agentRun(dir, edited, '--typecheck');
+  assert.equal(r.code, 0, r.out + r.err);
+  assert.match(r.out, /^note: new type error on a line the agent did not change, not counted by the gate: src\/kv\.ts:4: TS2322 Type 'string' is not assignable to type 'number'\.$/m);
+  const body = prBody(evidenceOf(dir));
+  assert.match(body, /\| Type check \| 0 files with TypeScript `5\.\d+\.\d+`, 0 errors added on changed lines \|\n\| Agent edits type check \| 1 files with TypeScript `5\.\d+\.\d+`, 0 errors added on lines the agent changed, 1 new on other lines \|/);
+  assert.match(body, /### New type errors on lines the agent did not change\n\nThe agent edited files have these errors .*Check them before marking this ready\.\n\n- `src\/kv\.ts:4` `TS2322 Type 'string' is not assignable to type 'number'\.`/);
+  assert.doesNotMatch(body, /### Type errors added|### New type errors on unchanged lines/);
+
+  const skipped = consumer({ 'src/kv.ts': kv }, [], [QUEUE]);
+  assert.equal((await cli(['apply', '--root', skipped.dir, '--rules', skipped.rules, '--allow-unsigned'])).code, 0);
+  assert.equal((await agentRun(skipped.dir, edited, '--typecheck')).code, 0);
+  assert.match(prBody(evidenceOf(skipped.dir)), /\| Agent edits type check \| not run: the evidence records no install by apply, so the new versions are not known to be installed \|/);
+});
+
 test('agent-apply refuses to run after apply\'s gate failed, so the evidence keeps the failure', async () => {
   // The rewrite of the last line adds a type error, and the call is queued.
   const { dir, rules, installCmd } = consumer({ 'src/kv.ts': KV }, [["'already wrong'", 'undefined']], [QUEUE]);

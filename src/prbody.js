@@ -14,10 +14,10 @@ export function branchName(evidence, runId) {
   return `apimigrate/${slug}-${String(runId).replace(/[^0-9]/g, '') || '0'}`;
 }
 
-function typecheckText(t) {
+function typecheckText(t, changed = 'changed lines') {
   if (!t.ran) return `not run: ${String(t.reason).replace(/[|`\r\n]+/g, ' ')}`;
   const files = t.projects.reduce((n, p) => n + p.files.length, 0);
-  return `${files} files with TypeScript ${code(t.typescript)}, ${t.added.length} errors added on changed lines${t.otherLines.length ? `, ${t.otherLines.length} new on other lines` : ''}`;
+  return `${files} files with TypeScript ${code(t.typescript)}, ${t.added.length} errors added on ${changed}${t.otherLines.length ? `, ${t.otherLines.length} new on other lines` : ''}`;
 }
 
 export function prBody(evidence, { rulesPath = 'rules.json', limit = MAX_BODY } = {}) {
@@ -34,6 +34,7 @@ export function prBody(evidence, { rulesPath = 'rules.json', limit = MAX_BODY } 
     ...(evidence.install ? [['Install', evidence.install.runs.map((r) => `${code(r.cmd)} in ${code(r.dir)}, exit code ${r.exitCode}`).join('<br>')]] : []),
     ['Tests', evidence.tests ? `exit code ${evidence.tests.exitCode}` : 'not run'],
     ...(evidence.typecheck ? [['Type check', typecheckText(evidence.typecheck)]] : []),
+    ...(evidence.agent?.typecheck ? [['Agent edits type check', typecheckText(evidence.agent.typecheck, 'lines the agent changed')]] : []),
     ['Replay digest', code(evidence.deterministic.replayDigest)],
   ];
   const lines = [
@@ -59,6 +60,7 @@ export function prBody(evidence, { rulesPath = 'rules.json', limit = MAX_BODY } 
   };
   typeErrors('Type errors added', 'The rewritten text has these errors on lines the rewrite changed, and the original text does not.', evidence.typecheck?.added);
   typeErrors('New type errors on unchanged lines', 'The rewritten files have these errors on lines the rewrite did not change. The upgrade itself often causes them, and an error in the original text, such as an import the new version removed, hid them, so the gate does not count them. Check them before marking this ready.', evidence.typecheck?.otherLines);
+  typeErrors('New type errors on lines the agent did not change', 'The agent edited files have these errors on lines the agent did not change, and neither the text apply left nor the original text has them, so the gate does not count them. Check them before marking this ready.', evidence.agent?.typecheck?.otherLines);
   if (evidence.unresolved.length) {
     lines.push('', '### Unresolved call sites', '', 'These were not rewritten because the tool could not prove them.', '');
     for (const u of evidence.unresolved.slice(0, 50)) lines.push(`- ${code(`${u.file}:${u.line}`)} ${code(u.ruleId)}: ${String(u.reason).replace(/[\r\n]+/g, ' ')}`);
