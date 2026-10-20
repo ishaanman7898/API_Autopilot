@@ -54,7 +54,7 @@ export function run({ flags }, io) {
     const runs = evidence.install?.runs ?? [];
     const skip = !runs.length ? 'the evidence records no install by apply, so the new versions are not known to be installed' : runs.some((r) => r.exitCode !== 0) ? 'the install in apply failed' : null;
     try {
-      typecheck = skip ? { ran: false, reason: skip } : typecheckAgentEdits(root, baseScan, current.scanFiles, applied.files);
+      typecheck = skip ? { ran: false, reason: skip } : typecheckAgentEdits(root, baseScan, current.scanFiles, applied.files, base.baseline ?? null);
     } catch (e) {
       typecheckError = e;
       typecheck = { ran: false, reason: `TypeScript failed: ${e.message}` };

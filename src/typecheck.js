@@ -177,9 +177,10 @@ function checkVariants(root, files, variants, overlay = files) {
 }
 
 // The original text's errors with the versions installed now, keyed by file. apply runs this before it installs
-// the new versions.
-export function typecheckBaseline(root, base, head) {
-  return checkVariants(root, changedCode(base, head), [base]).errors[0];
+// the new versions, on the files it changed and the code files with queued sites, which an agent may edit later.
+export function typecheckBaseline(root, base, head, queued = []) {
+  const files = [...new Set([...changedCode(base, head), ...queued.filter((f) => AST_FILE.test(f) && typeof base[f] === 'string')])].sort();
+  return checkVariants(root, files, [base]).errors[0];
 }
 
 // base and head map repository paths to LF text. Every code file whose text differs is checked. baseline, from
@@ -202,8 +203,8 @@ export function typecheckChanges(root, base, head, baseline = null) {
 // agent-apply installs nothing, so it relies on apply having installed the new versions. base is the original
 // text, applied the text apply left and edited the text with the agent's edits. Each file the agent changed is
 // checked with all three texts. An error on a line the agent changed counts when neither the text apply left nor
-// the original text has it. Returns the shape of typecheckChanges without baseline.
-export function typecheckAgentEdits(root, base, applied, edited) {
+// the original text has it. baseline is apply's typecheckBaseline, from base.json. Returns the shape of typecheckChanges.
+export function typecheckAgentEdits(root, base, applied, edited, baseline = null) {
   const files = changedCode(applied, edited).filter((f) => typeof base[f] === 'string');
   const overlay = [...new Set([...changedCode(base, edited), ...files])].filter((f) => typeof applied[f] === 'string').sort();
   const { projects, errors: [original, before, after] } = checkVariants(root, files, [base, applied, edited], overlay);
@@ -212,12 +213,12 @@ export function typecheckAgentEdits(root, base, applied, edited) {
   const otherLines = [];
   for (const f of files) {
     const agent = compareErrors(applied[f], edited[f], [before[f]], after[f]);
-    const vsBase = compareErrors(base[f], edited[f], [original[f]], after[f]);
+    const vsBase = compareErrors(base[f], edited[f], [original[f], baseline?.[f] ?? []], after[f]);
     const fresh = [...vsBase.changed, ...vsBase.other];
     // Multiset intersection: the errors the agent added that the original text does not have either.
     const both = (list) => minus(list, [minus(list, [fresh], key)], key);
     added.push(...both(agent.changed).map((e) => ({ file: f, ...e })));
     otherLines.push(...both(agent.other).map((e) => ({ file: f, ...e })));
   }
-  return { ran: true, typescript: ts.version, projects, added: added.sort(byLine), otherLines: otherLines.sort(byLine) };
+  return { ran: true, typescript: ts.version, baseline: baseline !== null, projects, added: added.sort(byLine), otherLines: otherLines.sort(byLine) };
 }

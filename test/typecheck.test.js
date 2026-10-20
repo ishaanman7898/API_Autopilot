@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 import { main } from '../src/cli.js';
 import { lineHunks } from '../src/diffview.js';
 import { prBody } from '../src/prbody.js';
-import { compareErrors, typecheckChanges } from '../src/typecheck.js';
+import { compareErrors, typecheckAgentEdits, typecheckChanges } from '../src/typecheck.js';
 import { openWatchPullRequests } from '../src/watchpr.js';
 
 function tree(files, dir = mkdtempSync(join(tmpdir(), 'typecheck-'))) {
@@ -177,7 +177,7 @@ const QUEUE = { id: 'queue', kind: 'manual', confidence: 'likely', evidence: 'te
 const UPDATE = 'values.update(ns, key, JSON.stringify(data))';
 async function agentRun(dir, text, ...flags) {
   const results = join(mkdtempSync(join(tmpdir(), 'agent-')), 'agent.json');
-  writeFileSync(results, JSON.stringify({ files: { 'src/kv.ts': text } }));
+  writeFileSync(results, JSON.stringify({ files: typeof text === 'string' ? { 'src/kv.ts': text } : text }));
   return cli(['agent-apply', '--root', dir, '--results', results, ...flags]);
 }
 
@@ -229,6 +229,28 @@ test('agent-apply skips the type-check with a note when the evidence does not sh
   const f = await agentRun(failed.dir, faulty(failed.dir), '--typecheck', '--dry-run');
   assert.equal(f.code, 0, f.out + f.err);
   assert.match(f.out, /^note: type-check not run: the install in apply failed$/m);
+});
+
+test('agent-apply uses apply\'s run against the old versions, so an error the upgrade hid does not count against the agent', async () => {
+  // As in the apply test above, the call already passes an unknown key with sdk 1. Here apply only queues it.
+  const meta = "import { values } from 'sdk';\n\nexport const tag = (ns: string, key: string, v: string) => values.update(ns, key, v, { metadata: '', body: 1 });\n";
+  const body = { line: 3, code: 'TS2353', message: "Object literal may only specify known properties, and 'body' does not exist in type 'UpdateParams'." };
+  const { dir, rules, installCmd } = consumer({ 'src/meta.ts': meta }, [], [QUEUE]);
+  const a = await cli(['apply', '--root', dir, '--rules', rules, '--allow-unsigned', '--install-cmd', installCmd, '--typecheck']);
+  assert.equal(a.code, 0, a.out + a.err);
+  assert.deepEqual(JSON.parse(readFileSync(join(dir, '.apimigrate/base.json'), 'utf8')).baseline, { 'src/meta.ts': [{ ...body, end: 3 }] }, 'apply checked the queued file, which it did not change');
+
+  const edited = meta.replace('values.update(ns, key, v, { ', 'values.update(key, { namespace_id: ns, value: v, ');
+  const r = await agentRun(dir, { 'src/meta.ts': edited }, '--typecheck');
+  assert.equal(r.code, 0, r.out + r.err);
+  assert.match(r.out, /: 0 errors added on lines the agent changed/);
+  const typecheck = evidenceOf(dir).agent.typecheck;
+  assert.equal(typecheck.baseline, true);
+  assert.deepEqual([typecheck.added, typecheck.otherLines], [[], []]);
+  const texts = (text) => ({ 'src/meta.ts': text });
+  const without = typecheckAgentEdits(dir, texts(meta), texts(meta), texts(edited));
+  assert.equal(without.baseline, false);
+  assert.deepEqual(without.added, [{ file: 'src/meta.ts', ...body }], 'without the run against sdk 1 it would count');
 });
 
 test('a Deno project is checked with the compilerOptions of its deno.json or deno.jsonc, and Deno\'s strict default', () => {

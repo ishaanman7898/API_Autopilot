@@ -84,7 +84,7 @@ export async function run({ flags }, io) {
   let baseline = null;
   let typecheckError = null;
   if (flags.typecheck && installing) {
-    try { baseline = typecheckBaseline(root, before.scanFiles, result.files); } catch (e) { typecheckError = e; }
+    try { baseline = typecheckBaseline(root, before.scanFiles, result.files, result.unresolved.map((u) => u.file)); } catch (e) { typecheckError = e; }
   }
   const installed = installing ? installDependencies(root, manifests, { cmd: flags['install-cmd'] ?? null }) : null;
   const install = installed && { runs: installed.runs, lockfiles: installed.lockfiles };
@@ -118,7 +118,8 @@ export async function run({ flags }, io) {
     const dir = join(root, '.apimigrate');
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, 'evidence.json'), JSON.stringify(evidence, null, 2) + '\n');
-    writeFileSync(join(dir, 'base.json'), JSON.stringify({ files: before.files, scan: Object.keys(before.scanFiles) }) + '\n');
+    // agent-apply --typecheck uses the baseline as its run against the old versions.
+    writeFileSync(join(dir, 'base.json'), JSON.stringify({ files: before.files, scan: Object.keys(before.scanFiles), baseline }) + '\n');
     writeFileSync(join(dir, 'unresolved.json'), JSON.stringify(buildQueue(result.unresolved, rs), null, 2) + '\n');
     audit(root, { event: 'apply', rule: rs.id, hash: evidence.rule.contentHash, signed: evidence.rule.signed, changedFiles: changed.length, unresolved: result.unresolved.length, gate: gate.ok, tests: tests?.exitCode ?? null, install: install ? installed.ok : null, typeErrorsAdded: typecheck?.ran ? typecheck.added.length : null });
   }
