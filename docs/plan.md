@@ -6,7 +6,7 @@ This is the working checklist for Phase 1 of the [strategy](strategy.md). It lis
 
 - A signed rule format, an engine, a gate, evidence and replay, a draft command, a watcher and an Action.
 - A Mux kit in [providers/mux](../providers/mux/README.md) with 6 rules, publishing steps and a draft message.
-- A Cloudflare kit in [providers/cloudflare](../providers/cloudflare/README.md) with 254 rules, publishing steps and a draft message. The [Cloudflare argument benchmark](../bench/cloudflare-6-to-7-args/README.md) ran it on 63 repositories that call the changed methods: it rewrote 154 calls, fixed 128 of the 246 type errors the upgrade causes, introduced 5 and queued 67 calls.
+- A Cloudflare kit in [providers/cloudflare](../providers/cloudflare/README.md) with 254 rules, publishing steps and a draft message. The [Cloudflare argument benchmark](../bench/cloudflare-6-to-7-args/README.md) ran it on 63 repositories that call the changed methods. Its first run introduced 5 type errors. Commit `26089fc` fixed the engine faults behind them, and the rerun rewrote 149 calls, fixed 125 of the 246 type errors the upgrade causes, introduced none and queued 72 calls.
 - An Orb kit in [providers/orb](../providers/orb/README.md) with 23 rules drafted from `orb-billing` 5.76.0 and 6.0.0, publishing steps and a draft message. The [Orb benchmark](../bench/orb-5-to-6/README.md) ran it on 3 repositories: it fixed 4 of the 13 type errors the upgrade causes, introduced none, and left 9 that no rule covers without queuing them.
 - A test that each kit lints, signs with a throwaway key and builds an index.
 
@@ -16,7 +16,7 @@ This is the working checklist for Phase 1 of the [strategy](strategy.md). It lis
 - No provider's domain serves a rule index. The live fetch works against a test domain in the `provider-selftest` workflow.
 - The rules are drafted from SDK diffs. No provider has reviewed them.
 - The Orb kit misses changes that `api.md` does not show, such as error class constructors and a removed `orb-billing/core` export, and 20 of its 23 rules matched nothing in the 3 public codebases found calling version 5.
-- The Cloudflare argument rewrites introduced 5 type errors in 2 of the 63 repositories of the [argument benchmark](../bench/cloudflare-6-to-7-args/README.md), because the engine spread a string into a params object and kept casts written for the old argument positions, and 5 more that only `strict` builds report. The engine also queued 31 calls whose receiver the TypeScript checker types as the client and 15 whose arguments are safe to move, missed 14 calls, and could not finish 4 of the 67 repositories: 3 timed out on minified files and 1 ran out of memory.
+- In the [Cloudflare argument benchmark](../bench/cloudflare-6-to-7-args/README.md) the engine queued 31 calls whose receiver the TypeScript checker types as the client and 15 whose arguments are safe to move, missed 14 calls, and could not finish 4 of the 67 repositories: 3 timed out on minified files and 1 ran out of memory. The gate does not type-check, so it would not stop a rewrite that adds a type error.
 
 ## Steps for the maintainer
 
@@ -65,6 +65,6 @@ Give each provider one to two weeks.
 
 ## Then
 
-Start Phase 2, more benchmarks with published failures. Fix the engine failures that the [Cloudflare argument benchmark](../bench/cloudflare-6-to-7-args/README.md) published, starting with the rewrites that introduced type errors and the timeouts on minified files, and run it again.
+Start Phase 2, more benchmarks with published failures. Fix the engine failures that the [Cloudflare argument benchmark](../bench/cloudflare-6-to-7-args/README.md) still shows, starting with the timeouts on minified files and the 31 calls queued for their receiver, and run it again.
 
 Related docs are [strategy](strategy.md), [build log](history.md) and the [CLI reference](cli.md).

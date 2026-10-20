@@ -9,7 +9,7 @@
  "types": [
   "@types/node@22"
  ],
- "ranAt": "2026-10-19T19:13:49.960Z",
+ "ranAt": "2026-10-19T23:57:59.086Z",
  "results": [
   {
    "repo": "Christopher-Hayes/yt-on-fedi",
@@ -41,7 +41,7 @@
     "util/videoActions.ts",
     "util/videoDownloader.ts"
    ],
-   "applyMs": 604,
+   "applyMs": 590,
    "applyExit": 0,
    "changed": 3,
    "changedByRule": {
@@ -87,7 +87,7 @@
     "serve/Cloudflare/index.js",
     "serve/index.js"
    ],
-   "applyMs": 392,
+   "applyMs": 401,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -117,7 +117,7 @@
    "muxFiles": [
     "src/n3/kv/cloudflare-kv.ts"
    ],
-   "applyMs": 380,
+   "applyMs": 385,
    "applyExit": 0,
    "changed": 3,
    "changedByRule": {
@@ -235,7 +235,7 @@
     "packages/provider-cloudflare/src/worker-route.ts",
     "packages/provider-cloudflare/src/zone.ts"
    ],
-   "applyMs": 1780,
+   "applyMs": 1792,
    "applyExit": 0,
    "changed": 4,
    "changedByRule": {
@@ -294,15 +294,21 @@
    "muxFiles": [
     "database.ts"
    ],
-   "applyMs": 365,
+   "applyMs": 347,
    "applyExit": 0,
-   "changed": 3,
+   "changed": 2,
    "changedByRule": {
     "named-kv.namespaces.values.get": 1,
-    "named-kv.namespaces.values.update": 1,
     "dependency": 1
    },
-   "unresolved": [],
+   "unresolved": [
+    {
+     "file": "database.ts",
+     "line": 65,
+     "ruleId": "named-kv.namespaces.values.update",
+     "reason": "the params argument of kv.namespaces.values.update is not an object literal, a name or a property read, so it cannot be spread"
+    }
+   ],
    "skipped": [],
    "gate": true,
    "filesChanged": 2,
@@ -330,36 +336,14 @@
    "stillBroken": [
     {
      "file": "database.ts",
-     "line": 66,
-     "code": "TS2698",
-     "message": "Spread types may only be created from object types.",
-     "reportedLine": 64
-    },
-    {
-     "file": "database.ts",
-     "line": 70,
-     "code": "TS2353",
-     "message": "Object literal may only specify known properties, and 'account_id' does not exist in type 'RequestOptions'.",
-     "reportedLine": 66
+     "line": 69,
+     "code": "TS2554",
+     "message": "Expected 2-3 arguments, but got 4.",
+     "reportedLine": 67
     }
    ],
-   "fixed": 2,
-   "newFromMigration": [
-    {
-     "file": "database.ts",
-     "line": 66,
-     "code": "TS2698",
-     "message": "Spread types may only be created from object types.",
-     "reportedLine": 64
-    },
-    {
-     "file": "database.ts",
-     "line": 70,
-     "code": "TS2353",
-     "message": "Object literal may only specify known properties, and 'account_id' does not exist in type 'RequestOptions'.",
-     "reportedLine": 66
-    }
-   ],
+   "fixed": 1,
+   "newFromMigration": [],
    "baselineErrors": 1
   },
   {
@@ -389,7 +373,7 @@
     "tests/meta.test.ts",
     "tests/server.test.ts"
    ],
-   "applyMs": 903,
+   "applyMs": 938,
    "applyExit": 0,
    "changed": 7,
    "changedByRule": {
@@ -454,26 +438,6 @@
    ],
    "stillBroken": [
     {
-     "file": "src/tools/kv.ts",
-     "line": 296,
-     "code": "TS2345",
-     "message": "Argument of type '{ method?: HTTPMethod; path?: string; query?: object | undefined | null; body?: unknown; headers?: HeadersLike; maxRetries?: number; stream?: boolean | undefined; ... 6 more ...; namespace_id: any; }' is not assignable to parameter of type 'ValueGetParams'."
-    },
-    {
-     "file": "src/tools/kv.ts",
-     "line": 364,
-     "code": "TS2345",
-     "message": "Argument of type '{ method?: HTTPMethod; path?: string; query?: object | undefined | null; body?: unknown; headers?: HeadersLike; maxRetries?: number; stream?: boolean | undefined; ... 6 more ...; namespace_id: any; }' is not assignable to parameter of type 'ValueUpdateParams'.",
-     "reportedLine": 362
-    },
-    {
-     "file": "src/tools/kv.ts",
-     "line": 433,
-     "code": "TS2345",
-     "message": "Argument of type '{ method?: HTTPMethod; path?: string; query?: object | undefined | null; body?: unknown; headers?: HeadersLike; maxRetries?: number; stream?: boolean | undefined; ... 6 more ...; namespace_id: any; }' is not assignable to parameter of type 'ValueDeleteParams'.",
-     "reportedLine": 429
-    },
-    {
      "file": "src/tools/workers.ts",
      "line": 154,
      "code": "TS2345",
@@ -487,28 +451,7 @@
     }
    ],
    "fixed": 2,
-   "newFromMigration": [
-    {
-     "file": "src/tools/kv.ts",
-     "line": 296,
-     "code": "TS2345",
-     "message": "Argument of type '{ method?: HTTPMethod; path?: string; query?: object | undefined | null; body?: unknown; headers?: HeadersLike; maxRetries?: number; stream?: boolean | undefined; ... 6 more ...; namespace_id: any; }' is not assignable to parameter of type 'ValueGetParams'."
-    },
-    {
-     "file": "src/tools/kv.ts",
-     "line": 364,
-     "code": "TS2345",
-     "message": "Argument of type '{ method?: HTTPMethod; path?: string; query?: object | undefined | null; body?: unknown; headers?: HeadersLike; maxRetries?: number; stream?: boolean | undefined; ... 6 more ...; namespace_id: any; }' is not assignable to parameter of type 'ValueUpdateParams'.",
-     "reportedLine": 362
-    },
-    {
-     "file": "src/tools/kv.ts",
-     "line": 433,
-     "code": "TS2345",
-     "message": "Argument of type '{ method?: HTTPMethod; path?: string; query?: object | undefined | null; body?: unknown; headers?: HeadersLike; maxRetries?: number; stream?: boolean | undefined; ... 6 more ...; namespace_id: any; }' is not assignable to parameter of type 'ValueDeleteParams'.",
-     "reportedLine": 429
-    }
-   ],
+   "newFromMigration": [],
    "baselineErrors": 50
   },
   {
@@ -562,18 +505,23 @@
     "worker/test/token-limit-exception/vitest.config.mts",
     "worker/worker-configuration.d.ts"
    ],
-   "applyMs": 11697,
+   "applyMs": 10654,
    "applyExit": 0,
-   "changed": 3,
+   "changed": 2,
    "changedByRule": {
     "dependency": 1,
-    "named-kv.namespaces.values.update": 1,
     "named-kv.namespaces.values.delete": 1
    },
    "unresolved": [
     {
      "file": "valhalla/jawn/src/lib/clients/cloudflareKV.ts",
-     "line": 123,
+     "line": 35,
+     "ruleId": "named-kv.namespaces.values.update",
+     "reason": "comments around the arguments of kv.namespaces.values.update would be lost"
+    },
+    {
+     "file": "valhalla/jawn/src/lib/clients/cloudflareKV.ts",
+     "line": 126,
      "ruleId": "named-kv.namespaces.values.delete",
      "reason": "arguments of kv.namespaces.values.delete could have side effects and moving them would change their order"
     }
@@ -590,10 +538,9 @@
    "brokenByUpgrade": [
     {
      "file": "valhalla/jawn/src/lib/clients/cloudflareKV.ts",
-     "line": 36,
+     "line": 37,
      "code": "TS2345",
-     "message": "Argument of type 'string' is not assignable to parameter of type 'ValueUpdateParams'.",
-     "reportedLine": 37
+     "message": "Argument of type 'string' is not assignable to parameter of type 'ValueUpdateParams'."
     },
     {
      "file": "valhalla/jawn/src/lib/clients/cloudflareKV.ts",
@@ -612,13 +559,18 @@
    "stillBroken": [
     {
      "file": "valhalla/jawn/src/lib/clients/cloudflareKV.ts",
+     "line": 37,
+     "code": "TS2345",
+     "message": "Argument of type 'string' is not assignable to parameter of type 'ValueUpdateParams'."
+    },
+    {
+     "file": "valhalla/jawn/src/lib/clients/cloudflareKV.ts",
      "line": 128,
      "code": "TS2345",
-     "message": "Argument of type 'string' is not assignable to parameter of type 'ValueDeleteParams'.",
-     "reportedLine": 125
+     "message": "Argument of type 'string' is not assignable to parameter of type 'ValueDeleteParams'."
     }
    ],
-   "fixed": 2,
+   "fixed": 1,
    "newFromMigration": [],
    "baselineErrors": 563
   },
@@ -745,7 +697,7 @@
     "plugin-architecture/packages/vultr/src/actions.ts",
     "plugin-architecture/packages/vultr/src/render.ts"
    ],
-   "applyMs": 184412,
+   "applyMs": 181410,
    "applyExit": 0,
    "changed": 13,
    "changedByRule": {
@@ -1118,7 +1070,7 @@
     "workers/short-links-redirect/test/workerRequest.ts",
     "workers/short-links-redirect/vitest.config.mts"
    ],
-   "applyMs": 21670,
+   "applyMs": 21982,
    "applyExit": 0,
    "changed": 1,
    "changedByRule": {
@@ -1391,16 +1343,28 @@
     "src/app/dot/api/devices/route.ts",
     "src/lib/device-api.ts"
    ],
-   "applyMs": 410,
+   "applyMs": 388,
    "applyExit": 0,
-   "changed": 14,
+   "changed": 12,
    "changedByRule": {
     "dependency": 1,
     "named-kv.namespaces.values.get": 9,
-    "named-kv.namespaces.values.update": 2,
     "named-kv.namespaces.values.delete": 2
    },
-   "unresolved": [],
+   "unresolved": [
+    {
+     "file": "src/app/dot/api/devices/route.ts",
+     "line": 278,
+     "ruleId": "named-kv.namespaces.values.update",
+     "reason": "arguments of kv.namespaces.values.update could have side effects and moving them would change their order"
+    },
+    {
+     "file": "src/app/dot/api/devices/route.ts",
+     "line": 389,
+     "ruleId": "named-kv.namespaces.values.update",
+     "reason": "arguments of kv.namespaces.values.update could have side effects and moving them would change their order"
+    }
+   ],
    "skipped": [],
    "gate": true,
    "filesChanged": 3,
@@ -1493,8 +1457,16 @@
      "reportedLine": 247
     }
    ],
-   "stillBroken": [],
-   "fixed": 12,
+   "stillBroken": [
+    {
+     "file": "src/app/dot/api/devices/route.ts",
+     "line": 389,
+     "code": "TS2345",
+     "message": "Argument of type 'string' is not assignable to parameter of type 'ValueUpdateParams'.",
+     "reportedLine": 377
+    }
+   ],
+   "fixed": 11,
    "newFromMigration": [],
    "baselineErrors": 5
   },
@@ -1506,7 +1478,7 @@
     "src/scraper/d1-uploader.ts",
     "src/scraper/kv-queue-manager.ts"
    ],
-   "applyMs": 301,
+   "applyMs": 295,
    "applyExit": 0,
    "changed": 1,
    "changedByRule": {
@@ -1648,7 +1620,7 @@
     "src/templates.ts",
     "worker-configuration.d.ts"
    ],
-   "applyMs": 289,
+   "applyMs": 288,
    "applyExit": 0,
    "changed": 1,
    "changedByRule": {
@@ -1721,7 +1693,7 @@
     "src/tools/tunnels.ts",
     "src/tools/workers.ts"
    ],
-   "applyMs": 333,
+   "applyMs": 343,
    "applyExit": 0,
    "changed": 6,
    "changedByRule": {
@@ -1782,7 +1754,7 @@
    "muxFiles": [
     "src/lib/server/cache.ts"
    ],
-   "applyMs": 271,
+   "applyMs": 277,
    "applyExit": 0,
    "changed": 4,
    "changedByRule": {
@@ -1837,7 +1809,7 @@
     "src/lib/server/trigger.ts",
     "svelte.config.js"
    ],
-   "applyMs": 282,
+   "applyMs": 284,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -1916,7 +1888,7 @@
     "vitest.config.mts",
     "worker-configuration.d.ts"
    ],
-   "applyMs": 335,
+   "applyMs": 338,
    "applyExit": 0,
    "changed": 3,
    "changedByRule": {
@@ -1962,7 +1934,7 @@
     "apps/daemon/src/routes/site.ts",
     "packages/kui/src/components/ai-elements/model-selector.tsx"
    ],
-   "applyMs": 1968,
+   "applyMs": 1912,
    "applyExit": 0,
    "changed": 3,
    "changedByRule": {
@@ -2009,7 +1981,7 @@
     "apps/backend/src/utils/cache.ts",
     "apps/backend/src/utils/cloudflare.ts"
    ],
-   "applyMs": 468,
+   "applyMs": 471,
    "applyExit": 0,
    "changed": 4,
    "changedByRule": {
@@ -2387,7 +2359,7 @@
     "tests/smoke-test-flatten-website/types/env.d.ts",
     "tests/smoke-test-flatten-website/vite.config.ts"
    ],
-   "applyMs": 5131,
+   "applyMs": 5112,
    "applyExit": 0,
    "changed": 8,
    "changedByRule": {
@@ -2431,7 +2403,7 @@
    "muxFiles": [
     "uploader/main.js"
    ],
-   "applyMs": 371,
+   "applyMs": 372,
    "applyExit": 0,
    "changed": 4,
    "changedByRule": {
@@ -2466,7 +2438,7 @@
     "src/pages/api/contact.ts",
     "src/pages/api/linktree.ts"
    ],
-   "applyMs": 490,
+   "applyMs": 486,
    "applyExit": 0,
    "changed": 1,
    "changedByRule": {
@@ -2607,7 +2579,7 @@
     "sst-env.d.ts",
     "sst.config.ts"
    ],
-   "applyMs": 83055,
+   "applyMs": 81404,
    "applyExit": 0,
    "changed": 3,
    "changedByRule": {
@@ -2666,7 +2638,7 @@
     "backend/newsainchor-backend/vitest.config.mts",
     "frontend/NewsAinchor/app/(tabs)/Anchor.tsx"
    ],
-   "applyMs": 382,
+   "applyMs": 391,
    "applyExit": 0,
    "changed": 3,
    "changedByRule": {
@@ -2724,7 +2696,7 @@
     "src/index.ts",
     "src/test.ts"
    ],
-   "applyMs": 559,
+   "applyMs": 415,
    "applyExit": 0,
    "changed": 3,
    "changedByRule": {
@@ -2787,7 +2759,7 @@
     "tests/unit/r2-presign.test.ts",
     "vitest.config.ts"
    ],
-   "applyMs": 2642,
+   "applyMs": 2299,
    "applyExit": 0,
    "changed": 8,
    "changedByRule": {
@@ -2982,7 +2954,7 @@
     "packages/sdk/src/workflows/workflow-runner.ts",
     "packages/vite-plugin-deco/index.ts"
    ],
-   "applyMs": 4759,
+   "applyMs": 4837,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -3160,7 +3132,7 @@
     "standalone/experimental/cloudflare-mcp/src/tools/zones.ts",
     "test-toolkit-full.mjs"
    ],
-   "applyMs": 8290,
+   "applyMs": 8456,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -3349,7 +3321,7 @@
     "packages/mcp-common/worker-configuration.d.ts",
     "packages/mcp-observability/worker-configuration.d.ts"
    ],
-   "applyMs": 2225,
+   "applyMs": 2290,
    "applyExit": 0,
    "changed": 6,
    "changedByRule": {
@@ -3599,7 +3571,7 @@
     "x402-proxy-template/src/index.ts",
     "x402-proxy-template/worker-configuration.d.ts"
    ],
-   "applyMs": 5518,
+   "applyMs": 5337,
    "applyExit": 0,
    "changed": 3,
    "changedByRule": {
@@ -3657,7 +3629,7 @@
    "muxFiles": [
     "src/index.ts"
    ],
-   "applyMs": 250,
+   "applyMs": 256,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -3701,7 +3673,7 @@
     "packages/dispatch-worker/test/index.spec.ts",
     "packages/dispatch-worker/vitest.config.mts"
    ],
-   "applyMs": 350,
+   "applyMs": 353,
    "applyExit": 0,
    "changed": 4,
    "changedByRule": {
@@ -3756,7 +3728,7 @@
     "workers/services/cloudflare/types.ts",
     "workers/services/cloudflare/workers.ts"
    ],
-   "applyMs": 993,
+   "applyMs": 972,
    "applyExit": 0,
    "changed": 1,
    "changedByRule": {
@@ -3899,7 +3871,7 @@
     "packages/cloudflare/mod.ts",
     "packages/cloudflare/src/create-cloudflare.ts"
    ],
-   "applyMs": 303,
+   "applyMs": 297,
    "applyExit": 0,
    "changed": 0,
    "changedByRule": {},
@@ -3926,7 +3898,7 @@
    "muxFiles": [
     "current/typescript-sdk/kv-manager/index.ts"
    ],
-   "applyMs": 294,
+   "applyMs": 290,
    "applyExit": 0,
    "changed": 1,
    "changedByRule": {
@@ -3995,7 +3967,7 @@
     "src/main.ts",
     "src/types.d.ts"
    ],
-   "applyMs": 251,
+   "applyMs": 250,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -4060,7 +4032,7 @@
     "packages/hono-ui/src/constants.ts",
     "packages/hono-ui/src/utils/vendorify-traces.ts"
    ],
-   "applyMs": 1400,
+   "applyMs": 1304,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -4101,13 +4073,12 @@
     "templates/cloudflare-codemode-worker/src/index.ts",
     "templates/cloudflare-codemode-worker/tests/zone-workers-routes.test.mjs"
    ],
-   "applyMs": 2361,
+   "applyMs": 2202,
    "applyExit": 0,
-   "changed": 12,
+   "changed": 11,
    "changedByRule": {
     "dependency": 1,
     "named-zeroTrust.access.applications.policies.get": 1,
-    "named-zeroTrust.access.applications.policies.update": 1,
     "named-zeroTrust.access.applications.policies.delete": 1,
     "named-kv.namespaces.values.get": 1,
     "named-kv.namespaces.values.update": 1,
@@ -4118,7 +4089,14 @@
     "named-waitingRooms.events.get": 1,
     "named-waitingRooms.events.delete": 1
    },
-   "unresolved": [],
+   "unresolved": [
+    {
+     "file": "templates/cloudflare-codemode-worker/src/index.ts",
+     "line": 1080,
+     "ruleId": "named-zeroTrust.access.applications.policies.update",
+     "reason": "arguments of zeroTrust.access.applications.policies.update could have side effects and moving them would change their order"
+    }
+   ],
    "skipped": [],
    "gate": true,
    "filesChanged": 2,
@@ -4235,7 +4213,7 @@
     "worker/src/services/deploy/workerDeploy.ts",
     "worker/src/services/tunnelService.ts"
    ],
-   "applyMs": 8218,
+   "applyMs": 8025,
    "applyExit": 0,
    "changed": 14,
    "changedByRule": {
@@ -4503,7 +4481,7 @@
     "templates/worker-publisher-template/scripts/deploy-wfp.ts",
     "templates/worker-publisher-template/src/index.ts"
    ],
-   "applyMs": 8925,
+   "applyMs": 8653,
    "applyExit": 0,
    "changed": 9,
    "changedByRule": {
@@ -4627,7 +4605,7 @@
     "src/utils/workers-oauth-utils.ts",
     "worker-configuration.d.ts"
    ],
-   "applyMs": 826,
+   "applyMs": 791,
    "applyExit": 0,
    "changed": 6,
    "changedByRule": {
@@ -4712,7 +4690,7 @@
     "tests/setup.test.ts",
     "tests/sync/hot-reload.test.ts"
    ],
-   "applyMs": 1501,
+   "applyMs": 1561,
    "applyExit": 0,
    "changed": 1,
    "changedByRule": {
@@ -4786,7 +4764,7 @@
     "src/server/services/cloudflare/workers.ts",
     "src/server/services/session.ts"
    ],
-   "applyMs": 111425,
+   "applyMs": 110473,
    "applyExit": 0,
    "changed": 1,
    "changedByRule": {
@@ -4855,7 +4833,7 @@
     "packages/collect-subs/src/index.ts",
     "packages/registry-proxy/src/core/proxys/npm.proxy.ts"
    ],
-   "applyMs": 288,
+   "applyMs": 299,
    "applyExit": 0,
    "changed": 3,
    "changedByRule": {
@@ -4924,7 +4902,7 @@
     "tests/e2e/shared/navigate.ts",
     "tools/rollup/prisma.js"
    ],
-   "applyMs": 1155,
+   "applyMs": 1134,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -4965,7 +4943,7 @@
     "packages/kv-service/src/index.ts",
     "packages/microservice/src/tasks/infrastructure/kv-task.repository.ts"
    ],
-   "applyMs": 351,
+   "applyMs": 355,
    "applyExit": 0,
    "changed": 1,
    "changedByRule": {
@@ -5062,7 +5040,7 @@
     "types/worker-configuration.d.ts",
     "vite.config.ts"
    ],
-   "applyMs": 445,
+   "applyMs": 444,
    "applyExit": 0,
    "changed": 1,
    "changedByRule": {
@@ -5112,7 +5090,7 @@
    "muxFiles": [
     "src/index.ts"
    ],
-   "applyMs": 239,
+   "applyMs": 245,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -5207,7 +5185,7 @@
     "workspaces/s3/src/filesystem/index.test.ts",
     "workspaces/s3/src/filesystem/index.ts"
    ],
-   "applyMs": 16795,
+   "applyMs": 18369,
    "applyExit": 1,
    "error": "apply ran out of memory"
   },
@@ -5224,7 +5202,7 @@
     "src/utils.ts",
     "tests/getInputs.test.ts"
    ],
-   "applyMs": 417,
+   "applyMs": 393,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -5366,7 +5344,7 @@
     "tests/e2e/worker-with-bindings.e2e.test.ts",
     "tests/envtest/reconcile.envtest.ts"
    ],
-   "applyMs": 1622,
+   "applyMs": 1609,
    "applyExit": 0,
    "changed": 3,
    "changedByRule": {
@@ -5666,7 +5644,7 @@
     "src/index.ts",
     "src/rpc.ts"
    ],
-   "applyMs": 266,
+   "applyMs": 270,
    "applyExit": 0,
    "changed": 6,
    "changedByRule": {
@@ -5731,7 +5709,7 @@
    "muxFiles": [
     "app/_lib/kv.ts"
    ],
-   "applyMs": 651,
+   "applyMs": 661,
    "applyExit": 0,
    "changed": 3,
    "changedByRule": {
@@ -5898,7 +5876,7 @@
     "packages/cloudflare/src/cli/utils/nextjs-support.ts",
     "packages/cloudflare/templates/open-next.config.ts"
    ],
-   "applyMs": 1727,
+   "applyMs": 1729,
    "applyExit": 0,
    "changed": 1,
    "changedByRule": {
@@ -6035,7 +6013,7 @@
     "scripts/thing/workers/subcommand.ts",
     "vitest.config.ts"
    ],
-   "applyMs": 30322,
+   "applyMs": 30568,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -6105,7 +6083,7 @@
     "packages/utils/schemas/connection.ts",
     "sst.config.ts"
    ],
-   "applyMs": 1622,
+   "applyMs": 1702,
    "applyExit": 0,
    "changed": 1,
    "changedByRule": {
@@ -6318,7 +6296,7 @@
     "src/setup.ts",
     "src/updater.ts"
    ],
-   "applyMs": 399,
+   "applyMs": 416,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -6400,7 +6378,7 @@
     "packages/ui/src/tabs/Zones.tsx",
     "packages/ui/src/theme/omarchy.ts"
    ],
-   "applyMs": 500,
+   "applyMs": 514,
    "applyExit": 0,
    "changed": 1,
    "changedByRule": {
@@ -6472,7 +6450,7 @@
     "scripts/deploy-platform.ts",
     "views/Dashboard.tsx"
    ],
-   "applyMs": 492,
+   "applyMs": 513,
    "applyExit": 0,
    "changed": 2,
    "changedByRule": {
@@ -6536,7 +6514,7 @@
     "data-pipeline/youtube-channel-activities-updater/src/index.ts",
     "data-pipeline/youtube-channel-activities-updater/src/service/cloudflare/put-kv.ts"
    ],
-   "applyMs": 547,
+   "applyMs": 571,
    "applyExit": 0,
    "changed": 8,
    "changedByRule": {
@@ -6626,7 +6604,7 @@
     "blocks/zero-trust/createAccessPolicy.ts",
     "main.ts"
    ],
-   "applyMs": 338,
+   "applyMs": 348,
    "applyExit": 0,
    "changed": 4,
    "changedByRule": {
@@ -6677,7 +6655,7 @@
     "apps/desktop/src/utils/custom-dns.ts",
     "servers/themes/src/counter/kv.ts"
    ],
-   "applyMs": 600060,
+   "applyMs": 600038,
    "applyExit": 1,
    "error": "apply did not finish in 10 minutes"
   },
@@ -6690,7 +6668,7 @@
     "src/lib/website/kvdb.ts",
     "svelte.config.js"
    ],
-   "applyMs": 600096,
+   "applyMs": 600101,
    "applyExit": 1,
    "error": "apply did not finish in 10 minutes"
   },
@@ -6715,7 +6693,7 @@
     "packages/db/src/migrations/007_deployments.ts",
     "packages/db/src/types.ts"
    ],
-   "applyMs": 8268,
+   "applyMs": 8689,
    "applyExit": 0,
    "changed": 5,
    "changedByRule": {
@@ -6787,7 +6765,7 @@
     "apps/worker-pdaotao/vitest.config.ts",
     "apps/worker-pdaotao/worker-configuration.d.ts"
    ],
-   "applyMs": 715,
+   "applyMs": 749,
    "applyExit": 0,
    "changed": 8,
    "changedByRule": {
@@ -6888,7 +6866,7 @@
     "workflows-test/src/f1.js",
     "workflows-test/src/index.ts"
    ],
-   "applyMs": 600059,
+   "applyMs": 600080,
    "applyExit": 1,
    "error": "apply did not finish in 10 minutes"
   },
@@ -6913,7 +6891,7 @@
     "playground/webview/hacker-news/wvb.config.ts",
     "playground/webview/testbed/wvb.config.ts"
    ],
-   "applyMs": 2283,
+   "applyMs": 2471,
    "applyExit": 0,
    "changed": 3,
    "changedByRule": {
@@ -6958,7 +6936,7 @@
     "src/actions/count/index.ts",
     "src/app/api/cloudflare/route.ts"
    ],
-   "applyMs": 310,
+   "applyMs": 332,
    "applyExit": 0,
    "changed": 4,
    "changedByRule": {

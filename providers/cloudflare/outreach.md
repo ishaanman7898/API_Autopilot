@@ -6,7 +6,7 @@ Subject. A signed migration for the cloudflare SDK 6 to 7 upgrade
 
 Hello,
 
-I build apimigrate, an open source tool that applies a provider's signed migration rules to consumer repositories and opens draft pull requests with evidence. I drafted 254 rules for the 6 to 7 upgrade by comparing the two SDK releases. They cover 240 methods whose arguments changed, 11 renamed methods, 2 irregular changes that need a person, and the dependency bump. I ran them on 12 public repositories that use `cloudflare` 6. They broke nothing and updated every `package.json`. None of those repositories called an affected method, so I have not shown the argument rewrites on real code. The method and raw results are in the benchmark folder of the repository.
+I build apimigrate, an open source tool that applies a provider's signed migration rules to consumer repositories and opens draft pull requests with evidence. I drafted 254 rules for the 6 to 7 upgrade by comparing the two SDK releases. They cover 240 methods whose arguments changed, 11 renamed methods, 2 irregular changes that need a person, and the dependency bump. I ran them on 12 public repositories that use `cloudflare` 6. They broke nothing and updated every `package.json`. None of those repositories called an affected method, so I ran the rules again on 63 public repositories that do. They rewrote 149 calls, fixed 125 of the 246 type errors the upgrade causes and introduced none, after I fixed two engine faults the first run exposed, and queued 72 calls for a person. The method and raw results are in the benchmark folder of the repository.
 
 Two things I would like from you.
 
