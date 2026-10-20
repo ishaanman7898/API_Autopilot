@@ -49,14 +49,21 @@ The result is JSON.
 
 `apimigrate agent-apply --results agent.json` then does this.
 
-1. Checks that the working tree still matches the evidence from `apply`. If it does not, it stops.
-2. Rejects any path that is not a file with a queued site, any non-string content, any file over 1 MB, and any path outside the scanned tree.
-3. With `--typecheck`, type-checks the files the agent edited against the versions apply installed. An error the agent added on a line it changed is a gate finding. An error the original text already had before the install does not count, when `apply --typecheck` saved those errors in `base.json`. When the evidence records no install by apply, or a failed one, the check is skipped with a note. See [gate](gate.md#type-check).
-4. Runs the gate, comparing the result to the original base snapshot, so deterministic and agent edits are judged together.
-5. If the gate fails, writes nothing and exits 1.
-6. Otherwise writes the files, runs `--test-cmd` if given, and updates the evidence with `agent`, `files`, `gate` and `tests`. `agent.typecheck` holds the type-check result, or null without `--typecheck`.
+1. Stops when the evidence records that the gate of `apply` failed. See [after a failed apply](#after-a-failed-apply).
+2. Checks that the working tree still matches the evidence from `apply`. If it does not, it stops.
+3. Rejects any path that is not a file with a queued site, any non-string content, any file over 1 MB, and any path outside the scanned tree.
+4. With `--typecheck`, type-checks the files the agent edited against the versions apply installed. An error the agent added on a line it changed is a gate finding. An error the original text already had before the install does not count, when `apply --typecheck` saved those errors in `base.json`. When the evidence records no install by apply, or a failed one, the check is skipped with a note. See [gate](gate.md#type-check).
+5. Runs the gate, comparing the result to the original base snapshot, so deterministic and agent edits are judged together.
+6. If the gate fails, writes nothing and exits 1.
+7. Otherwise writes the files, runs `--test-cmd` if given, and updates the evidence with `agent`, `files`, `gate` and `tests`. `agent.typecheck` holds the type-check result, or null without `--typecheck`.
 
 Use `--dry-run` to see the diffs and the gate result first.
+
+## After a failed apply
+
+When the gate of `apply` fails after the install and the tests, the rewrite is already on disk and the evidence records the findings. agent-apply then refuses to run, also with `--dry-run`. It prints apply's findings and exits 1, and writes nothing. Fix the findings, with a corrected rule or by hand, and run apply again.
+
+The other choice was to carry apply's findings forward. It was not taken because agent-apply's gate result replaces apply's in the evidence, and agent-apply cannot redo all of apply's checks. It takes no coverage files, so coverage findings would be lost. A type error apply added in a file the agent did not edit could be kept as it is. In a file the agent edited, its line would have to be mapped through the agent's edit, and on a line the agent rewrote the error would be either dropped, though the agent may have kept it, or kept, though the agent may have fixed it. The agent can only edit files with queued sites, so it often cannot fix apply's findings at all.
 
 ## Limits
 

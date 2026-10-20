@@ -2,7 +2,7 @@
 
 The gate compares the tree before and after a migration and fails when something suggests the tests were made to pass instead of the code being migrated. It runs on deterministic edits and on agent edits, with the same rules. Each finding names a code, a file and a line.
 
-Edits are gated in memory before anything is written, so a change that fails the gate never reaches the disk. `apply` runs the gate a second time after your test command, because the test command can change files too. With `--typecheck` that second gate also fails on type errors the rewrite added, which needs the new versions installed. See [type check](#type-check).
+Edits are gated in memory before anything is written, so a change that fails the gate never reaches the disk. `apply` runs the gate a second time after your test command, because the test command can change files too. With `--typecheck` that second gate also fails on type errors the rewrite added, which needs the new versions installed. See [type check](#type-check). When that second gate fails, agent-apply refuses to run on the result. See [agent fallback](agent.md#after-a-failed-apply).
 
 ## Checks
 

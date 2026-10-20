@@ -253,6 +253,25 @@ test('agent-apply uses apply\'s run against the old versions, so an error the up
   assert.deepEqual(without.added, [{ file: 'src/meta.ts', ...body }], 'without the run against sdk 1 it would count');
 });
 
+test('agent-apply refuses to run after apply\'s gate failed, so the evidence keeps the failure', async () => {
+  // The rewrite of the last line adds a type error, and the call is queued.
+  const { dir, rules, installCmd } = consumer({ 'src/kv.ts': KV }, [["'already wrong'", 'undefined']], [QUEUE]);
+  const a = await cli(['apply', '--root', dir, '--rules', rules, '--allow-unsigned', '--install-cmd', installCmd, '--typecheck']);
+  assert.equal(a.code, 1, a.out + a.err);
+  assert.match(a.err, /^gate: src\/kv\.ts:7: type error added: TS2322 Type 'undefined' is not assignable to type 'number'\.$/m);
+  const applied = readFileSync(join(dir, 'src/kv.ts'), 'utf8');
+  const before = evidenceOf(dir);
+  const fixed = applied.replace(UPDATE, 'values.update(key, { namespace_id: ns, value: JSON.stringify(data) })');
+  for (const flags of [[], ['--typecheck'], ['--dry-run']]) {
+    const r = await agentRun(dir, fixed, ...flags);
+    assert.equal(r.code, 1, r.out + r.err);
+    assert.match(r.err, /^apply's gate: src\/kv\.ts:7: type error added: TS2322 Type 'undefined' is not assignable to type 'number'\.$/m);
+    assert.match(r.err, /^agent edits were not applied because apply's gate failed, fix its findings and run apply again$/m);
+  }
+  assert.equal(readFileSync(join(dir, 'src/kv.ts'), 'utf8'), applied);
+  assert.deepEqual(evidenceOf(dir), before);
+});
+
 test('a Deno project is checked with the compilerOptions of its deno.json or deno.jsonc, and Deno\'s strict default', () => {
   const put = (call, more = '') => `import { values } from 'sdk';\nimport { defaults } from '#/defaults.ts';\n\nexport const put = (ns: string, key: string) => ${call};\n${more}`;
   const base = { 'src/put.ts': put('values.update(ns, key, defaults)') };

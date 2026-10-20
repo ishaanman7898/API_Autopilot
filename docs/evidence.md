@@ -16,7 +16,7 @@ Every `apply` writes `.apimigrate/evidence.json`. The bundle is built so that tw
 | `deterministic` | SHA-256 digests of each file the engine changed, and a replay digest over them and the rule hash. |
 | `files` | Digests of every file that differs from the base, including agent edits. |
 | `agent` | Present after `agent-apply`. `edited`, digests of the files the agent edited, and `typecheck`, the type-check of those edits with `agent-apply --typecheck`, shaped like `typecheck` below, or null without the flag. Its `baseline` says whether `base.json` held the errors of apply's check of the original text before the install. |
-| `gate` | The gate result, with each finding. |
+| `gate` | The gate result, with each finding. agent-apply replaces it with its own result, and refuses to run when it records a failure. |
 | `tests` | The test command and its exit code, or null. |
 | `install` | With `--install` or `--install-cmd`, each install command, its folder and exit code, and the digests of each lockfile it changed, or null. Changed lockfiles are committed with the pull request, and the head check compares them when they are among the scanned files. |
 | `typecheck` | With `--typecheck`, `ran: true`, the TypeScript version, whether the original text was checked before the install (`baseline`), each config with the files checked under it, `added`, the errors the rewrite added on changed lines, which are also gate findings, and `otherLines`, new errors on lines it did not change. Each error has file, line, TypeScript code and message. When the check did not run, `ran: false` and the reason. Without the flag, null. |

@@ -32,6 +32,13 @@ export function run({ flags }, io) {
   const queue = loadJson(join(dir, 'unresolved.json'), 'queue');
   const base = loadJson(join(dir, 'base.json'), 'base snapshot');
   const cfg = loadConfig(root);
+  // This gate's result replaces apply's in the evidence, and apply's coverage and type findings cannot be redone
+  // here, so a failed apply stays failed.
+  if (evidence.gate?.ok === false) {
+    for (const f of evidence.gate.findings) io.err(`apply's gate: ${f.message}`);
+    io.err('agent edits were not applied because apply\'s gate failed, fix its findings and run apply again');
+    return 1;
+  }
 
   const current = loadTrees(root, cfg, evidence.scan);
   const baseScan = Object.fromEntries(base.scan.map((f) => [f, base.files[f]]));
