@@ -19,6 +19,7 @@ Every `apply` writes `.apimigrate/evidence.json`. The bundle is built so that tw
 | `gate` | The gate result, with each finding. |
 | `tests` | The test command and its exit code, or null. |
 | `install` | With `--install` or `--install-cmd`, each install command, its folder and exit code, and the digests of each lockfile it changed, or null. Changed lockfiles are committed with the pull request, and the head check compares them when they are among the scanned files. |
+| `typecheck` | With `--typecheck`, `ran: true`, the TypeScript version, whether the original text was checked before the install (`baseline`), each config with the files checked under it, `added`, the errors the rewrite added on changed lines, which are also gate findings, and `otherLines`, new errors on lines it did not change. Each error has file, line, TypeScript code and message. When the check did not run, `ran: false` and the reason. Without the flag, null. |
 | `meta.createdAt` | The only value that depends on the clock. |
 
 ## What makes it deterministic

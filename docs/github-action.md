@@ -12,12 +12,13 @@
 | `keys` | Path to a key set file committed in your repository. Use this or `well-known`. |
 | `test-cmd` | Test command. A failure stops the run before any pull request is opened. In `watch` mode it runs after each upgrade. |
 | `install-cmd` | When a rule changes a `package.json`, the new versions are installed before the tests and the lockfile is updated, with the package manager the lockfile names and no install scripts. Set a command to run instead, or `none` to skip it. |
+| `typecheck` | When the new versions are installed, `apply --typecheck` type-checks the changed files, and a type error the rewrite added on a line it changed fails the run. On by default. Set `false` to turn it off. It does nothing when `install-cmd` is `none`. See [gate](gate.md#type-check). |
 | `token` | Token for pushing and opening the pull request. Defaults to the workflow token. |
 
 ## What it does
 
 1. Installs the tool's dependencies with `npm ci --omit=dev --ignore-scripts`.
-2. Runs `apply` with `--install`, so a changed `package.json` is installed, and its lockfile updated, before your tests run. If the rule is unsigned, expired, pinned out, fails the gate, fails to install, or fails your tests, the job fails and no pull request is opened.
+2. Runs `apply` with `--install`, so a changed `package.json` is installed, and its lockfile updated, before your tests run, and with `--typecheck`, so a rewrite that adds a type error fails the gate. If the rule is unsigned, expired, pinned out, fails the gate, fails to install, or fails your tests, the job fails and no pull request is opened.
 3. Uploads `evidence.json`, `unresolved.json` and `audit.log` as an artifact.
 4. If files changed, creates a branch named `apimigrate/<rule id>-<run id>`, stages only the files named in the evidence and the lockfiles the install updated, commits, pushes, and runs `gh pr create --draft`.
 5. The pull request body has a summary table, the unresolved sites, the verify command and the evidence bundle. Long evidence is truncated in the body and complete in the artifact.
@@ -29,8 +30,8 @@ If nothing changed, no branch or pull request is created.
 `examples/watch-workflow.yml` runs the action with `mode: watch` every week.
 
 1. Runs `apimigrate watch` with the repository's `.apimigrate.yml`. It writes the plan and rule files to the runner's temp directory, not to the repository. See [CLI reference](cli.md#watch).
-2. For each upgrade that has rules, starts a branch from the checked out commit and runs `apply`, installing the new versions before your tests as in apply mode. After an upgrade that installed, the base versions are installed again, so each upgrade is tested on its own. Signed rules are checked against the key set they were verified with. Drafted rules run with `--allow-unsigned`. When `.apimigrate.yml` sets `pins`, drafts are skipped, since `pins` forbids unsigned rules. When it sets `providers`, a draft is skipped unless its provider, the GitHub owner of the SDK, is listed.
-3. If files changed, the install and gate passed, and the branch does not already exist on the remote, it stages only the files named in the evidence and the updated lockfiles, commits, pushes, and runs `gh pr create --draft`. When only your tests failed, the pull request still opens, marked as failing, so an upgrade that breaks your code is not the one you never hear about. A failed install or gate still stops it.
+2. For each upgrade that has rules, starts a branch from the checked out commit and runs `apply`, installing the new versions before your tests and type-checking the changed files as in apply mode. After an upgrade that installed, the base versions are installed again, so each upgrade is tested on its own. Signed rules are checked against the key set they were verified with. Drafted rules run with `--allow-unsigned`. When `.apimigrate.yml` sets `pins`, drafts are skipped, since `pins` forbids unsigned rules. When it sets `providers`, a draft is skipped unless its provider, the GitHub owner of the SDK, is listed.
+3. If files changed, the install and gate passed, and the branch does not already exist on the remote, it stages only the files named in the evidence and the updated lockfiles, commits, pushes, and runs `gh pr create --draft`. When only your tests failed, the pull request still opens, marked as failing, so an upgrade that breaks your code is not the one you never hear about. A failed install or gate, including a type error the rewrite added, still stops it.
 4. Uploads the plan, rule files, reports, evidence and pull request bodies as the `apimigrate-watch` artifact.
 
 | Rules | Branch | Title |

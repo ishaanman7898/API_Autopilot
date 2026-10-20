@@ -20,6 +20,10 @@ inputs:
   install-cmd:
     description: When a rule changes package.json, the new versions are installed before the tests and the lockfile is updated, with the package manager the lockfile names and no install scripts. Set a command to run instead, or none to skip it.
     required: false
+  typecheck:
+    description: When the new versions are installed, type-check the changed files before and after the rewrite with the repository's tsconfig, and fail on a type error the rewrite added. Set false to turn it off.
+    required: false
+    default: 'true'
   token:
     description: Token used to push the branch and open the pull request
     required: false
@@ -45,6 +49,7 @@ runs:
         KEYS: ${{ inputs.keys }}
         TEST_CMD: ${{ inputs.test-cmd }}
         INSTALL_CMD: ${{ inputs.install-cmd }}
+        TYPECHECK: ${{ inputs.typecheck }}
       run: |
         set -euo pipefail
         if [ "$MODE" != "apply" ]; then echo "mode must be apply or watch" >&2; exit 2; fi
@@ -54,6 +59,7 @@ runs:
         if [ -n "$WELL_KNOWN" ]; then args+=(--well-known "$WELL_KNOWN"); fi
         if [ -n "$KEYS" ]; then args+=(--keys "$KEYS"); fi
         if [ "$INSTALL_CMD" = "none" ]; then :; elif [ -n "$INSTALL_CMD" ]; then args+=(--install-cmd "$INSTALL_CMD"); else args+=(--install); fi
+        if [ "$INSTALL_CMD" != "none" ] && [ "$TYPECHECK" != "false" ]; then args+=(--typecheck); fi
         if [ -n "$TEST_CMD" ]; then args+=(--test-cmd "$TEST_CMD"); fi
         node "$ACTION_PATH/bin/apimigrate.js" "${args[@]}"
 
@@ -107,6 +113,7 @@ runs:
         OUT: ${{ runner.temp }}/apimigrate-watch
         TEST_CMD: ${{ inputs.test-cmd }}
         INSTALL_CMD: ${{ inputs.install-cmd }}
+        TYPECHECK: ${{ inputs.typecheck }}
         GH_TOKEN: ${{ inputs.token }}
       run: |
         set -euo pipefail

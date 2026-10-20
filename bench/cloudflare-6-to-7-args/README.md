@@ -60,7 +60,7 @@ Every repository is type-checked against 6.5.0 as the old SDK, whatever version 
 
 ## What to build next
 
-- Type-check the changed files in the gate, so a rewrite that adds a type error fails it.
+- Read `compilerOptions` from `deno.json` in `apply --typecheck`. A script outside the benchmark ran that type-check on the base and migrated trees of the 46 repositories where the run changed code, with `cloudflare@6.5.0` and then `7.0.0` installed. On the first run's trees it fails the 4 faulty rewrites of finding 2 and 2 of the 5 TS2783 rewrites, and it passes the rerun's trees. It misses sparql-agent's 3 TS2783, because that Deno project has no tsconfig and gets the defaults, with `strict` off. pebble-api's TS2353 is only a note, because the old params object stayed on its own unchanged lines.
 - Follow type aliases and the property types of interfaces, intersections and inline object types, or take the checker's receiver type as proof (31 queued calls).
 - Treat `this.x` and `a ?? b` of simple operands as free of side effects (15 queued calls).
 - Tell whether a call among the moved or kept arguments, or in the params object before the moved keys, can change a moved value, such as `encodeR2ObjectKey(key)` or `JSON.stringify(...)` (14 queued calls).

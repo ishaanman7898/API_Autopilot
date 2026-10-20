@@ -20,7 +20,7 @@ export function fileDigests(before, after) {
 export const replayDigestOf = (ruleSet, files) => sha(canonical({ rule: hashRuleSet(ruleSet), files }));
 
 // Everything except meta is a pure function of the rule, the base tree and any agent edits.
-export function buildEvidence({ ruleSet, before, deterministic, final = deterministic.files, gate, tests = null, install = null, agent = null, tool, scan, now = new Date() }) {
+export function buildEvidence({ ruleSet, before, deterministic, final = deterministic.files, gate, tests = null, install = null, typecheck = null, agent = null, tool, scan, now = new Date() }) {
   const detFiles = fileDigests(before, deterministic.files);
   return {
     schema: EVIDENCE_SCHEMA,
@@ -42,6 +42,7 @@ export function buildEvidence({ ruleSet, before, deterministic, final = determin
     gate,
     tests,
     install,
+    typecheck,
     meta: { createdAt: now.toISOString() },
   };
 }

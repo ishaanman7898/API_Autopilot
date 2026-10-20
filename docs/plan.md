@@ -16,7 +16,7 @@ This is the working checklist for Phase 1 of the [strategy](strategy.md). It lis
 - No provider's domain serves a rule index. The live fetch works against a test domain in the `provider-selftest` workflow.
 - The rules are drafted from SDK diffs. No provider has reviewed them.
 - The Orb kit misses changes that `api.md` does not show, such as error class constructors and a removed `orb-billing/core` export, and 20 of its 23 rules matched nothing in the 3 public codebases found calling version 5.
-- In the [Cloudflare argument benchmark](../bench/cloudflare-6-to-7-args/README.md) the engine queued 31 calls whose receiver the TypeScript checker types as the client and 15 whose arguments are safe to move, missed 14 calls, and could not finish 4 of the 67 repositories: 3 timed out on minified files and 1 ran out of memory. The gate does not type-check, so it would not stop a rewrite that adds a type error.
+- In the [Cloudflare argument benchmark](../bench/cloudflare-6-to-7-args/README.md) the engine queued 31 calls whose receiver the TypeScript checker types as the client and 15 whose arguments are safe to move, missed 14 calls, and could not finish 4 of the 67 repositories: 3 timed out on minified files and 1 ran out of memory. `apply --typecheck`, which the Action turns on, now fails a rewrite that adds a type error on a line it changed. Run on the benchmark's trees, it reports the 4 faulty rewrites of the first run and 2 of its 5 `strict`-only ones, and nothing in the rerun.
 
 ## Steps for the maintainer
 

@@ -16,9 +16,10 @@ export const PR_PERMISSION_HINT = 'GitHub does not let this workflow open pull r
 // An upgrade whose branch already exists on the remote is skipped, so a scheduled run does not open it twice.
 // New versions are installed before the tests: install is 'auto' for the package manager the lockfile names,
 // 'none', or a shell command. After an upgrade installed, the base versions are installed again, so the next
-// upgrade is tested against the base dependencies. git and gh get argument arrays, never a shell. gh can be
-// replaced in tests, and an error it throws may carry gh's stderr in `stderr`. Returns the exit code.
-export async function openWatchPullRequests({ root, planPath, testCmd = null, install = 'auto', runUrl = null, gh, out = () => {}, err = () => {} }) {
+// upgrade is tested against the base dependencies. typecheck passes --typecheck unless install is 'none'.
+// git and gh get argument arrays, never a shell. gh can be replaced in tests, and an error it throws may carry
+// gh's stderr in `stderr`. Returns the exit code.
+export async function openWatchPullRequests({ root, planPath, testCmd = null, install = 'auto', typecheck = false, runUrl = null, gh, out = () => {}, err = () => {} }) {
   const git = (...args) => spawnSync('git', args, { cwd: root, encoding: 'utf8' });
   const must = (...args) => {
     const r = git(...args);
@@ -32,7 +33,7 @@ export async function openWatchPullRequests({ root, planPath, testCmd = null, in
   const pinned = cfg.pins.length > 0;
   const evidencePath = join(root, '.apimigrate', 'evidence.json');
   let failed = 0;
-  const installFlags = install === 'none' ? [] : install === 'auto' ? ['--install'] : ['--install-cmd', install];
+  const installFlags = [...(install === 'none' ? [] : install === 'auto' ? ['--install'] : ['--install-cmd', install]), ...(typecheck && install !== 'none' ? ['--typecheck'] : [])];
   const backToBase = () => {
     must('reset', '-q', '--hard');
     must('checkout', '-q', '--detach', baseSha);

@@ -58,7 +58,8 @@ function compareTests(file, base, head, findings) {
 
 // Fails on anything an agent could do to make a suite pass without the code being right.
 // base and head map path to LF text. coverage values are line percentages or null. allow lists paths exempt from protection.
-export function runGate({ base, head, protect = DEFAULT_PROTECTED, allow = [], coverageBase = null, coverageHead = null, coverageTolerance = 0 }) {
+// typeErrors are the type errors a rewrite added on the lines it changed, as found by typecheckChanges.
+export function runGate({ base, head, protect = DEFAULT_PROTECTED, allow = [], coverageBase = null, coverageHead = null, coverageTolerance = 0, typeErrors = [] }) {
   const findings = [];
   const add = (code, file, line, message) => findings.push({ code, file, line, message });
   let before = 0;
@@ -105,6 +106,8 @@ export function runGate({ base, head, protect = DEFAULT_PROTECTED, allow = [], c
     const hits = findSecrets(added.map((l) => l.text).join('\n'));
     for (const h of hits) add('secret-added', file, added[h.line - 1].line, `${file}:${added[h.line - 1].line}: added line looks like a ${h.kind}`);
   }
+
+  for (const e of typeErrors) add('type-error-added', e.file, e.line, `${e.file}:${e.line}: type error added: ${e.code} ${e.message}`);
 
   findings.sort(byFinding);
   return {

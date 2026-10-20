@@ -8,7 +8,7 @@ The core is a set of small modules that work on plain maps of path to text. The 
 2. `tree.js` reads the scan files and the gate files as LF text.
 3. `engine.js` runs each rule in order. For code rules it builds a program with `parse.js`, resolves receivers with `bindings.js`, finds call sites with `match.js`, and asks `transforms.js` for edits. Edits are applied by position.
 4. `tree.js` writes only the changed files, with their original line endings.
-5. `gate.js` compares the before and after trees.
+5. With `--typecheck`, `typecheck.js` type-checks the changed files before and after the rewrite. `gate.js` compares the before and after trees and adds the type errors the rewrite added.
 6. `evidence.js` builds the bundle. `agent.js` builds the queue.
 
 ## Modules
@@ -26,6 +26,7 @@ The core is a set of small modules that work on plain maps of path to text. The 
 | `src/tree.js` | Reads and writes trees with normalized text, sorted paths and no symlinks. |
 | `src/evidence.js` | Evidence bundle, replay, and the head check. |
 | `src/gate.js` | The gate checks and findings. |
+| `src/typecheck.js` | Type-checks changed files with the repository's compiler options and installed packages, and compares the errors of the original and rewritten text. |
 | `src/testscan.js` | Syntax based facts about test files. |
 | `src/secrets.js`, `src/glob.js` | Secret patterns and glob matching. |
 | `src/sanitize.js`, `src/agent.js` | Context cleaning and fencing, the queue, and agent result validation. |
