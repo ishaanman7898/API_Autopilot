@@ -40,7 +40,7 @@ const TSCONFIG = (options) => JSON.stringify({ compilerOptions: { module: 'ESNex
 
 // A consumer with sdk 1 installed. The install command puts sdk 2 in its place, without npm. The rule moves the
 // dependency to 2.0.0 and rewrites code with the given replace rules, the way an engine fault would.
-function consumer(files, replaces) {
+function consumer(files, replaces, extra = []) {
   const dir = tree({
     'package.json': JSON.stringify({ name: 'consumer', private: true, dependencies: { sdk: '1.0.0' } }, null, 2) + '\n',
     'tsconfig.json': TSCONFIG({ strict: true }),
@@ -56,6 +56,7 @@ function consumer(files, replaces) {
     rules: [
       { id: 'dependency', kind: 'rename-dependency', confidence: 'likely', evidence: 'test', match: { dependency: 'sdk' }, transform: { version: '2.0.0' } },
       ...replaces.map(([pattern, to], i) => ({ id: `r${i}`, kind: 'replace', confidence: 'likely', evidence: 'test', match: { pattern, files: ['.ts'] }, transform: { to } })),
+      ...extra,
     ],
   }));
   return { dir, rules, installCmd: `node ${JSON.stringify(install)}` };
@@ -169,6 +170,65 @@ test('without new versions installed the type-check is refused or skipped with a
   const f = await cli(['apply', '--root', failedInstall.dir, '--rules', failedInstall.rules, '--allow-unsigned', '--install-cmd', 'node -e "process.exit(3)"', '--typecheck']);
   assert.equal(f.code, 1);
   assert.deepEqual(evidenceOf(failedInstall.dir).typecheck, { ran: false, reason: 'the install failed' });
+});
+
+// Queues every values.update call for an agent.
+const QUEUE = { id: 'queue', kind: 'manual', confidence: 'likely', evidence: 'test', match: { call: 'values.update' }, fallback: { prompt: 'Move namespace_id into the params object.' } };
+const UPDATE = 'values.update(ns, key, JSON.stringify(data))';
+async function agentRun(dir, text, ...flags) {
+  const results = join(mkdtempSync(join(tmpdir(), 'agent-')), 'agent.json');
+  writeFileSync(results, JSON.stringify({ files: { 'src/kv.ts': text } }));
+  return cli(['agent-apply', '--root', dir, '--results', results, ...flags]);
+}
+
+test('agent-apply --typecheck fails the gate on a type error the agent added, with the versions apply installed', async () => {
+  // apply fixes the old error on the last line and queues the call.
+  const { dir, rules, installCmd } = consumer({ 'src/kv.ts': KV }, [["'already wrong'", '1']], [QUEUE]);
+  const a = await cli(['apply', '--root', dir, '--rules', rules, '--allow-unsigned', '--install-cmd', installCmd, '--typecheck']);
+  assert.equal(a.code, 0, a.out + a.err);
+  assert.match(a.out, /^unresolved: src\/kv\.ts:4 queue/m);
+  const applied = readFileSync(join(dir, 'src/kv.ts'), 'utf8');
+
+  // The faulty edit spreads the string into the params object. It also puts back the old error, which the
+  // original text has, so that one is not the agent's.
+  const faulty = applied.replace(UPDATE, 'values.update(key, {\n    namespace_id: ns,\n    ...JSON.stringify(data),\n  })').replace('= 1;', "= 'already wrong';");
+  const f = await agentRun(dir, faulty, '--typecheck');
+  assert.equal(f.code, 1, f.out + f.err);
+  assert.match(f.out, /^type-checked 1 agent edited files with TypeScript 5\.\d+\.\d+: \d errors added on lines the agent changed$/m);
+  assert.match(f.err, /^gate: src\/kv\.ts:6: type error added: TS2698 Spread types may only be created from object types\.$/m);
+  assert.doesNotMatch(f.out + f.err, /already wrong|TS2322|TS2554/);
+  assert.equal(readFileSync(join(dir, 'src/kv.ts'), 'utf8'), applied, 'nothing was written');
+  const unchecked = await agentRun(dir, faulty, '--dry-run');
+  assert.equal(unchecked.code, 0, 'without the flag the gate passes it');
+
+  const fixed = applied.replace(UPDATE, 'values.update(key, { namespace_id: ns, value: JSON.stringify(data) })');
+  const dry = await agentRun(dir, fixed, '--typecheck', '--dry-run');
+  assert.equal(dry.code, 0, dry.out + dry.err);
+  assert.match(dry.out, /: 0 errors added on lines the agent changed/);
+  const ok = await agentRun(dir, fixed, '--typecheck');
+  assert.equal(ok.code, 0, ok.out + ok.err);
+  assert.equal(readFileSync(join(dir, 'src/kv.ts'), 'utf8'), fixed);
+  const evidence = evidenceOf(dir);
+  assert.equal(evidence.agent.typecheck.ran, true);
+  assert.deepEqual(evidence.agent.typecheck.projects, [{ config: 'tsconfig.json', files: ['src/kv.ts'] }]);
+  assert.deepEqual([evidence.agent.typecheck.added, evidence.agent.typecheck.otherLines], [[], []]);
+  assert.equal(evidence.typecheck.ran, true, 'apply\'s own result stays');
+});
+
+test('agent-apply skips the type-check with a note when the evidence does not show the new versions installed', async () => {
+  const faulty = (dir) => readFileSync(join(dir, 'src/kv.ts'), 'utf8').replace(UPDATE, 'values.update(key, { namespace_id: ns, ...JSON.stringify(data) })');
+  const plain = consumer({ 'src/kv.ts': KV }, [], [QUEUE]);
+  assert.equal((await cli(['apply', '--root', plain.dir, '--rules', plain.rules, '--allow-unsigned'])).code, 0);
+  const r = await agentRun(plain.dir, faulty(plain.dir), '--typecheck');
+  assert.equal(r.code, 0, r.out + r.err);
+  assert.match(r.out, /^note: type-check not run: the evidence records no install by apply, so the new versions are not known to be installed$/m);
+  assert.deepEqual(evidenceOf(plain.dir).agent.typecheck, { ran: false, reason: 'the evidence records no install by apply, so the new versions are not known to be installed' });
+
+  const failed = consumer({ 'src/kv.ts': KV }, [], [QUEUE]);
+  assert.equal((await cli(['apply', '--root', failed.dir, '--rules', failed.rules, '--allow-unsigned', '--install-cmd', 'node -e "process.exit(3)"'])).code, 1);
+  const f = await agentRun(failed.dir, faulty(failed.dir), '--typecheck', '--dry-run');
+  assert.equal(f.code, 0, f.out + f.err);
+  assert.match(f.out, /^note: type-check not run: the install in apply failed$/m);
 });
 
 test('a Deno project is checked with the compilerOptions of its deno.json or deno.jsonc, and Deno\'s strict default', () => {

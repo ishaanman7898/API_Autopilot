@@ -78,7 +78,9 @@ Files written to `.apimigrate/` are `evidence.json`, `unresolved.json`, `base.js
 
 ### agent-apply
 
-`agent-apply --results agent.json [--root dir] [--test-cmd cmd] [--dry-run]`
+`agent-apply --results agent.json [--root dir] [--test-cmd cmd] [--typecheck] [--dry-run]`
+
+With `--typecheck` it type-checks the files the agent edited against the versions apply installed. An error the agent added on a line it changed is a `type-error-added` gate finding, so nothing is written. When the evidence records no install by apply, or a failed one, the check is skipped with a note. See [gate](gate.md#type-check).
 
 See [agent fallback](agent.md).
 

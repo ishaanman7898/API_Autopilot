@@ -128,10 +128,10 @@ export function compareErrors(beforeText, afterText, befores, after) {
 
 const changedCode = (base, head) => Object.keys(head).filter((f) => AST_FILE.test(f) && typeof base[f] === 'string' && base[f] !== head[f]).sort();
 
-// Checks the files once per variant, a map of path to text that replaces the disk text of all the files, so a
-// file of one group imported by another has the same text in both. Files are grouped by config, and the runs of
-// a group share the source files read from disk. Returns the projects and, per variant, each file's errors.
-function checkVariants(root, files, variants) {
+// Checks the files once per variant, a map of path to text that replaces the disk text of all the overlay files,
+// so a file of one group imported by another has the same text in both. Files are grouped by config, and the runs
+// of a group share the source files read from disk. Returns the projects and, per variant, each file's errors.
+function checkVariants(root, files, variants, overlay = files) {
   const real = realpathSync(root);
   const abs = (rel) => posixPath(join(real, rel));
   // Some messages, such as TS2306, name a file by its absolute path, which the evidence never holds.
@@ -158,7 +158,7 @@ function checkVariants(root, files, variants) {
 
   const projects = [];
   const errors = variants.map(() => ({}));
-  const overlays = variants.map((texts) => new Map(files.map((f) => [abs(f), texts[f]])));
+  const overlays = variants.map((texts) => new Map(overlay.map((f) => [abs(f), texts[f]])));
   for (const { config, files: group } of groups.values()) {
     const options = { ...(config ? config.parsed.options : DEFAULTS), ...NO_BUILD };
     const paths = group.map(abs);
@@ -199,3 +199,25 @@ export function typecheckChanges(root, base, head, baseline = null) {
   return { ran: true, typescript: ts.version, baseline: baseline !== null, projects, added: added.sort(byLine), otherLines: otherLines.sort(byLine) };
 }
 
+// agent-apply installs nothing, so it relies on apply having installed the new versions. base is the original
+// text, applied the text apply left and edited the text with the agent's edits. Each file the agent changed is
+// checked with all three texts. An error on a line the agent changed counts when neither the text apply left nor
+// the original text has it. Returns the shape of typecheckChanges without baseline.
+export function typecheckAgentEdits(root, base, applied, edited) {
+  const files = changedCode(applied, edited).filter((f) => typeof base[f] === 'string');
+  const overlay = [...new Set([...changedCode(base, edited), ...files])].filter((f) => typeof applied[f] === 'string').sort();
+  const { projects, errors: [original, before, after] } = checkVariants(root, files, [base, applied, edited], overlay);
+  const key = (e) => `${e.line}\0${e.code}\0${e.message}`;
+  const added = [];
+  const otherLines = [];
+  for (const f of files) {
+    const agent = compareErrors(applied[f], edited[f], [before[f]], after[f]);
+    const vsBase = compareErrors(base[f], edited[f], [original[f]], after[f]);
+    const fresh = [...vsBase.changed, ...vsBase.other];
+    // Multiset intersection: the errors the agent added that the original text does not have either.
+    const both = (list) => minus(list, [minus(list, [fresh], key)], key);
+    added.push(...both(agent.changed).map((e) => ({ file: f, ...e })));
+    otherLines.push(...both(agent.other).map((e) => ({ file: f, ...e })));
+  }
+  return { ran: true, typescript: ts.version, projects, added: added.sort(byLine), otherLines: otherLines.sort(byLine) };
+}
