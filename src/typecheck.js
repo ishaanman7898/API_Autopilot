@@ -11,9 +11,12 @@ import { AST_FILE } from './parse.js';
 // because an error there can be hidden after the upgrade by another error at the same call.
 // This runs TypeScript as a library, the version apimigrate ships, and never code from the repository.
 
-const CONFIGS = ['tsconfig.json', 'jsconfig.json'];
+// At one level a tsconfig.json or jsconfig.json comes before a deno.json.
+const CONFIGS = ['tsconfig.json', 'jsconfig.json', 'deno.json', 'deno.jsonc'];
 // For a file that no config covers. JavaScript is then only checked when the file asks with // @ts-check.
 const DEFAULTS = { allowJs: true, target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler, jsx: ts.JsxEmit.Preserve, esModuleInterop: true, resolveJsonModule: true, skipLibCheck: true };
+// Deno checks with strict on, imports with .ts extensions, and treats every file as a module.
+const DENO = { ...DEFAULTS, strict: true, allowImportingTsExtensions: true, moduleDetection: ts.ModuleDetectionKind.Force };
 // Nothing is written, and settings that only matter when building the whole project are off.
 const NO_BUILD = { noEmit: true, composite: false, incremental: false, declaration: false, declarationMap: false, emitDeclarationOnly: false, tsBuildInfoFile: undefined };
 const DECLARATION = /\.d\.[cm]?ts$/;
@@ -22,15 +25,33 @@ const MAX_MESSAGE = 300;
 const posixPath = (p) => p.split(sep).join('/');
 const byLine = (a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : a.line - b.line || (a.code < b.code ? -1 : a.code > b.code ? 1 : 0));
 
-// The nearest tsconfig.json or jsconfig.json at or above the file, inside root. A solution-style config that
-// does not list the file hands it to the first config it references that does, as in a Vite project.
+// The compilerOptions of a deno.json or deno.jsonc over Deno's defaults. The import map's entries that point at
+// local files become paths. Deno's own libs, such as deno.window, are not TypeScript's and stand for esnext.
+function denoConfig(path) {
+  const { config } = ts.parseConfigFileTextToJson(path, ts.sys.readFile(path) ?? '');
+  if (!config || typeof config !== 'object') return null;
+  const json = { ...config.compilerOptions };
+  if (Array.isArray(json.lib)) json.lib = [...new Set(json.lib.map((l) => (/^deno\./i.test(l) ? 'esnext' : l)))];
+  const dir = dirname(path);
+  const paths = {};
+  for (const [name, to] of Object.entries(config.imports ?? {})) {
+    if (typeof to !== 'string' || !/^\.\.?\//.test(to)) continue;
+    const prefix = name.endsWith('/') && to.endsWith('/');
+    paths[prefix ? `${name}*` : name] = [posixPath(join(dir, to)) + (prefix ? '*' : '')];
+  }
+  const { options } = ts.convertCompilerOptionsFromJson(json, dir, path);
+  return { path, deno: true, parsed: { options: { ...DENO, ...(Object.keys(paths).length ? { paths } : {}), ...options } }, files: new Set() };
+}
+
+// The nearest config at or above the file, inside root. A solution-style tsconfig that does not list the file
+// hands it to the first config it references that does, as in a Vite project. A deno.json covers every file below it.
 function configFor(root, rel, load) {
   const file = posixPath(join(root, rel));
   for (let dir = dirname(join(root, rel)); ; dir = dirname(dir)) {
     const found = CONFIGS.map((n) => join(dir, n)).find((p) => existsSync(p));
     if (found) {
       const own = load(found);
-      if (!own || own.files.has(file)) return own;
+      if (!own || own.deno || own.files.has(file)) return own;
       for (const ref of own.parsed.projectReferences ?? []) {
         const other = load(ts.resolveProjectReferencePath(ref));
         if (other?.files.has(file)) return other;
@@ -119,8 +140,11 @@ function checkVariants(root, files, variants) {
   const configs = new Map();
   const load = (path) => {
     if (!configs.has(path)) {
-      const parsed = ts.getParsedCommandLineOfConfigFile(path, {}, { ...ts.sys, onUnRecoverableConfigFileDiagnostic() {} });
-      configs.set(path, parsed ? { path, parsed, files: new Set(parsed.fileNames.map(posixPath)) } : null);
+      if (/(?:^|[\\/])deno\.jsonc?$/.test(path)) configs.set(path, denoConfig(path));
+      else {
+        const parsed = ts.getParsedCommandLineOfConfigFile(path, {}, { ...ts.sys, onUnRecoverableConfigFileDiagnostic() {} });
+        configs.set(path, parsed ? { path, parsed, files: new Set(parsed.fileNames.map(posixPath)) } : null);
+      }
     }
     return configs.get(path);
   };
@@ -174,3 +198,4 @@ export function typecheckChanges(root, base, head, baseline = null) {
   }
   return { ran: true, typescript: ts.version, baseline: baseline !== null, projects, added: added.sort(byLine), otherLines: otherLines.sort(byLine) };
 }
+

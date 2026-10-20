@@ -171,6 +171,30 @@ test('without new versions installed the type-check is refused or skipped with a
   assert.deepEqual(evidenceOf(failedInstall.dir).typecheck, { ran: false, reason: 'the install failed' });
 });
 
+test('a Deno project is checked with the compilerOptions of its deno.json or deno.jsonc, and Deno\'s strict default', () => {
+  const put = (call, more = '') => `import { values } from 'sdk';\nimport { defaults } from '#/defaults.ts';\n\nexport const put = (ns: string, key: string) => ${call};\n${more}`;
+  const base = { 'src/put.ts': put('values.update(ns, key, defaults)') };
+  const head = { 'src/put.ts': put('values.update(key, { namespace_id: ns, ...defaults })') };
+  const project = (config) => tree({ ...prefixed('node_modules/sdk', sdkFiles(2)), 'src/defaults.ts': "import type { UpdateParams } from 'sdk';\nexport const defaults: UpdateParams = { namespace_id: 'main', value: '' };\n", ...head, ...config });
+  // No compilerOptions, as in sparql-agent. strict is on, the import map's #/ resolves, and so does the .ts extension.
+  const deno = project({ 'deno.json': JSON.stringify({ imports: { '#/': './src/', sdk: 'npm:sdk@^2.0.0' } }) });
+  const r = typecheckChanges(deno, base, head);
+  assert.deepEqual(r.projects, [{ config: 'deno.json', files: ['src/put.ts'] }]);
+  assert.deepEqual(r.added, [{ file: 'src/put.ts', line: 4, code: 'TS2783', message: "'namespace_id' is specified more than once, so this usage will be overwritten." }]);
+
+  // deno.jsonc can have comments and trailing commas. strict off hides TS2783, and Deno's lib stands for esnext,
+  // so Array.prototype.at is known.
+  const loose = project({ 'deno.jsonc': '{\n  // checked by deno check\n  "compilerOptions": { "strict": false, "lib": ["deno.window"], },\n  "imports": { "#/": "./src/" },\n}\n' });
+  const atHead = { 'src/put.ts': put('values.update(key, { namespace_id: ns, ...defaults })', 'export const last: string = [1].at(-1);\n') };
+  const l = typecheckChanges(loose, base, atHead);
+  assert.deepEqual(l.projects, [{ config: 'deno.jsonc', files: ['src/put.ts'] }]);
+  assert.deepEqual(l.added, [{ file: 'src/put.ts', line: 5, code: 'TS2322', message: "Type 'number' is not assignable to type 'string'." }]);
+
+  // A tsconfig.json at the same level comes first, and a deno.json nearer the file than a tsconfig.json wins.
+  assert.deepEqual(typecheckChanges(project({ 'deno.json': '{}', 'tsconfig.json': TSCONFIG({}) }), base, head).projects.map((p) => p.config), ['tsconfig.json']);
+  assert.deepEqual(typecheckChanges(project({ 'tsconfig.json': TSCONFIG({}), 'src/deno.json': '{}' }), base, head).projects.map((p) => p.config), ['src/deno.json']);
+});
+
 test('watch mode passes --typecheck, so a rewrite that adds a type error opens no pull request', async () => {
   const fault = [['values\\.update\\(ns, key, JSON\\.stringify\\(data\\)\\)', 'values.update(key, { namespace_id: ns, ...JSON.stringify(data) })']];
   const run = async (typecheck) => {
